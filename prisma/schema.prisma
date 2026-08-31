@@ -1,0 +1,305 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Customers ----------
+
+model User {
+  id            String   @id @default(cuid())
+  name          String?
+  phone         String?  @unique
+  email         String?  @unique
+  passwordHash  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  addresses          Address[]
+  orders             Order[]
+  prescriptions      Prescription[]
+  notifications      Notification[]
+  notificationPref   NotificationPref?
+  sessions           Session[]
+  reviews            Review[]
+  stockAlerts        ProductAlert[]
+
+  // Sphere Points loyalty balance (includes legacy in-store activity)
+  loyaltyPoints      Int      @default(0)
+}
+
+model Address {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String
+  text      String
+  area      String?
+  notes     String?
+  isDefault Boolean @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  staffId   String?
+  staff     StaffUser? @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  role      String   // CUSTOMER | ADMIN | PHARMACIST | STAFF | RIDER
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ---------- Staff ----------
+
+model StaffUser {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  role         String   // ADMIN | PHARMACIST | STAFF | RIDER
+  title        String?  // e.g. "Superintendent Pharmacist"
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  sessions       Session[]
+  prescriptions  Prescription[] @relation("RxReviewer")
+}
+
+// ---------- Catalogue ----------
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  icon        String?  // lucide icon name or emoji
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  products Product[]
+}
+
+model Product {
+  id                   String   @id @default(cuid())
+  name                 String
+  sku                  String   @unique
+  categoryId           String?
+  category             Category? @relation(fields: [categoryId], references: [id])
+  brand                String?
+  packSize             String?
+  price                Float
+  compareAtPrice       Float?
+  stockStatus          String   @default("IN_STOCK") // IN_STOCK | LOW_STOCK | OUT_OF_STOCK | DISCONTINUED
+  stockQty             Int      @default(0)
+  lowStockThreshold    Int      @default(5)
+  requiresPrescription Boolean  @default(false)
+  description          String
+  usageInfo            String?
+  warnings             String?
+  image                String?  // emoji or URL
+  active               Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  reviews              Review[]
+  stockAlerts          ProductAlert[]
+}
+
+// Customer star ratings + written reviews for products (FR: trust & social proof)
+// status: PUBLISHED (visible) or HIDDEN (moderated out by staff)
+model Review {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating     Int      // 1-5 stars
+  comment    String?
+  status     String   @default("PUBLISHED") // PUBLISHED | HIDDEN
+  createdAt  DateTime @default(now())
+
+  @@unique([productId, userId]) // one review per customer per product
+}
+
+// Back-in-stock watch requests — notified in-app when the product is restocked
+model ProductAlert {
+  id         String    @id @default(cuid())
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([productId, userId])
+}
+
+// ---------- Orders ----------
+
+model Order {
+  id              String   @id @default(cuid())
+  reference       String   @unique // SPH-XXXXXX
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id])
+  guestName       String?
+  guestPhone      String?
+  type            String   // OTC | PRESCRIPTION | MIXED | RESERVATION
+  status          String   // see ORDER_STATUSES
+  fulfillment     String   // PICKUP | DELIVERY
+  deliveryAddress String?
+  deliveryArea    String?
+  deliveryNotes   String?
+  deliveryFee     Float    @default(0)
+  subtotal        Float
+  discountAmount  Float    @default(0)
+  promotionCode   String?
+  total           Float
+  notes           String?
+  pickupCode      String?
+  riderId         String?
+  riderName       String?
+  // Sphere Points earned (awarded when payment succeeds) / redeemed at checkout
+  pointsEarned    Int      @default(0)
+  pointsRedeemed  Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items           OrderItem[]
+  statusHistory   OrderStatusHistory[]
+  payments        Payment[]
+  prescriptions   Prescription[]
+}
+
+model OrderItem {
+  id                   String  @id @default(cuid())
+  orderId              String
+  order                Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId            String?
+  name                 String
+  price                Float
+  qty                  Int
+  requiresPrescription Boolean @default(false)
+  lineTotal            Float
+}
+
+model OrderStatusHistory {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    String
+  note      String?
+  actor     String
+  createdAt DateTime @default(now())
+}
+
+// ---------- Prescriptions ----------
+
+model Prescription {
+  id             String    @id @default(cuid())
+  userId         String?
+  user           User?     @relation(fields: [userId], references: [id])
+  orderId        String?
+  order          Order?    @relation(fields: [orderId], references: [id])
+  fileName       String
+  fileType       String
+  fileData       String    // base64; never exposed publicly, authorized access only
+  notes          String?
+  status         String    @default("PENDING") // PENDING | APPROVED | REJECTED | CLARIFICATION_REQUESTED | PARTIALLY_APPROVED
+  reviewNotes    String?
+  reviewedById   String?
+  reviewedBy     StaffUser? @relation("RxReviewer", fields: [reviewedById], references: [id])
+  reviewedAt     DateTime?
+  refillsAllowed Int       @default(0)
+  refillsUsed    Int       @default(0)
+  validUntil     DateTime?
+  createdAt      DateTime  @default(now())
+}
+
+// ---------- Payments ----------
+
+model Payment {
+  id                String   @id @default(cuid())
+  orderId           String
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider          String   // MPESA | INTASEND | CASH
+  method            String?  // STK_PUSH | CARD | PAYBILL | CASH_ON_PICKUP | CASH_ON_DELIVERY
+  status            String   @default("PENDING") // PENDING | PROCESSING | SUCCESS | FAILED | REFUNDED
+  amount            Float
+  phone             String?
+  cardLast4         String?
+  providerReference String?
+  checkoutRequestId String?
+  failureReason     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// ---------- Marketing / ops ----------
+
+model Promotion {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  badge       String?
+  code        String?
+  discountPct Int?
+  color       String?   // theme key: teal | amber | rose
+  active      Boolean   @default(true)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actor     String
+  actorRole String?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel   String   // IN_APP | SMS | WHATSAPP | EMAIL
+  event     String?
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model NotificationPref {
+  id       String @id @default(cuid())
+  userId   String @unique
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sms      Boolean @default(true)
+  whatsapp Boolean @default(true)
+  email    Boolean @default(false)
+}
+
+model Setting {
+  key   String @id
+  value String // JSON string
+}

@@ -1,0 +1,406 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.52 0.11 172); /* teal-700-ish */
+  --primary-foreground: oklch(0.985 0.005 170);
+  --secondary: oklch(0.96 0.02 170);
+  --secondary-foreground: oklch(0.32 0.05 175);
+  --muted: oklch(0.965 0.01 168);
+  --muted-foreground: oklch(0.52 0.02 165);
+  --accent: oklch(0.95 0.035 168);
+  --accent-foreground: oklch(0.32 0.06 172);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.62 0.1 172);
+  --chart-1: oklch(0.55 0.11 172);
+  --chart-2: oklch(0.68 0.14 150);
+  --chart-3: oklch(0.42 0.09 190);
+  --chart-4: oklch(0.78 0.15 85);
+  --chart-5: oklch(0.72 0.16 40);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.52 0.11 172);
+  --sidebar-primary-foreground: oklch(0.985 0.005 170);
+  --sidebar-accent: oklch(0.95 0.035 168);
+  --sidebar-accent-foreground: oklch(0.32 0.06 172);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.62 0.1 172);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.78 0.12 170);
+  --primary-foreground: oklch(0.18 0.04 175);
+  --secondary: oklch(0.28 0.03 172);
+  --secondary-foreground: oklch(0.94 0.01 168);
+  --muted: oklch(0.27 0.02 170);
+  --muted-foreground: oklch(0.68 0.02 165);
+  --accent: oklch(0.3 0.04 172);
+  --accent-foreground: oklch(0.94 0.01 168);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.68 0.1 172);
+  --chart-1: oklch(0.66 0.12 170);
+  --chart-2: oklch(0.72 0.14 150);
+  --chart-3: oklch(0.55 0.09 190);
+  --chart-4: oklch(0.82 0.15 85);
+  --chart-5: oklch(0.75 0.16 40);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.78 0.12 170);
+  --sidebar-primary-foreground: oklch(0.18 0.04 175);
+  --sidebar-accent: oklch(0.3 0.04 172);
+  --sidebar-accent-foreground: oklch(0.94 0.01 168);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.68 0.1 172);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ---------- Sphere Pharmacy theme extras ---------- */
+
+/* Custom scrollbar for long lists (WebKit + Firefox) */
+.scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(170 25% 45% / 0.35) transparent;
+}
+.scroll-slim::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: hsl(170 25% 45% / 0.35);
+  border-radius: 9999px;
+}
+.scroll-slim::-webkit-scrollbar-thumb:hover {
+  background: hsl(170 55% 38% / 0.6);
+}
+
+/* Subtle pharmacy-green gradient utilities */
+.gradient-hero {
+  background:
+    radial-gradient(1200px 500px at 85% -10%, hsl(168 45% 90% / 0.55), transparent 60%),
+    radial-gradient(900px 400px at -10% 110%, hsl(168 40% 92% / 0.5), transparent 55%),
+    linear-gradient(180deg, hsl(165 25% 97%) 0%, hsl(0 0% 100%) 70%);
+}
+.dark .gradient-hero {
+  background:
+    radial-gradient(1200px 500px at 85% -10%, hsl(168 40% 15% / 0.8), transparent 60%),
+    radial-gradient(900px 400px at -10% 110%, hsl(172 35% 12% / 0.7), transparent 55%),
+    linear-gradient(180deg, hsl(170 18% 9%) 0%, hsl(0 0% 7%) 70%);
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Card hover lift for product cards */
+.card-lift {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px -12px hsl(170 45% 30% / 0.25);
+  border-color: hsl(170 40% 70% / 0.6);
+}
+
+/* Pulsing "open now" dot */
+.pulse-dot {
+  position: relative;
+}
+.pulse-dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.25;
+  animation: pulse-ring 2s ease-out infinite;
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.6); opacity: 0.5; }
+  80%, 100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* Marquee for promo strip */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.35), transparent);
+  animation: shimmer 1.8s infinite;
+}
+.dark .shimmer::after {
+  background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.06), transparent);
+}
+
+/* ---------- Review round polish (Task R4) ---------- */
+
+/* Unified elevation scale — one shadow language across cards, sheets, popovers */
+.shadow-soft {
+  box-shadow:
+    0 1px 2px hsl(170 30% 20% / 0.05),
+    0 4px 12px -4px hsl(170 30% 20% / 0.08);
+}
+.dark .shadow-soft {
+  box-shadow:
+    0 1px 2px hsl(0 0% 0% / 0.4),
+    0 4px 12px -4px hsl(0 0% 0% / 0.5);
+}
+.shadow-lifted {
+  box-shadow:
+    0 2px 4px hsl(170 30% 20% / 0.06),
+    0 12px 28px -8px hsl(170 40% 25% / 0.18);
+}
+.dark .shadow-lifted {
+  box-shadow:
+    0 2px 4px hsl(0 0% 0% / 0.45),
+    0 12px 28px -8px hsl(0 0% 0% / 0.55);
+}
+
+/* Tabular figures so prices & KPIs never shift width while animating/counting */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Eyebrow label above section headings */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+/* Section heading with a gentle accent underline */
+.heading-accent {
+  position: relative;
+  padding-bottom: 0.375rem;
+}
+.heading-accent::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 2.5rem;
+  height: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--primary), hsl(160 60% 55% / 0.35));
+}
+
+/* Refined card hover (replaces older card-lift look with soft shadow + slight zoom on image) */
+.card-lift:hover {
+  box-shadow:
+    0 2px 6px hsl(170 35% 25% / 0.08),
+    0 16px 40px -12px hsl(170 45% 25% / 0.28);
+}
+.dark .card-lift:hover {
+  box-shadow:
+    0 2px 6px hsl(0 0% 0% / 0.5),
+    0 16px 40px -12px hsl(0 0% 0% / 0.6);
+}
+
+/* Primary button sheen sweep on hover */
+.btn-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.btn-sheen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-120%) skew-x(-12deg);
+  background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.22), transparent);
+  transition: transform 0.6s ease;
+}
+.btn-sheen:hover::before {
+  transform: translateX(120%) skew-x(-12deg);
+}
+
+/* FAB hover pulse ring (assistant) */
+.fab-glow {
+  box-shadow:
+    0 4px 14px hsl(168 60% 30% / 0.35),
+    0 0 0 0 hsl(168 60% 35% / 0.4);
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+.fab-glow:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow:
+    0 8px 22px hsl(168 60% 30% / 0.45),
+    0 0 0 10px hsl(168 60% 35% / 0);
+}
+
+/* Rating star pop for the review form */
+@keyframes star-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.35) rotate(6deg); }
+  100% { transform: scale(1); }
+}
+.star-pop {
+  animation: star-pop 0.35s ease;
+}
+
+/* Fine dotted divider used in summaries */
+.dot-divider {
+  background-image: radial-gradient(circle, var(--muted-foreground) 1px, transparent 1.5px);
+  background-size: 8px 1px;
+  background-repeat: repeat-x;
+  height: 2px;
+  opacity: 0.4;
+}
+
+/* ---------- Imagery & polish pass (Task R3-4) ---------- */
+
+/* Teal text selection across the site (inputs keep their own shadcn selection) */
+::selection {
+  background: hsl(170 55% 40% / 0.24);
+}
+.dark ::selection {
+  background: hsl(170 60% 52% / 0.35);
+}
+
+/* Consistent teal focus ring for anything keyboard-focusable.
+   Kept in @layer base with :where() so component utilities (later layers) still win. */
+@layer base {
+  :where(a, button, input, select, textarea, summary, [tabindex], [role="button"], [role="tab"], [role="switch"]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Image frame helper — rounded + inner ring + soft shadow (dark-mode aware).
+   Combine with aspect-* / h-* utilities; radius defaults to rounded-2xl. */
+.img-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  isolation: isolate;
+  box-shadow:
+    inset 0 0 0 1px hsl(170 30% 20% / 0.08),
+    0 1px 2px hsl(170 35% 25% / 0.06),
+    0 16px 40px -14px hsl(170 45% 22% / 0.3);
+}
+.dark .img-frame {
+  box-shadow:
+    inset 0 0 0 1px hsl(170 40% 85% / 0.14),
+    0 1px 2px hsl(0 0% 0% / 0.4),
+    0 16px 40px -14px hsl(0 0% 0% / 0.6);
+}
+
+/* Gentle fade-up on load — hero elements use this with staggered
+   `[animation-delay:…]` utilities; `both` keeps items hidden pre-delay. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-rise {
+  animation: rise-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise {
+    animation: none;
+  }
+}
+
+/* Compact header logo on phones — hides the wordmark column below sm
+   so the icon-button cluster never overflows small viewports. */
+@media (max-width: 639px) {
+  .logo-compact > span:last-child {
+    display: none;
+  }
+}
