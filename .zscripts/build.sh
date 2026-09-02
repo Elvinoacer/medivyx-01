@@ -141,7 +141,7 @@ PROJECT_DIR="$NEXTJS_PROJECT_DIR" BUILD_DIR="$BUILD_DIR" \
     bash "$SCRIPT_DIR/python-runtime-build.sh"
 
 # Database schema/data are managed in the external PostgreSQL environment.
-# Deployment builds never copy or initialize a bundled SQLite database.
+# Deployment builds never copy or initialize a bundled database file.
 
 # 复制 Caddyfile（如果存在）
 if [ -f "Caddyfile" ]; then
