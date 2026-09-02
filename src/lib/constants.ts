@@ -1,5 +1,5 @@
 // Sphere Pharmacy — shared domain constants & type definitions
-// (SQLite uses string fields; these constants are the source of truth.)
+// (Database-agnostic domain constants; PostgreSQL is the production datasource.)
 
 // ---------- Staff roles ----------
 export const ROLES = ["ADMIN", "PHARMACIST", "STAFF", "RIDER"] as const
