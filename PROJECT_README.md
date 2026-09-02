@@ -64,3 +64,15 @@ Sphere Points demo: the demo customer starts with **620 pts** (≈ KSh 620 at ch
 - Opening hours/contact details use the current public listing and are editable in Admin → Settings.
 - Product catalogue is demo data — load the real inventory via Admin → Catalogue → CSV import.
 - WhatsApp ordering uses `wa.me` deep links (no Business Cloud API).
+
+## Database environment
+
+Sphere Pharmacy uses PostgreSQL through Prisma. Configure these server-side variables in the deployment environment (never expose them to the browser):
+
+```
+sphere_pharmacy_PRISMA_DATABASE_URL=
+sphere_pharmacy_DATABASE_URL=
+sphere_pharmacy_POSTGRES_URL=
+```
+
+Use the Prisma URL for the application datasource, the Postgres/direct URL for Prisma direct connections, and keep the generic database URL available as the runtime fallback used by the Prisma client.
