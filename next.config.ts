@@ -1,8 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
-  /* config options here */
+  ...(process.env.STANDALONE === "true" ? { output: "standalone" } : {}),
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -10,3 +9,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
