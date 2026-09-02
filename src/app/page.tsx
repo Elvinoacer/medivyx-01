@@ -7,6 +7,8 @@ import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 import { MobileNav } from "@/components/layout/mobile-nav"
 import { AssistantWidget } from "@/components/assistant/assistant-widget"
+import { ReferenceHomeHero } from "@/components/home/reference-home-hero"
+import "./reference-home.css"
 import { HomeView } from "@/components/views/home-view"
 import { CatalogView } from "@/components/views/catalog-view"
 import { ProductView } from "@/components/views/product-view"
@@ -27,21 +29,19 @@ export default function Page() {
     refresh()
   }, [refresh])
 
+  const home = view === "home"
+
   return (
     <div className="flex min-h-screen flex-col">
-      {/* keyboard users can jump straight past the header chrome */}
       <a
         href="#main-content"
         className="sr-only z-50 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground focus:not-sr-only focus:absolute focus:left-4 focus:top-4"
       >
         Skip to main content
       </a>
-      <Header />
-      {/* pb-28 on mobile keeps content clear of the bottom tab bar and the
-         floating assistant button; md:pb-16 relaxes it on desktop where only
-         the FAB sits in the corner margin */}
+      {home ? <ReferenceHomeHero /> : <Header />}
       <main id="main-content" className="flex-1 pb-28 md:pb-16">
-        {view === "home" ? <HomeView /> : null}
+        {view === "home" ? <div className="reference-home-rest"><HomeView /></div> : null}
         {view === "catalog" ? <CatalogView /> : null}
         {view === "product" ? <ProductView /> : null}
         {view === "cart" ? <CartView /> : null}
