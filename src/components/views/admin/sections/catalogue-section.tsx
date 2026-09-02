@@ -561,9 +561,9 @@ function ProductEditorDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
-      <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden p-0 sm:max-w-2xl">
-        <DialogHeader className="border-b p-4 pb-3">
-          <DialogTitle>{mode === "create" ? "Add product" : `Edit ${product?.name ?? "product"}`}</DialogTitle>
+      <DialogContent className="flex w-[calc(100vw-1rem)] max-w-2xl max-h-[92dvh] flex-col overflow-hidden rounded-xl p-0 sm:w-full">
+        <DialogHeader className="border-b p-3 pr-12 pb-3 sm:p-4 sm:pr-12">
+          <DialogTitle className="pr-2 text-base leading-snug sm:text-lg">{mode === "create" ? "Add product" : `Edit ${product?.name ?? "product"}`}</DialogTitle>
           <DialogDescription>
             {mode === "create"
               ? "New products appear on the storefront immediately — remember to set stock and the Rx flag."
@@ -571,8 +571,8 @@ function ProductEditorDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="scroll-slim min-h-0 flex-1">
-          <div className="grid gap-4 p-4 sm:grid-cols-2">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="grid min-w-0 gap-3 p-3 sm:gap-4 sm:p-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="p-name">Name *</Label>
               <Input id="p-name" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Paracetamol 500mg Tablets" />
@@ -639,7 +639,7 @@ function ProductEditorDialog({
               <p className="text-xs text-muted-foreground">
                 Pick from the library of real product photos (or paste any image path/URL).
               </p>
-              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Product photo library">
+              <div className="grid max-h-40 grid-cols-5 gap-1.5 overflow-y-auto pr-0.5 xs:grid-cols-6 sm:flex sm:max-h-none sm:flex-wrap sm:overflow-visible" role="group" aria-label="Product photo library">
                 {IMAGE_LIBRARY.map((img) => (
                   <button
                     key={img.path}
@@ -649,7 +649,7 @@ function ProductEditorDialog({
                     aria-label={`Use photo: ${img.label}`}
                     title={img.label}
                     className={cn(
-                      "h-12 w-12 overflow-hidden rounded-lg border transition-colors",
+                      "aspect-square h-auto w-full overflow-hidden rounded-lg border transition-colors sm:h-12 sm:w-12",
                       productImageSrc(form.image) === img.path ? "border-primary ring-2 ring-primary/30" : "hover:bg-accent/60"
                     )}
                   >
@@ -688,7 +688,7 @@ function ProductEditorDialog({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="gap-2 border-t bg-muted/30 p-4">
+        <DialogFooter className="gap-2 border-t bg-muted/30 p-3 sm:p-4 [&>button]:w-full sm:[&>button]:w-auto">
           <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button onClick={() => void save()} disabled={busy || !valid}>
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
