@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { Search, Phone, MessageCircle, Heart, ShoppingCart, User, MapPin, Clock, Truck, ShieldCheck, Upload, ArrowRight } from "lucide-react"
 
 export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
+  const view = useAppStore((s) => s.view)
   const navigate = useAppStore((s) => s.navigate)
   const setCatalogFilters = useAppStore((s) => s.setCatalogFilters)
   const cartCount = useCartStore((s) => s.lines.reduce((n, line) => n + line.qty, 0))
@@ -25,6 +26,14 @@ export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
     setCatalogFilters({ search: value })
     navigate("catalog")
   }
+
+  const navItems = [
+    { label: "Home", view: "home" as const },
+    { label: "Shop", view: "catalog" as const },
+    { label: "My orders", view: "orders" as const },
+    { label: "Prescriptions", view: "prescriptions" as const },
+    { label: "Account", view: "account" as const },
+  ]
 
   return (
     <div className={cn("reference-home-shell", !showHero && "reference-home-shell-compact")}>
@@ -56,11 +65,16 @@ export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
         </div>
         <nav className="reference-nav">
           <div className="reference-container reference-nav-inner">
-            <button className="reference-nav-active" onClick={() => navigate("home")}>Home</button>
-            <button onClick={() => navigate("catalog")}>Shop</button>
-            <button onClick={() => navigate("orders")}>My orders</button>
-            <button onClick={() => navigate("prescriptions")}>Prescriptions</button>
-            <button onClick={() => navigate("account")}>Account</button>
+            {navItems.map((item) => (
+              <button
+                key={item.view}
+                className={cn("reference-nav-button", view === item.view && "reference-nav-active")}
+                onClick={() => navigate(item.view)}
+                aria-current={view === item.view ? "page" : undefined}
+              >
+                {item.label}
+              </button>
+            ))}
             <span className="reference-delivery-pill"><Truck className="h-4 w-4" /> Free delivery in Roysambu on orders over KSh 3,000</span>
           </div>
         </nav>
