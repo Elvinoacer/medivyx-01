@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { FormEvent, useState, useSyncExternalStore } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { LogoFull } from "@/components/shared/logo"
@@ -9,7 +9,8 @@ import { useCartStore } from "@/store/use-cart-store"
 import { PHARMACY, DELIVERY_DEFAULTS, waLink } from "@/lib/constants"
 import { formatKES, isOpenNow } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { Search, Phone, MessageCircle, Heart, ShoppingCart, User, MapPin, Clock, Truck, ShieldCheck, Upload, ArrowRight } from "lucide-react"
+import { useTheme } from "next-themes"
+import { Search, Phone, MessageCircle, Heart, ShoppingCart, User, MapPin, Clock, Truck, ShieldCheck, Upload, ArrowRight, Sun, Moon } from "lucide-react"
 
 export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
   const view = useAppStore((s) => s.view)
@@ -18,6 +19,9 @@ export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
   const cartCount = useCartStore((s) => s.lines.reduce((n, line) => n + line.qty, 0))
   const [query, setQuery] = useState("")
   const open = isOpenNow()
+  const { resolvedTheme, setTheme } = useTheme()
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
+  const dark = resolvedTheme === "dark"
 
   function submitSearch(e: FormEvent) {
     e.preventDefault()
@@ -60,6 +64,16 @@ export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
             <a href={waLink("Hello Sphere Pharmacy! I'd like to place an order.")} target="_blank" rel="noreferrer"><Button variant="outline" className="reference-action-button"><MessageCircle className="h-4 w-4 text-emerald-700" />WhatsApp</Button></a>
             <Button variant="outline" size="icon" className="reference-icon-button" aria-label="Wishlist"><Heart className="h-5 w-5" /></Button>
             <Button variant="outline" size="icon" className="reference-icon-button relative" onClick={() => navigate("cart")} aria-label={`Cart with ${cartCount} items`}><ShoppingCart className="h-5 w-5" />{cartCount > 0 ? <span className="reference-badge">{cartCount}</span> : null}</Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="reference-icon-button"
+              aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+              title={dark ? "Switch to light mode" : "Switch to dark mode"}
+              onClick={() => setTheme(dark ? "light" : "dark")}
+            >
+              {mounted ? (dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />) : <Moon className="h-5 w-5 opacity-0" />}
+            </Button>
             <Button variant="outline" className="reference-action-button" onClick={() => navigate("account")}><User className="h-4 w-4" />Account</Button>
           </div>
         </div>
