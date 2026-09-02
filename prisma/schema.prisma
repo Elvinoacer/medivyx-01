@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("sphere_pharmacy_PRISMA_DATABASE_URL")
+  directUrl = env("sphere_pharmacy_POSTGRES_URL")
 }
 
 // ---------- Customers ----------
