@@ -1,0 +1,15 @@
+.ambient-page-shell{position:relative;isolation:isolate;min-height:100vh;overflow-x:clip;background:var(--background)}
+.ambient-page-shell::before,.ambient-page-shell::after{content:"";position:fixed;inset:-18%;pointer-events:none;z-index:0;will-change:transform,filter;transform:translate3d(0,0,0)}
+.ambient-page-shell::before{background:radial-gradient(42% 34% at 18% 18%,hsl(152 72% 46% / .16),transparent 68%),radial-gradient(38% 30% at 82% 24%,hsl(174 72% 50% / .13),transparent 70%),radial-gradient(38% 30% at 55% 88%,hsl(122 72% 47% / .1),transparent 72%);filter:blur(34px);animation:ambient-drift-one 18s ease-in-out infinite alternate}
+.ambient-page-shell::after{background:conic-gradient(from 210deg at 50% 50%,transparent 0deg,hsl(155 70% 52% / .06) 56deg,transparent 128deg,hsl(175 80% 55% / .06) 210deg,transparent 300deg);mix-blend-mode:screen;filter:blur(18px);animation:ambient-drift-two 24s linear infinite}
+.ambient-page-shell>*{position:relative;z-index:1}
+.ambient-page-shell #main-content{position:relative;background:transparent}
+.ambient-page-shell #main-content::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;background:radial-gradient(700px 320px at 10% 8%,hsl(152 80% 58% / .07),transparent 72%),radial-gradient(620px 300px at 90% 38%,hsl(174 85% 56% / .06),transparent 72%),radial-gradient(680px 340px at 46% 92%,hsl(125 85% 55% / .05),transparent 74%)}
+.ambient-page-shell #main-content>*{position:relative;z-index:1}
+@keyframes ambient-drift-one{0%{transform:translate3d(-3%,-2%,0) scale(1)}50%{transform:translate3d(2%,3%,0) scale(1.06)}100%{transform:translate3d(5%,-1%,0) scale(1.02)}}
+@keyframes ambient-drift-two{0%{transform:rotate(0deg) scale(1)}50%{transform:rotate(150deg) scale(1.08)}100%{transform:rotate(360deg) scale(1)}}
+@media (prefers-color-scheme:light){.ambient-page-shell::before{background:radial-gradient(42% 34% at 18% 18%,hsl(152 75% 48% / .11),transparent 68%),radial-gradient(38% 30% at 82% 24%,hsl(174 78% 48% / .09),transparent 70%),radial-gradient(38% 30% at 55% 88%,hsl(122 72% 50% / .07),transparent 72%)}.ambient-page-shell::after{mix-blend-mode:multiply;opacity:.55}}
+.dark .ambient-page-shell::before{background:radial-gradient(42% 34% at 18% 18%,hsl(152 84% 48% / .22),transparent 68%),radial-gradient(38% 30% at 82% 24%,hsl(174 84% 52% / .18),transparent 70%),radial-gradient(38% 30% at 55% 88%,hsl(122 82% 48% / .14),transparent 72%);filter:blur(38px)}
+.dark .ambient-page-shell::after{opacity:.95}
+@media (prefers-reduced-motion:reduce){.ambient-page-shell::before,.ambient-page-shell::after{animation:none}}
+@media (max-width:800px){.ambient-page-shell::before{filter:blur(42px);animation-duration:22s}.ambient-page-shell::after{filter:blur(24px);animation-duration:28s}}
