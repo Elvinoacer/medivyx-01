@@ -9,6 +9,7 @@ import { AssistantWidget } from "@/components/assistant/assistant-widget"
 import { ReferenceHomeHero } from "@/components/home/reference-home-hero"
 import "./reference-home.css"
 import "./reference-home-dark.css"
+import "./ambient-background.css"
 import { HomeView } from "@/components/views/home-view"
 import { CatalogView } from "@/components/views/catalog-view"
 import { ProductView } from "@/components/views/product-view"
@@ -32,7 +33,7 @@ export default function Page() {
   const home = view === "home"
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="ambient-page-shell flex min-h-screen flex-col">
       <a href="#main-content" className="sr-only z-50 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground focus:not-sr-only focus:absolute focus:left-4 focus:top-4">Skip to main content</a>
       <ReferenceHomeHero showHero={home} />
       <main id="main-content" className="flex-1 pb-28 md:pb-16">
