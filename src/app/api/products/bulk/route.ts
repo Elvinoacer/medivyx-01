@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { audit } from "@/lib/notify"
 import { requireStaff } from "@/lib/session"
 import { STOCK_STATUSES } from "@/lib/constants"
+import { sanitizeImageInput } from "@/lib/image"
 
 /** CSV import — header columns:
  *  name,sku,category,brand,packSize,price,compareAtPrice,stockQty,stockStatus,requiresPrescription,description,image
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
         stockStatus,
         requiresPrescription,
         description: iDesc >= 0 ? cols[iDesc]?.trim() || "" : "",
-        image: iImage >= 0 ? cols[iImage]?.trim() || "💊" : "💊",
+        image: sanitizeImageInput(iImage >= 0 ? cols[iImage] : undefined),
         categoryId: category?.id ?? null,
       }
 

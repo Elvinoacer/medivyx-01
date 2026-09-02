@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescri
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { ProductCardCompact } from "@/components/shared/product-card"
+import { ProductImage } from "@/components/shared/product-image"
 import { LogoFull } from "@/components/shared/logo"
 import { useAppStore } from "@/store/use-app-store"
 import { useCartStore } from "@/store/use-cart-store"
@@ -104,7 +105,7 @@ export function Header() {
                 href={`https://wa.me/${PHARMACY.whatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+                className="flex items-center gap-3 rounded-lg bg-emerald-700 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800"
               >
                 Order via WhatsApp
               </a>
@@ -138,7 +139,7 @@ export function Header() {
             </Button>
           </a>
           <a href={`https://wa.me/${PHARMACY.whatsapp}?text=${encodeURIComponent("Hello Sphere Pharmacy! I'd like to place an order.")}`} target="_blank" rel="noopener noreferrer" className="hidden lg:inline-flex">
-            <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
+            <Button size="sm" className="gap-1.5 bg-emerald-700 hover:bg-emerald-800">
               WhatsApp
             </Button>
           </a>
@@ -317,7 +318,7 @@ export function WishSheet() {
         <Button variant="outline" size="icon" className="relative" aria-label={`Wishlist with ${items.length} saved items`}>
           <Heart className="h-5 w-5" />
           {items.length > 0 ? (
-            <Badge className="absolute -right-1.5 -top-1.5 h-5 min-w-5 rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white">
+            <Badge className="absolute -right-1.5 -top-1.5 h-5 min-w-5 rounded-full bg-rose-600 px-1 text-[11px] font-bold text-white">
               {items.length}
             </Badge>
           ) : null}
@@ -348,10 +349,10 @@ export function WishSheet() {
                 <div key={w.productId} className="flex items-center gap-3 rounded-lg border p-2.5">
                   <button
                     onClick={() => { setOpen(false); navigate("product", { productId: w.productId }) }}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-muted text-xl"
+                    className="h-11 w-11 shrink-0 overflow-hidden rounded-md border bg-muted"
                     aria-label={`View ${w.name}`}
                   >
-                    {w.image ?? "💊"}
+                    <ProductImage src={w.image} alt={w.name} className="h-full w-full" />
                   </button>
                   <button
                     onClick={() => { setOpen(false); navigate("product", { productId: w.productId }) }}
@@ -415,7 +416,7 @@ export function CartSheet() {
         <Button variant="outline" size="icon" className="relative" aria-label={`Cart with ${count} items`}>
           <ShoppingCart className="h-5 w-5" />
           {count > 0 ? (
-            <Badge className="absolute -right-1.5 -top-1.5 h-5 min-w-5 rounded-full px-1 text-[10px] font-bold">
+            <Badge className="absolute -right-1.5 -top-1.5 h-5 min-w-5 rounded-full px-1 text-[11px] font-bold">
               {count}
             </Badge>
           ) : null}
@@ -442,9 +443,13 @@ export function CartSheet() {
               <div className="flex flex-col gap-3">
                 {lines.map((l) => (
                   <div key={l.productId} className="flex items-center gap-3 rounded-lg border p-2.5">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-muted text-xl" aria-hidden>
-                      {l.image ?? "💊"}
-                    </span>
+                    <button
+                      onClick={() => navigate("product", { productId: l.productId })}
+                      className="h-11 w-11 shrink-0 overflow-hidden rounded-md border bg-muted"
+                      aria-label={`View ${l.name}`}
+                    >
+                      <ProductImage src={l.image} alt={l.name} className="h-full w-full" />
+                    </button>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">{l.name}</p>
                       <p className="text-xs text-muted-foreground">
@@ -480,9 +485,14 @@ export function CartSheet() {
                 <span className="text-lg font-bold">{formatKES(subtotal)}</span>
               </div>
               <p className="text-xs text-muted-foreground">Delivery fee calculated at checkout. Prescription items only dispensed after pharmacist review.</p>
-              <Button className="h-11 w-full text-base" onClick={() => { setOpen(false); navigate("checkout") }}>
-                Checkout <ChevronRight className="h-4 w-4" />
-              </Button>
+              <div className="grid gap-2">
+                <Button className="h-11 w-full text-base" onClick={() => { setOpen(false); navigate("checkout") }}>
+                  Checkout <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" className="w-full" onClick={() => { setOpen(false); navigate("cart") }}>
+                  View full cart
+                </Button>
+              </div>
             </div>
           </>
         )}

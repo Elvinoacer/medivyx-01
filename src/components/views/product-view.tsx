@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { Toaster } from "@/components/ui/sonner"
 import { ProductCard, StarRow } from "@/components/shared/product-card"
+import { ProductImage } from "@/components/shared/product-image"
 import { EmptyState, LoadingGrid, SectionHeader } from "@/components/shared/empty-state"
 import { StockStatusBadge, RxFlagBadge, OtcBadge } from "@/components/shared/status-badges"
 import { useAppStore } from "@/store/use-app-store"
@@ -230,7 +231,8 @@ export function ProductView() {
     toast.success(
       product.requiresPrescription
         ? `${qty} × ${product.name} added — upload your prescription at checkout`
-        : `${qty} × ${product.name} added to cart`
+        : `${qty} × ${product.name} added to cart`,
+      { action: { label: "View cart", onClick: () => navigate("cart") } }
     )
   }
 
@@ -280,13 +282,16 @@ export function ProductView() {
           <div>
             <div
               className={cn(
-                "card-lift relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-teal-50 via-emerald-50 to-teal-100 text-center dark:from-teal-950/40 dark:via-emerald-950/30 dark:to-teal-900/30",
+                "card-lift relative aspect-square w-full overflow-hidden rounded-2xl border bg-muted",
                 outOfStock && "grayscale"
               )}
             >
-              <span aria-hidden className="select-none text-[7rem] leading-none drop-shadow-sm sm:text-[9rem]">
-                {product.image ?? "💊"}
-              </span>
+              <ProductImage
+                src={product.image}
+                alt={`${product.name}${product.packSize ? ` — ${product.packSize}` : ""}`}
+                className="h-full w-full"
+                imgClassName="object-contain p-6 transition-transform duration-500 group-hover:scale-[1.03] sm:p-10"
+              />
               {discount ? (
                 <span className="absolute left-4 top-4 rounded-full bg-rose-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-md">
                   Save {formatKES(discount)}
@@ -532,7 +537,10 @@ export function ProductView() {
                   <div className="mt-5 space-y-1.5">
                     {reviews.breakdown.map((b) => (
                       <div key={b.rating} className="flex items-center gap-2 text-xs">
-                        <span className="tnum w-6 text-right text-muted-foreground">{b.rating}★</span>
+                        <span className="tnum flex w-8 items-center justify-end gap-1 text-right text-muted-foreground">
+                          <span aria-hidden>{b.rating}</span>
+                          <Star className="h-3 w-3 fill-muted-foreground text-muted-foreground" aria-hidden />
+                        </span>
                         <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                           <div
                             className="h-full rounded-full bg-amber-400"

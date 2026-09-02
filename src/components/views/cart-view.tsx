@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Toaster } from "@/components/ui/sonner"
 import { EmptyState } from "@/components/shared/empty-state"
+import { ProductImage } from "@/components/shared/product-image"
 import { RxFlagBadge } from "@/components/shared/status-badges"
 import { useAppStore } from "@/store/use-app-store"
 import { useCartStore } from "@/store/use-cart-store"
@@ -65,7 +66,7 @@ export function CartView() {
         <div className="mt-6 flex justify-center">
           <a href={waLink("Hello Sphere Pharmacy! I'd like help placing an order.")} target="_blank" rel="noopener noreferrer">
             <Button variant="outline" className="gap-1.5 rounded-full">
-              <MessageCircle className="h-4 w-4 text-emerald-600" /> Need help? Order via WhatsApp
+              <MessageCircle className="h-4 w-4 text-emerald-700" /> Need help? Order via WhatsApp
             </Button>
           </a>
         </div>
@@ -91,13 +92,13 @@ export function CartView() {
               return (
                 <Card key={l.productId} className={cn("card-lift", unavailable && "opacity-70")}>
                   <CardContent className="flex gap-3 p-3 sm:gap-4 sm:p-4">
-                    {/* emoji tile */}
+                    {/* product photo */}
                     <button
                       onClick={() => navigate("product", { productId: l.productId })}
-                      className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-50 to-emerald-50 text-3xl dark:from-teal-950/40 dark:to-emerald-950/30 sm:h-20 sm:w-20 sm:text-4xl"
+                      className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-muted sm:h-20 sm:w-20"
                       aria-label={`View ${l.name}`}
                     >
-                      <span aria-hidden>{l.image ?? "💊"}</span>
+                      <ProductImage src={l.image} alt={l.name} className="h-full w-full" />
                     </button>
 
                     <div className="flex min-w-0 flex-1 flex-col">

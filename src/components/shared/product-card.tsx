@@ -3,6 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RxFlagBadge, StockStatusBadge } from "@/components/shared/status-badges"
+import { ProductImage } from "@/components/shared/product-image"
 import { formatKES } from "@/lib/format"
 import type { ProductDTO } from "@/lib/types"
 import { useCartStore } from "@/store/use-cart-store"
@@ -16,19 +17,6 @@ interface ProductCardProps {
   product: ProductDTO
 }
 
-/* Soft emoji-tile gradient tints (teal / emerald / amber family only — no blue/indigo/violet).
-   Picked deterministically from a hash of the product id so tiles are stable across renders. */
-const TILE_TINTS = [
-  "from-teal-50 via-emerald-50 to-teal-100/70 dark:from-teal-950/50 dark:via-emerald-950/40 dark:to-teal-900/40",
-  "from-emerald-50 via-lime-50 to-emerald-100/70 dark:from-emerald-950/50 dark:via-lime-950/30 dark:to-emerald-900/40",
-  "from-amber-50 via-orange-50 to-amber-100/70 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-amber-900/30",
-] as const
-
-function tileTintFor(id: string): (typeof TILE_TINTS)[number] {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0
-  return TILE_TINTS[Math.abs(h) % TILE_TINTS.length]
-}
 
 export function StarRow({ value, count, size = 3.5 }: { value: number; count?: number; size?: number }) {
   return (
@@ -44,7 +32,7 @@ export function StarRow({ value, count, size = 3.5 }: { value: number; count?: n
           aria-hidden
         />
       ))}
-      {count != null ? <span className="ml-1 text-[11px] text-muted-foreground">({count})</span> : null}
+      {count != null ? <span className="ml-1 text-xs text-muted-foreground">({count})</span> : null}
     </span>
   )
 }
@@ -70,7 +58,8 @@ export function ProductCard({ product }: ProductCardProps) {
     toast.success(
       product.requiresPrescription
         ? `${product.name} added — prescription review required at checkout`
-        : `${product.name} added to cart`
+        : `${product.name} added to cart`,
+      { action: { label: "View cart", onClick: () => navigate("cart") } }
     )
   }
 
@@ -94,26 +83,30 @@ export function ProductCard({ product }: ProductCardProps) {
       onClick={() => navigate("product", { productId: product.id })}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && navigate("product", { productId: product.id })}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || (e.key === " " && !e.repeat)) {
+          e.preventDefault()
+          navigate("product", { productId: product.id })
+        }
+      }}
       aria-label={`View ${product.name}`}
     >
       <CardContent className="p-0">
-        {/* image / emoji tile */}
-        <div className={cn(
-          "relative flex h-32 items-center justify-center bg-gradient-to-br text-5xl",
-          tileTintFor(product.id),
-          outOfStock && "grayscale"
-        )}>
-          <span aria-hidden className="select-none transition-transform duration-300 group-hover:scale-110">
-            {product.image ?? "💊"}
-          </span>
+        {/* real product photo */}
+        <div className={cn("relative h-32 w-full bg-muted", outOfStock && "grayscale")}>
+          <ProductImage
+            src={product.image}
+            alt={`${product.name}${product.packSize ? ` — ${product.packSize}` : ""}`}
+            className="h-full w-full"
+            imgClassName="transition-transform duration-300 group-hover:scale-105"
+          />
           {product.compareAtPrice ? (
-            <span className="absolute left-2 top-2 rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+            <span className="absolute left-2 top-2 rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm">
               Save {formatKES(product.compareAtPrice - product.price)}
             </span>
           ) : null}
           {product.requiresPrescription ? (
-            <span className="absolute right-2 top-2 rounded-full border border-rose-200 bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-rose-700 shadow-sm backdrop-blur dark:border-rose-800 dark:bg-rose-950/80 dark:text-rose-300">
+            <span className="absolute right-2 top-2 rounded-full border border-rose-200 bg-white/95 px-2 py-0.5 text-[11px] font-semibold text-rose-700 shadow-sm backdrop-blur dark:border-rose-800 dark:bg-rose-950/80 dark:text-rose-300">
               ℞ Rx
             </span>
           ) : null}
@@ -133,7 +126,7 @@ export function ProductCard({ product }: ProductCardProps) {
             <Heart className={cn("h-4 w-4", wishHas && "fill-rose-500 text-rose-500")} />
           </button>
           {outOfStock ? (
-            <span className="absolute inset-x-0 bottom-0 bg-rose-600/90 py-1 text-center text-[10px] font-bold uppercase tracking-widest text-white">
+            <span className="absolute inset-x-0 bottom-0 bg-rose-600/90 py-1 text-center text-[11px] font-bold uppercase tracking-widest text-white">
               Out of stock
             </span>
           ) : null}
@@ -190,12 +183,11 @@ export function ProductCardCompact({ product }: ProductCardProps) {
       onClick={() => navigate("product", { productId: product.id })}
       className="flex w-full items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent/40"
     >
-      <span className={cn(
-        "flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-gradient-to-br text-2xl",
-        tileTintFor(product.id)
-      )} aria-hidden>
-        {product.image ?? "💊"}
-      </span>
+      <ProductImage
+        src={product.image}
+        alt={product.name}
+        className="h-12 w-12 shrink-0 rounded-md border bg-muted"
+      />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold">{product.name}</span>
         <span className="block truncate text-xs text-muted-foreground">
@@ -210,7 +202,7 @@ export function ProductCardCompact({ product }: ProductCardProps) {
       </span>
       <span className="tnum text-sm font-bold text-primary">{formatKES(product.price)}</span>
       {product.requiresPrescription ? <RxFlagBadge compact /> : null}
-      <Info className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <Info className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
     </button>
   )
 }

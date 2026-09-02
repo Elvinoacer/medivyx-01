@@ -10,7 +10,7 @@ export function Footer() {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <footer className="mt-auto border-t bg-muted/40">
+    <footer className="mt-auto border-t bg-muted/40 pb-16 md:pb-0">
       {/* slim top accent bar */}
       <div className="h-1 bg-gradient-to-r from-teal-600 via-emerald-500 to-teal-600" aria-hidden />
       <div className="mx-auto max-w-7xl px-4 py-10">

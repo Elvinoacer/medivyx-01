@@ -32,7 +32,7 @@ export async function PATCH(request: Request, { params }: Params) {
     status === "HIDDEN" ? "REVIEW_HIDDEN" : "REVIEW_PUBLISHED",
     "Review",
     review.product?.sku ?? id,
-    `${review.rating}★ on ${review.product?.name ?? "product"} is now ${status.toLowerCase()}`
+    `${review.rating}-star review on ${review.product?.name ?? "product"} is now ${status.toLowerCase()}`
   )
 
   return NextResponse.json({

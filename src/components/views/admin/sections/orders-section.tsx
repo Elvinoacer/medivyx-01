@@ -387,7 +387,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                             <Badge variant="outline" className={cn("px-1.5 py-0 text-[10px]", typeBadgeClass[order.type])}>
                               {order.type === "RESERVATION" ? "Reservation" : order.type === "PRESCRIPTION" ? "Rx order" : order.type === "MIXED" ? "Mixed" : "OTC"}
                             </Badge>
-                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                               {order.fulfillment === "DELIVERY" ? <Truck className="h-3 w-3" aria-hidden /> : <Store className="h-3 w-3" aria-hidden />}
                               {order.fulfillment === "DELIVERY" ? "Delivery" : "Pickup"}
                             </span>
@@ -437,7 +437,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                       <Badge variant="outline" className={cn("px-1.5 py-0 text-[10px]", typeBadgeClass[order.type])}>
                         {order.type === "RESERVATION" ? "Reservation" : order.type === "PRESCRIPTION" ? "Rx order" : order.type === "MIXED" ? "Mixed" : "OTC"}
                       </Badge>
-                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                         {order.fulfillment === "DELIVERY" ? <Truck className="h-3 w-3" aria-hidden /> : <Store className="h-3 w-3" aria-hidden />}
                         {FULFILLMENT_LABELS[order.fulfillment]}
                       </span>

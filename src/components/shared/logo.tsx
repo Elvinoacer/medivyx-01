@@ -32,7 +32,7 @@ export function LogoFull({ className, dark }: { className?: string; dark?: boole
         <span className={cn("text-lg font-bold tracking-tight", dark ? "text-foreground" : "text-foreground")}>
           Sphere Pharmacy
         </span>
-        <span className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+        <span className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Lumumba Drive · Roysambu
         </span>
       </span>

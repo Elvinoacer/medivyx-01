@@ -389,7 +389,7 @@ function RiderDeliveryCard({
             {order.items.length} item{order.items.length === 1 ? "" : "s"}
             <span className="ml-1 font-semibold tabular-nums">{formatKES(order.total)}</span>
             {payable ? (
-              <Badge variant="outline" className="ml-1 text-[10px] text-muted-foreground">
+              <Badge variant="outline" className="ml-1 text-[11px] text-muted-foreground">
                 {payable}
               </Badge>
             ) : null}

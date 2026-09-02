@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Toaster } from "@/components/ui/sonner"
 import { ProductCard } from "@/components/shared/product-card"
+import { ProductImage } from "@/components/shared/product-image"
 import { SectionHeader, LoadingGrid } from "@/components/shared/empty-state"
 import { LogoMark } from "@/components/shared/logo"
 import { useAppStore } from "@/store/use-app-store"
@@ -21,7 +22,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
   Search, Upload, ShieldCheck, Wallet, MapPin, Phone, MessageCircle, Clock,
-  ShieldAlert, ArrowRight, Truck, Sparkles, RefreshCw, Pill, Bot, Copy, History,
+  ShieldAlert, ArrowRight, Truck, Sparkles, RefreshCw, Bot, Copy, History,
 } from "lucide-react"
 
 // ---------- tiny async hook (exhaustive-deps handled per call) ----------
@@ -202,7 +203,7 @@ export function HomeView() {
                       : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
                   )}
                 >
-                  <span className={cn("pulse-dot inline-block h-2 w-2 rounded-full", open ? "bg-emerald-500 text-emerald-500" : "bg-amber-500 text-amber-500")} />
+                  <span className={cn("pulse-dot inline-block h-2 w-2 rounded-full", open ? "bg-emerald-500 text-emerald-500" : "bg-amber-500 text-amber-500")} aria-hidden />
                   {open ? "Open now" : "Closed right now"} · {PHARMACY.hoursLabel}
                 </span>
               </div>
@@ -212,7 +213,7 @@ export function HomeView() {
               </p>
               <h1 className="animate-rise [animation-delay:60ms] text-balance text-3xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl sm:leading-[1.05] lg:text-6xl lg:leading-[1.02]">
                 Your pharmacy,{" "}
-                <span className="bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent dark:from-teal-400 dark:to-emerald-400">
+                <span className="bg-gradient-to-r from-teal-700 to-emerald-600 bg-clip-text text-transparent dark:from-teal-400 dark:to-emerald-400">
                   now online.
                 </span>
               </h1>
@@ -257,7 +258,7 @@ export function HomeView() {
                   rel="noopener noreferrer"
                   className="inline-flex"
                 >
-                  <Button variant="secondary" size="sm" className="gap-1.5 rounded-full bg-emerald-600 text-white hover:bg-emerald-700">
+                  <Button variant="secondary" size="sm" className="gap-1.5 rounded-full bg-emerald-700 text-white hover:bg-emerald-800">
                     <MessageCircle className="h-4 w-4" /> Order via WhatsApp
                   </Button>
                 </a>
@@ -349,13 +350,15 @@ export function HomeView() {
         </h2>
 
         {categories.loading ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
             {Array.from({ length: 8 }).map((_, i) => (
-              <Card key={i} className="p-0">
-                <CardContent className="flex flex-col items-center gap-2 p-4">
-                  <Skeleton className="h-10 w-10 rounded-xl" />
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
+              <Card key={i} className="overflow-hidden p-0">
+                <CardContent className="p-0">
+                  <Skeleton className="aspect-square w-full rounded-none" />
+                  <div className="space-y-2 p-3">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -368,22 +371,23 @@ export function HomeView() {
             </Button>
           </div>
         ) : (
-          <div className="scroll-slim grid max-h-[22rem] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
             {categories.data.map((c) => (
               <button
                 key={c.id}
                 onClick={() => shopCategory(c)}
-                className="card-lift group flex flex-col items-center gap-2 rounded-xl border bg-card p-4 text-center focus-visible:outline-2 focus-visible:outline-primary"
+                className="card-lift group flex flex-col items-center gap-1.5 overflow-hidden rounded-xl border bg-card text-center focus-visible:outline-2 focus-visible:outline-primary"
                 aria-label={`Shop ${c.name}, ${c.productCount} products`}
               >
-                <span
-                  className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-teal-50 to-emerald-50 text-2xl transition-transform duration-300 group-hover:scale-110 dark:from-teal-950/50 dark:to-emerald-950/40"
-                  aria-hidden
-                >
-                  {c.icon ?? <Pill className="h-6 w-6 text-primary" />}
-                </span>
-                <span className="line-clamp-2 min-h-[2.2rem] text-xs font-semibold leading-tight sm:text-sm">{c.name}</span>
-                <span className="text-[11px] text-muted-foreground">{c.productCount} items</span>
+                <ProductImage
+                  src={c.icon}
+                  alt=""
+                  className="aspect-square w-full"
+                  imgClassName="transition-transform duration-300 group-hover:scale-105"
+                  fallback="/images/cat-fallback.webp"
+                />
+                <span className="line-clamp-2 min-h-[2.2rem] px-1.5 pt-1 text-xs font-semibold leading-tight sm:text-sm">{c.name}</span>
+                <span className="pb-3 text-[11px] text-muted-foreground">{c.productCount} items</span>
               </button>
             ))}
           </div>
@@ -482,7 +486,7 @@ export function HomeView() {
                 </Button>
               ) : null}
               <a href={waLink("Hi, I'd like to ask about available products.")} target="_blank" rel="noopener noreferrer">
-                <Button variant="secondary" size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700">
+                <Button variant="secondary" size="sm" className="gap-1.5 bg-emerald-700 text-white hover:bg-emerald-800">
                   <MessageCircle className="h-4 w-4" /> Ask on WhatsApp
                 </Button>
               </a>
@@ -567,7 +571,7 @@ export function HomeView() {
               <Truck className="h-3.5 w-3.5" aria-hidden /> Same-day delivery
             </span>
             <p className="text-lg font-extrabold leading-tight sm:text-2xl">Across Nairobi — from <span className="tnum">{formatKES(DELIVERY_DEFAULTS.zones[0].fee)}</span></p>
-            <p className="text-xs text-white/85 sm:text-sm">Zone fees to your door · free over {formatKES(DELIVERY_DEFAULTS.freeOver ?? 3000)}</p>
+            <p className="text-xs text-white/90 sm:text-sm">Zone fees to your door · free over {formatKES(DELIVERY_DEFAULTS.freeOver ?? 3000)}</p>
           </div>
         </div>
       </section>

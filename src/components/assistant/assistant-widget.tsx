@@ -13,7 +13,7 @@ import { PHARMACY } from "@/lib/constants"
 const GREETING: AssistantMessage = {
   role: "assistant",
   content:
-    "Karibu! 👋 I'm the Sphere Pharmacy assistant. I can help with hours, location, how ordering works, delivery fees and general questions. For medication or dosage questions I'll connect you to our pharmacy team — they're the right people for that.",
+    "Karibu! I'm the Sphere Pharmacy assistant. I can help with hours, location, how ordering works, delivery fees and general questions. For medication or dosage questions I'll connect you to our pharmacy team — they're the right people for that.",
 }
 
 const QUICK_PROMPTS = [
@@ -68,7 +68,7 @@ export function AssistantWidget() {
         onClick={() => setOpen(!open)}
         size="icon"
         className={cn(
-          "fab-glow fixed bottom-20 right-4 z-50 h-12 w-12 rounded-full md:bottom-6",
+          "fab-glow fixed bottom-24 right-4 z-50 h-12 w-12 rounded-full md:bottom-6",
           open && "hidden"
         )}
         aria-label="Open pharmacy assistant chat"
@@ -81,7 +81,7 @@ export function AssistantWidget() {
         <div
           role="dialog"
           aria-label="Pharmacy assistant"
-          className="fixed inset-x-3 bottom-3 z-50 flex max-h-[75vh] flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl md:inset-x-auto md:bottom-6 md:right-6 md:w-96"
+          className="fixed inset-x-3 bottom-24 z-50 flex max-h-[75vh] flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl md:inset-x-auto md:bottom-6 md:right-6 md:w-96"
         >
           {/* header */}
           <div className="flex items-center gap-3 bg-primary px-4 py-3 text-primary-foreground">
@@ -169,7 +169,7 @@ export function AssistantWidget() {
                 <Send className="h-4 w-4" />
               </Button>
             </div>
-            <p className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
+            <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
               <Phone className="h-3 w-3" /> For medical/dosage questions we&apos;ll connect you to the pharmacy team.
             </p>
           </div>

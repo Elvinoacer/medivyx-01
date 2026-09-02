@@ -19,9 +19,12 @@ import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
+import { ProductImage } from "@/components/shared/product-image"
 import { StockStatusBadge } from "@/components/shared/status-badges"
 import { adminApi, catalogApi } from "@/lib/api-client"
 import type { CategoryDTO, ProductDTO } from "@/lib/types"
+import { PRODUCT_IMAGE_LIBRARY } from "@/lib/image-library"
+import { FALLBACK_PRODUCT_IMAGE, productImageSrc, sanitizeImageInput } from "@/lib/image"
 import { STOCK_LABELS, STOCK_STATUSES, type StockStatus } from "@/lib/constants"
 import { formatKES } from "@/lib/format"
 import { useAuthStore } from "@/store/use-auth-store"
@@ -32,7 +35,8 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const EMOJI_SET = ["💊", "🧴", "🥤", "🍯", "🩹", "🩺", "🌡️", "🩸", "🍼", "🧼", "🧽", "💉", "🦷", "👁️", "🌿", "🍫"]
+// Real product photos shipped in public/images/products — the editor picks from these.
+const IMAGE_LIBRARY = PRODUCT_IMAGE_LIBRARY
 
 const CSV_COLUMNS = [
   "name", "sku", "category", "brand", "packSize", "price", "compareAtPrice",
@@ -41,8 +45,8 @@ const CSV_COLUMNS = [
 
 const CSV_TEMPLATE_ROWS: string[][] = [
   [...CSV_COLUMNS],
-  ["Paracetamol 500mg Tablets", "SPH-PAI-101", "Pain & Fever", "Generic", "24 tablets", "150", "180", "60", "IN_STOCK", "false", "For pain and fever relief", "💊"],
-  ["Amoxicillin 500mg Capsules", "SPH-ANT-102", "Antibiotics", "Cipla", "21 capsules", "480", "0", "12", "LOW_STOCK", "true", "Antibiotic — prescription only", "💊"],
+  ["Paracetamol 500mg Tablets", "SPH-PAI-101", "Pain & Fever", "Generic", "24 tablets", "150", "180", "60", "IN_STOCK", "false", "For pain and fever relief", "/images/products/panadol-tablets.webp"],
+  ["Amoxicillin 500mg Capsules", "SPH-ANT-102", "Antibiotics", "Cipla", "21 capsules", "480", "0", "12", "LOW_STOCK", "true", "Antibiotic — prescription only", "/images/products/antibiotic-capsules.webp"],
 ]
 
 const LOW_STOCK_THRESHOLD = 10
@@ -268,8 +272,8 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
                     )}
                   >
                     <TableCell>
-                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-xl" aria-hidden>
-                        {product.image ?? "💊"}
+                      <span className="block h-10 w-10 overflow-hidden rounded-lg border bg-muted" aria-hidden>
+                        <ProductImage src={product.image} alt="" className="h-full w-full" />
                       </span>
                     </TableCell>
                     <TableCell>
@@ -482,7 +486,7 @@ function formFromProduct(p?: ProductDTO, categories?: CategoryDTO[]): ProductFor
     description: p?.description ?? "",
     usageInfo: p?.usageInfo ?? "",
     warnings: p?.warnings ?? "",
-    image: p?.image ?? "💊",
+    image: p?.image ?? FALLBACK_PRODUCT_IMAGE,
     requiresPrescription: p?.requiresPrescription ?? false,
   }
 }
@@ -539,7 +543,7 @@ function ProductEditorDialog({
         description: form.description.trim(),
         usageInfo: form.usageInfo.trim() || null,
         warnings: form.warnings.trim() || null,
-        image: form.image || null,
+        image: form.image.trim() ? sanitizeImageInput(form.image) : FALLBACK_PRODUCT_IMAGE,
         requiresPrescription: form.requiresPrescription,
       }
       const saved =
@@ -631,24 +635,36 @@ function ProductEditorDialog({
               </Select>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Image (emoji)</Label>
-              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Product image emoji picker">
-                {EMOJI_SET.map((emoji) => (
+              <Label>Product photo</Label>
+              <p className="text-xs text-muted-foreground">
+                Pick from the library of real product photos (or paste any image path/URL).
+              </p>
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Product photo library">
+                {IMAGE_LIBRARY.map((img) => (
                   <button
-                    key={emoji}
+                    key={img.path}
                     type="button"
-                    onClick={() => set("image", emoji)}
-                    aria-pressed={form.image === emoji}
-                    aria-label={`Use ${emoji} as product image`}
+                    onClick={() => set("image", img.path)}
+                    aria-pressed={productImageSrc(form.image) === img.path}
+                    aria-label={`Use photo: ${img.label}`}
+                    title={img.label}
                     className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-lg border text-xl transition-colors",
-                      form.image === emoji ? "border-primary bg-primary/10" : "hover:bg-accent/60"
+                      "h-12 w-12 overflow-hidden rounded-lg border transition-colors",
+                      productImageSrc(form.image) === img.path ? "border-primary ring-2 ring-primary/30" : "hover:bg-accent/60"
                     )}
                   >
-                    {emoji}
+                    <ProductImage src={img.path} alt="" className="h-full w-full" />
                   </button>
                 ))}
               </div>
+              <Input
+                id="p-image"
+                value={form.image}
+                onChange={(e) => set("image", e.target.value)}
+                placeholder="/images/products/generic-medicine.webp"
+                className="mt-1.5 font-mono text-xs"
+                aria-label="Custom image path or URL"
+              />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="p-desc">Description</Label>

@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescri
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Toaster } from "@/components/ui/sonner"
 import { ProductCard } from "@/components/shared/product-card"
+import { ProductImage } from "@/components/shared/product-image"
 import { EmptyState, LoadingGrid } from "@/components/shared/empty-state"
 import { useAppStore, type CatalogFilters } from "@/store/use-app-store"
 import { catalogApi } from "@/lib/api-client"
@@ -19,7 +20,7 @@ import { PHARMACY, waLink } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
-  Search, SlidersHorizontal, X, Loader2, RefreshCw, MessageCircle, Pill, ChevronDown,
+  Search, SlidersHorizontal, X, Loader2, RefreshCw, MessageCircle, ChevronDown,
 } from "lucide-react"
 
 const PAGE_SIZE = 16
@@ -175,7 +176,7 @@ export function CatalogView() {
       {/* categories */}
       <div>
         <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-          <Pill className="h-3.5 w-3.5" aria-hidden /> Categories
+          <ChevronDown className="h-3.5 w-3.5 -rotate-90" aria-hidden /> Categories
         </h3>
         {categoriesError ? (
           <p className="text-xs text-muted-foreground">{categoriesError} — filters still work.</p>
@@ -210,7 +211,12 @@ export function CatalogView() {
                   aria-pressed={filters.category === c.id}
                 >
                   <span className="flex min-w-0 items-center gap-2">
-                    <span aria-hidden>{c.icon ?? "💊"}</span>
+                    <ProductImage
+                      src={c.icon}
+                      alt=""
+                      className="h-6 w-6 shrink-0 rounded-md border bg-muted"
+                      fallback="/images/cat-fallback.webp"
+                    />
                     <span className="truncate">{c.name}</span>
                   </span>
                   <span className="shrink-0 text-xs text-muted-foreground">{c.productCount}</span>
@@ -329,8 +335,8 @@ export function CatalogView() {
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" className="h-10 shrink-0 gap-1.5 rounded-full px-4">
-                <SlidersHorizontal className="h-4 w-4" /> Filters
-                {hasActiveFilters ? <Badge className="ml-0.5 h-4.5 min-w-4.5 rounded-full px-1 text-[10px] font-bold">!</Badge> : null}
+                <SlidersHorizontal className="h-4 w-4" aria-hidden /> Filters
+                {hasActiveFilters ? <Badge className="ml-0.5 h-5 min-w-5 rounded-full px-1 text-[11px] font-bold">!</Badge> : null}
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-80 overflow-y-auto p-0">
@@ -457,7 +463,7 @@ export function CatalogView() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Button variant="secondary" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700">
+                <Button variant="secondary" className="gap-1.5 bg-emerald-700 text-white hover:bg-emerald-800">
                   <MessageCircle className="h-4 w-4" /> Ask on WhatsApp
                 </Button>
               </a>

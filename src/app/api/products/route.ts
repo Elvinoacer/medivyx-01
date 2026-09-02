@@ -4,6 +4,7 @@ import { attachRatings, toProductDTO } from "@/lib/dto"
 import { audit } from "@/lib/notify"
 import { requireStaff } from "@/lib/session"
 import { STOCK_STATUSES, type StockStatus } from "@/lib/constants"
+import { sanitizeImageInput } from "@/lib/image"
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
         description: String(body.description ?? "").trim() || "",
         usageInfo: body.usageInfo ? String(body.usageInfo).trim() : null,
         warnings: body.warnings ? String(body.warnings).trim() : null,
-        image: body.image ? String(body.image).trim() : "💊",
+        image: sanitizeImageInput(body.image ? String(body.image) : undefined),
         active: body.active !== false,
       },
       include: { category: true },
