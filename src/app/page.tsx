@@ -3,7 +3,6 @@
 import { useEffect } from "react"
 import { useAppStore } from "@/store/use-app-store"
 import { useAuthStore } from "@/store/use-auth-store"
-import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 import { MobileNav } from "@/components/layout/mobile-nav"
 import { AssistantWidget } from "@/components/assistant/assistant-widget"
@@ -33,15 +32,10 @@ export default function Page() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <a
-        href="#main-content"
-        className="sr-only z-50 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground focus:not-sr-only focus:absolute focus:left-4 focus:top-4"
-      >
-        Skip to main content
-      </a>
-      {home ? <ReferenceHomeHero /> : <Header />}
+      <a href="#main-content" className="sr-only z-50 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground focus:not-sr-only focus:absolute focus:left-4 focus:top-4">Skip to main content</a>
+      <ReferenceHomeHero showHero={home} />
       <main id="main-content" className="flex-1 pb-28 md:pb-16">
-        {view === "home" ? <div className="reference-home-rest"><HomeView /></div> : null}
+        {home ? <div className="reference-home-rest"><HomeView /></div> : null}
         {view === "catalog" ? <CatalogView /> : null}
         {view === "product" ? <ProductView /> : null}
         {view === "cart" ? <CartView /> : null}
