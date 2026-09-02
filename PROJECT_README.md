@@ -26,7 +26,7 @@ A full-stack retail pharmacy platform for **Sphere Pharmacy (The Sphere Pharmacy
 
 - Next.js 16 (App Router) + TypeScript (strict)
 - Tailwind CSS 4 + shadcn/ui (New York style), teal/emerald theme, light+dark
-- Prisma ORM + SQLite (`db/custom.db` — file included, pre-seeded)
+- Prisma ORM + PostgreSQL (configured through environment variables)
 - Zustand (view router + persisted cart), custom cookie sessions (scrypt password hashing)
 - z-ai-web-dev-sdk (backend only) for the AI assistant with guardrails
 - Recharts for admin analytics
@@ -39,7 +39,7 @@ bun run db:generate    # regenerate Prisma client (optional — already generate
 bun run dev            # starts on http://localhost:3000
 ```
 
-The SQLite database ships pre-seeded. To reset it: `bun run db:push && bun prisma/seed.ts`
+The PostgreSQL database is managed externally. Apply the Prisma schema with `bun run db:push`, then seed it with `bun prisma/seed.ts`
 
 ## Demo accounts
 
