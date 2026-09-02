@@ -71,4 +71,10 @@ export const PRODUCT_IMAGE_LIBRARY: LibraryImage[] = [
   entry("crepe-bandage", "Crepe bandage"),
   entry("first-aid-kit", "First aid kit"),
   entry("face-masks", "Face masks"),
+  entry("azithromycin-tablets", "Azithromycin 500mg"),
+  entry("metronidazole-tablets", "Metronidazole 400mg"),
+  entry("co-amoxiclav-tablets", "Co-amoxiclav 625mg"),
+  entry("aerius-tablets", "Aerius 5mg"),
+  entry("piriton-tablets", "Piriton 4mg"),
+  entry("coq10-capsules", "CoQ10 capsules"),
 ]
