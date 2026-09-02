@@ -1,5 +1,5 @@
 /**
- * Seed script — populates the SQLite database with a realistic demo dataset.
+ * Seed script — populates the PostgreSQL database with a realistic demo dataset.
  * Run: bun prisma/seed.ts
  */
 import { PrismaClient } from "@prisma/client"
