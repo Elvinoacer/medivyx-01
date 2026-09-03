@@ -326,3 +326,30 @@ export interface SessionPayload {
   user?: UserDTO
   staff?: StaffDTO
 }
+
+
+export interface ServiceImageDTO {
+  id: string
+  url: string
+  storageKey?: string | null
+  alt?: string | null
+  sortOrder: number
+}
+export interface ServiceDTO {
+  id: string
+  name: string
+  slug: string
+  shortDescription?: string | null
+  description?: string | null
+  category?: string | null
+  durationMinutes: number
+  price?: number | null
+  priceLabel?: string | null
+  heroImage?: string | null
+  featured: boolean
+  active: boolean
+  sortOrder: number
+  images: ServiceImageDTO[]
+  createdAt: string
+  updatedAt: string
+}
