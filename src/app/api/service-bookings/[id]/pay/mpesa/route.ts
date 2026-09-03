@@ -8,6 +8,7 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
  const {id}=await ctx.params; const body=await request.json()
  const booking=await db.serviceBooking.findUnique({where:{id},include:{service:true}})
  if(!booking||booking.userId!==s.userId)return NextResponse.json({error:"Booking not found."},{status:404})
+ if(booking.paymentStatus==="PAID")return NextResponse.json({error:"This booking is already paid."},{status:409})
  if(["CANCELLED","REJECTED","COMPLETED"].includes(booking.status))return NextResponse.json({error:"This booking cannot be paid."},{status:409})
  if(!booking.price||booking.price<=0){await db.serviceBooking.update({where:{id},data:{paymentStatus:"PAID"}});return NextResponse.json({paymentId:null,paymentStatus:"PAID"})}
  const phone=formatDarajaPhone(String(body.phone||s.user?.phone||""))
