@@ -255,7 +255,7 @@ export function AccountView() {
   const [addressesError, setAddressesError] = useState<string | null>(null)
   const [addressDialog, setAddressDialog] = useState<
     { mode: "add" } | { mode: "edit"; address: AddressDTO } | null
-  >()
+  >(null)
   const [addressForm, setAddressForm] = useState<AddressForm>(EMPTY_ADDRESS_FORM)
   const [addressError, setAddressError] = useState<string | null>(null)
   const [savingAddress, setSavingAddress] = useState(false)
@@ -407,7 +407,7 @@ export function AccountView() {
   }
 
   async function saveAddress() {
-    if (!addressDialog) return
+    const dialog = addressDialog ?? { mode: "add" as const }
     const label = addressForm.label.trim()
     const text = addressForm.text.trim()
     if (!label) {
@@ -430,11 +430,11 @@ export function AccountView() {
         latitude: addressForm.latitude ?? undefined,
         longitude: addressForm.longitude ?? undefined,
       }
-      if (addressDialog.mode === "add") {
+      if (dialog.mode === "add") {
         await addressesApi.create(payload)
         toast.success("Address saved")
       } else {
-        await addressesApi.update(addressDialog.address.id, payload)
+        await addressesApi.update(dialog.address.id, payload)
         toast.success("Address updated")
       }
       setAddressDialog(null)
@@ -1334,13 +1334,13 @@ export function AccountView() {
 
       {/* ---------- address add/edit dialog ---------- */}
       <Dialog
-        open={addressDialog !== null}
+        open={addressDialog != null}
         onOpenChange={(open) => {
           if (!open && !savingAddress) setAddressDialog(null)
         }}
       >
-        <DialogContent className="max-h-[90dvh] overflow-y-auto px-4 sm:max-w-lg sm:px-6">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[90dvh] flex-col overflow-hidden px-4 sm:max-w-lg sm:px-6">
+          <DialogHeader className="shrink-0">
             <DialogTitle>
               {addressDialog?.mode === "edit" ? "Edit address" : "Add a new address"}
             </DialogTitle>
@@ -1348,98 +1348,126 @@ export function AccountView() {
               Saved addresses speed up delivery checkout — pick one at step 2.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="addr-label">Label</Label>
-              <Input
-                id="addr-label"
-                placeholder="e.g. Home, Work"
-                value={addressForm.label}
-                onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })}
-                disabled={savingAddress}
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><Label htmlFor="addr-text">Full address</Label><UseCurrentLocationButton disabled={savingAddress} onResolved={(location) => { const matched = areaOptions.find((zone) => { const candidate = (location.area || "").toLowerCase(); return candidate && (candidate.includes(zone.toLowerCase()) || zone.toLowerCase().includes(candidate)) }); setAddressForm((current) => ({ ...current, text: location.displayName, area: matched || current.area, latitude: location.latitude, longitude: location.longitude })) }} /></div>
-              <Textarea
-                id="addr-text"
-                rows={3}
-                placeholder="Building, street, estate / landmark — e.g. Amani Heights, Lumumba Drive, Roysambu"
-                value={addressForm.text}
-                onChange={(e) => setAddressForm({ ...addressForm, text: e.target.value })}
-                disabled={savingAddress}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="addr-area">Delivery zone</Label>
-              <Select
-                value={addressForm.area || undefined}
-                onValueChange={(v) => setAddressForm({ ...addressForm, area: v })}
-                disabled={savingAddress}
-              >
-                <SelectTrigger id="addr-area" className="w-full">
-                  <SelectValue placeholder="Choose your delivery zone" />
-                </SelectTrigger>
-                <SelectContent>
-                  {areaOptions.map((zone) => (
-                    <SelectItem key={zone} value={zone}>
-                      {zone}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="addr-notes">Rider notes (optional)</Label>
-              <Input
-                id="addr-notes"
-                placeholder="e.g. Gate 3, ask for the caretaker"
-                value={addressForm.notes}
-                onChange={(e) => setAddressForm({ ...addressForm, notes: e.target.value })}
-                disabled={savingAddress}
-              />
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
-              <div>
-                <Label htmlFor="addr-default" className="text-sm font-medium">
-                  Default address
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Pre-selected automatically at checkout.
-                </p>
+          <form
+            className="flex min-h-0 flex-1 flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void saveAddress()
+            }}
+          >
+            <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
+              <div className="space-y-2">
+                <Label htmlFor="addr-label">Label</Label>
+                <Input
+                  id="addr-label"
+                  placeholder="e.g. Home, Work"
+                  value={addressForm.label}
+                  onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })}
+                  disabled={savingAddress}
+                />
               </div>
-              <Switch
-                id="addr-default"
-                checked={addressForm.isDefault}
-                onCheckedChange={(v) => setAddressForm({ ...addressForm, isDefault: v })}
-                disabled={savingAddress}
-                aria-label="Set as default address"
-              />
+              <div className="space-y-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <Label htmlFor="addr-text">Full address</Label>
+                  <UseCurrentLocationButton
+                    disabled={savingAddress}
+                    onResolved={(location) => {
+                      const matched = areaOptions.find((zone) => {
+                        const candidate = (location.area || "").toLowerCase()
+                        return candidate && (candidate.includes(zone.toLowerCase()) || zone.toLowerCase().includes(candidate))
+                      })
+                      setAddressForm((current) => ({
+                        ...current,
+                        text: location.displayName,
+                        area: matched || current.area,
+                        latitude: location.latitude,
+                        longitude: location.longitude,
+                      }))
+                    }}
+                  />
+                </div>
+                <Textarea
+                  id="addr-text"
+                  rows={3}
+                  placeholder="Building, street, estate / landmark — e.g. Amani Heights, Lumumba Drive, Roysambu"
+                  value={addressForm.text}
+                  onChange={(e) => setAddressForm({ ...addressForm, text: e.target.value })}
+                  disabled={savingAddress}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="addr-area">Delivery zone</Label>
+                <Select
+                  value={addressForm.area || undefined}
+                  onValueChange={(v) => setAddressForm({ ...addressForm, area: v })}
+                  disabled={savingAddress}
+                  modal={false}
+                >
+                  <SelectTrigger id="addr-area" className="w-full">
+                    <SelectValue placeholder="Choose your delivery zone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {areaOptions.map((zone) => (
+                      <SelectItem key={zone} value={zone}>
+                        {zone}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="addr-notes">Rider notes (optional)</Label>
+                <Input
+                  id="addr-notes"
+                  placeholder="e.g. Gate 3, ask for the caretaker"
+                  value={addressForm.notes}
+                  onChange={(e) => setAddressForm({ ...addressForm, notes: e.target.value })}
+                  disabled={savingAddress}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                <div>
+                  <Label htmlFor="addr-default" className="text-sm font-medium">
+                    Default address
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Pre-selected automatically at checkout.
+                  </p>
+                </div>
+                <Switch
+                  id="addr-default"
+                  checked={addressForm.isDefault}
+                  onCheckedChange={(v) => setAddressForm({ ...addressForm, isDefault: v })}
+                  disabled={savingAddress}
+                  aria-label="Set as default address"
+                />
+              </div>
+              {addressError ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {addressError}
+                </p>
+              ) : null}
             </div>
-            {addressError ? (
-              <p className="text-sm text-destructive" role="alert">
-                {addressError}
-              </p>
-            ) : null}
-          </div>
-          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              variant="outline"
-              onClick={() => setAddressDialog(null)}
-              disabled={savingAddress}
-              className="w-full sm:w-auto"
-            >
-              Cancel
-            </Button>
-            <Button onClick={() => void saveAddress()} disabled={savingAddress}>
-              {savingAddress ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              ) : (
-                <CheckCheck className="h-4 w-4" aria-hidden />
-              )}
-              {addressDialog?.mode === "edit" ? "Save address" : "Add address"}
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAddressDialog(null)}
+                disabled={savingAddress}
+                className="w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={savingAddress} className="w-full sm:w-auto">
+                {savingAddress ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <CheckCheck className="h-4 w-4" aria-hidden />
+                )}
+                {addressDialog?.mode === "edit" ? "Save address" : "Add address"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
