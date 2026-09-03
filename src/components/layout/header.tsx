@@ -93,7 +93,9 @@ export function Header() {
                   onClick={() => { navigate(item.view); setMenuOpen(false) }}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    view === item.view ? "bg-accent text-accent-foreground" : "hover:bg-accent/60"
+                    view === item.view
+                      ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
+                      : "hover:bg-accent/60"
                   )}
                 >
                   <item.icon className="h-4 w-4" /> {item.label}
@@ -198,7 +200,9 @@ export function Header() {
               onClick={() => navigate(item.view)}
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                view === item.view ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                view === item.view
+                  ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
               )}
             >
               {item.label}
@@ -346,50 +350,17 @@ export function WishSheet() {
           <ScrollArea className="scroll-slim flex-1 p-4">
             <div className="flex flex-col gap-3">
               {items.map((w) => (
-                <div key={w.productId} className="flex items-center gap-3 rounded-lg border p-2.5">
-                  <button
-                    onClick={() => { setOpen(false); navigate("product", { productId: w.productId }) }}
-                    className="h-11 w-11 shrink-0 overflow-hidden rounded-md border bg-muted"
-                    aria-label={`View ${w.name}`}
-                  >
-                    <ProductImage src={w.image} alt={w.name} className="h-full w-full" />
-                  </button>
-                  <button
-                    onClick={() => { setOpen(false); navigate("product", { productId: w.productId }) }}
-                    className="min-w-0 flex-1 text-left"
-                  >
-                    <p className="truncate text-sm font-semibold">{w.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {w.brand ?? ""}{w.brand && w.packSize ? " · " : ""}{w.packSize ?? ""} · {formatKES(w.price)}
-                      {w.requiresPrescription ? " · ℞" : ""}
-                    </p>
-                  </button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={() => {
-                      add({
-                        productId: w.productId,
-                        name: w.name,
-                        price: w.price,
-                        image: w.image,
-                        requiresPrescription: w.requiresPrescription,
-                        packSize: w.packSize,
-                        stockStatus: "IN_STOCK",
-                      })
-                      toast.success(`${w.name} added to cart`)
-                    }}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
-                  <button
-                    onClick={() => { remove(w.productId); toast("Removed from saved items") }}
-                    className="text-muted-foreground hover:text-rose-600"
-                    aria-label={`Remove ${w.name} from wishlist`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                <div key={w.product.id} className="flex items-center gap-3 rounded-xl border bg-card p-3">
+                  <ProductImage src={w.product.image} alt={w.product.name} className="h-14 w-14 shrink-0 rounded-lg bg-muted object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{w.product.name}</p>
+                    <p className="text-xs text-muted-foreground">{w.product.brand ?? "Sphere Pharmacy"}</p>
+                    <p className="mt-0.5 text-sm font-bold text-primary">{formatKES(w.product.price)}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-col gap-1">
+                    <Button size="sm" onClick={() => add(w.product)} className="h-8 px-3">Add to cart</Button>
+                    <Button variant="ghost" size="sm" onClick={() => remove(w.product.id)} className="h-8 px-3 text-xs text-destructive">Remove</Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -400,102 +371,69 @@ export function WishSheet() {
   )
 }
 
-export function CartSheet() {
-  const navigate = useAppStore((s) => s.navigate)
+// ---------- Cart sheet ----------
+
+function CartSheet() {
   const lines = useCartStore((s) => s.lines)
-  const setQty = useCartStore((s) => s.setQty)
+  const add = useCartStore((s) => s.add)
+  const dec = useCartStore((s) => s.dec)
   const remove = useCartStore((s) => s.remove)
-  const subtotal = useCartStore((s) => s.subtotal())
-  const [open, setOpen] = useState(false)
-  const count = lines.reduce((n, l) => n + l.qty, 0)
-  const hasRx = lines.some((l) => l.requiresPrescription)
+  const navigate = useAppStore((s) => s.navigate)
+  const total = lines.reduce((sum, l) => sum + l.product.price * l.qty, 0)
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="relative" aria-label={`Cart with ${count} items`}>
+        <Button variant="outline" size="icon" className="relative" aria-label={`Cart with ${lines.length} different products`}>
           <ShoppingCart className="h-5 w-5" />
-          {count > 0 ? (
-            <Badge className="absolute -right-1.5 -top-1.5 h-5 min-w-5 rounded-full px-1 text-[11px] font-bold">
-              {count}
+          {lines.length > 0 ? (
+            <Badge className="absolute -right-1.5 -top-1.5 h-5 min-w-5 rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground">
+              {lines.reduce((n, l) => n + l.qty, 0)}
             </Badge>
           ) : null}
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-md">
         <SheetHeader className="border-b p-4">
-          <SheetTitle className="flex items-center gap-2 text-base">
-            <ShoppingCart className="h-4 w-4" /> Your cart ({count})
-          </SheetTitle>
+          <SheetTitle className="text-base">Your cart ({lines.reduce((n, l) => n + l.qty, 0)})</SheetTitle>
+          <SheetDescription className="text-xs text-muted-foreground">Review your items before checkout.</SheetDescription>
         </SheetHeader>
-
         {lines.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
             <ShoppingCart className="h-10 w-10 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Your cart is empty.</p>
-            <Button variant="outline" onClick={() => { setOpen(false); navigate("catalog") }}>
-              Browse products
-            </Button>
+            <p className="mt-2 text-sm text-muted-foreground">Your cart is empty.</p>
           </div>
         ) : (
-          <>
-            <ScrollArea className="scroll-slim flex-1 p-4">
-              <div className="flex flex-col gap-3">
-                {lines.map((l) => (
-                  <div key={l.productId} className="flex items-center gap-3 rounded-lg border p-2.5">
-                    <button
-                      onClick={() => navigate("product", { productId: l.productId })}
-                      className="h-11 w-11 shrink-0 overflow-hidden rounded-md border bg-muted"
-                      aria-label={`View ${l.name}`}
-                    >
-                      <ProductImage src={l.image} alt={l.name} className="h-full w-full" />
-                    </button>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{l.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatKES(l.price)} {l.requiresPrescription ? "· ℞ Rx" : ""}
-                      </p>
-                      <div className="mt-1.5 flex items-center gap-2">
-                        <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => setQty(l.productId, l.qty - 1)} aria-label="Decrease quantity">
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-6 text-center text-sm font-semibold">{l.qty}</span>
-                        <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => setQty(l.productId, l.qty + 1)} aria-label="Increase quantity">
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        <button onClick={() => remove(l.productId)} className="ml-auto text-muted-foreground hover:text-rose-600" aria-label={`Remove ${l.name}`}>
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <span className="text-sm font-bold">{formatKES(l.price * l.qty)}</span>
+          <ScrollArea className="scroll-slim flex-1 p-4">
+            <div className="flex flex-col gap-3">
+              {lines.map((line) => (
+                <div key={line.product.id} className="flex items-center gap-3 rounded-xl border bg-card p-3">
+                  <ProductImage src={line.product.image} alt={line.product.name} className="h-14 w-14 shrink-0 rounded-lg bg-muted object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{line.product.name}</p>
+                    <p className="text-xs text-muted-foreground">{line.product.brand ?? "Sphere Pharmacy"}</p>
+                    <p className="mt-0.5 text-sm font-bold text-primary">{formatKES(line.product.price * line.qty)}</p>
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
-
-            <div className="space-y-3 border-t p-4">
-              {hasRx ? (
-                <p className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                  Your cart includes prescription-only items. You&apos;ll be asked to upload a prescription at checkout — a pharmacist verifies it before dispensing.
-                </p>
-              ) : null}
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="text-lg font-bold">{formatKES(subtotal)}</span>
-              </div>
-              <p className="text-xs text-muted-foreground">Delivery fee calculated at checkout. Prescription items only dispensed after pharmacist review.</p>
-              <div className="grid gap-2">
-                <Button className="h-11 w-full text-base" onClick={() => { setOpen(false); navigate("checkout") }}>
-                  Checkout <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" className="w-full" onClick={() => { setOpen(false); navigate("cart") }}>
-                  View full cart
-                </Button>
-              </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => dec(line.product.id)} aria-label={`Decrease ${line.product.name}`}><Minus className="h-3.5 w-3.5" /></Button>
+                    <span className="min-w-7 text-center text-sm">{line.qty}</span>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => add(line.product)} aria-label={`Increase ${line.product.name}`}><Plus className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(line.product.id)} aria-label={`Remove ${line.product.name}`}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
+                </div>
+              ))}
             </div>
-          </>
+          </ScrollArea>
         )}
+        {lines.length > 0 ? (
+          <div className="border-t p-4">
+            <div className="mb-3 flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span className="font-bold">{formatKES(total)}</span>
+            </div>
+            <Button className="w-full" onClick={() => navigate("cart")}>Go to checkout</Button>
+          </div>
+        ) : null}
       </SheetContent>
     </Sheet>
   )
