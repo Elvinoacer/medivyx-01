@@ -7,9 +7,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Toaster } from "@/components/ui/sonner"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 import { serviceBookingsApi, servicesApi } from "@/lib/api-client"
 import { waLink } from "@/lib/constants"
-import type { ServiceDTO } from "@/lib/types"
+import type { ServiceBookingDTO, ServiceDTO } from "@/lib/types"
 import { useAppStore } from "@/store/use-app-store"
 
 export function ServicesView() {
@@ -18,7 +20,7 @@ export function ServicesView() {
   const [query, setQuery] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [bookingService, setBookingService] = useState<ServiceDTO | null>(null)
-  const [bookings, setBookings] = useState<import("@/lib/types").ServiceBookingDTO[]>([])
+  const [bookings, setBookings] = useState<ServiceBookingDTO[]>([])
 
   useEffect(() => {
     let cancelled = false
