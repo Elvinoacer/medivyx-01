@@ -348,6 +348,15 @@ export const servicesApi = {
 }
 
 
+export const servicesAdminApi = {
+  availability: (serviceId: string) =>
+    req<import("./types").ServiceAvailabilityDTO[]>(`/api/services/${serviceId}/availability`),
+  saveAvailability: (serviceId: string, availability: import("./types").ServiceAvailabilityDTO[]) =>
+    req<import("./types").ServiceAvailabilityDTO[]>(`/api/services/${serviceId}/availability`, {
+      method: "PUT", body: JSON.stringify({ availability }),
+    }),
+}
+
 export const serviceBookingsApi = {
   slots: (serviceId: string, date: string) =>
     req<import("./types").ServiceSlotDTO[]>(`/api/services/${serviceId}/slots?date=${encodeURIComponent(date)}`),
