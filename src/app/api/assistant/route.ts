@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { db } from "@/lib/db"
 
 interface IncomingMessage {
   role: "user" | "assistant"
@@ -34,7 +35,7 @@ const SECRET_PATTERNS = [
 
 const SYSTEM_PROMPT = `You are Sphere Pharmacy's customer-service AI assistant.
 
-You are a fast, friendly assistant for GENERAL, NON-MEDICAL pharmacy service questions.
+You are a fast, friendly assistant for GENERAL, NON-MEDICAL pharmacy service and care-navigation questions. You are also the Sphere Pharmacy care-services guide.
 
 You may help with:
 - opening hours and location
@@ -45,6 +46,11 @@ You may help with:
 - prescription upload workflow (process only, never medical advice)
 - general order-status meanings
 - how to contact the pharmacy team
+- what Sphere Pharmacy currently offers as care services
+- what a published care service is for at a high, non-diagnostic level
+- service duration, published price, and published weekly availability
+- how to book, pay, reschedule, cancel, or prepare for a published service when those instructions are available
+- what each booking status means and the practical next step
 
 Sphere Pharmacy facts:
 - Hours: daily 8:00 AM–10:30 PM; holiday hours may vary.
@@ -55,6 +61,21 @@ Sphere Pharmacy facts:
 - Delivery is zone based; Roysambu/TRM is typically KSh 150 and free delivery may apply to covered orders over KSh 3,000.
 - Payments can include M-Pesa, card, and cash depending on the order flow.
 - Prescription-only items require a prescription upload and pharmacist review before dispensing.
+
+CARE SERVICE BOOKING STEPS:
+1. Open the Care Services area.
+2. Choose the service.
+3. Choose a date and an available time slot.
+4. Confirm the booking request.
+5. If the service has a price, choose M-Pesa, card, or pay at pharmacy when offered.
+6. Wait for the pharmacy team to confirm the appointment when the booking status is PENDING.
+7. Keep the booking reference for changes or questions.
+
+CARE SERVICE GUIDANCE:
+- Give practical step-by-step guidance when someone asks how to book, pay, prepare, reschedule, or understand a booking status.
+- Only repeat preparation instructions that are explicitly published for the service. If none are published, say so and advise contacting the pharmacy team.
+- You may explain what happens during a service only at a high, non-diagnostic level.
+- Never interpret a test result, diagnose a condition, recommend treatment, or give dosage advice.
 
 SAFETY + PRIVACY:
 1. Never diagnose, prescribe, recommend a dose, identify a medicine as suitable for a person, advise on interactions, or answer treatment questions. Escalate these to the pharmacy team.
@@ -68,6 +89,26 @@ SAFETY + PRIVACY:
 
 const ESCALATION_REPLY = `That is a medication-specific question, so I don't want to guess. Please **WhatsApp or call our pharmacy team on +254 707 475 208** and they can give you the right advice safely.`
 
+
+async function getLiveServiceContext(): Promise<string> {
+  try {
+    const services = await db.service.findMany({
+      where: { active: true },
+      include: { availability: { where: { enabled: true }, orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }] } },
+      orderBy: [{ featured: "desc" }, { sortOrder: "asc" }, { name: "asc" }],
+    })
+    if (services.length === 0) return "No care services are currently published."
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    return services.map((s) => {
+      const availability = s.availability.length ? s.availability.map((r) => `${days[r.dayOfWeek]} ${r.startTime}-${r.endTime}`).join(", ") : "No published weekly hours"
+      const price = s.priceLabel || (s.price != null ? `KSh ${s.price.toLocaleString()}` : "Contact the pharmacy")
+      return [`SERVICE: ${s.name}`, `CATEGORY: ${s.category || "Pharmacy care"}`, `SHORT DESCRIPTION: ${s.shortDescription || "Not published"}`, `FULL DESCRIPTION: ${s.description || "Not published"}`, `DURATION: ${s.durationMinutes} minutes`, `PRICE: ${price}`, `WEEKLY AVAILABILITY: ${availability}`].join("\n")
+    }).join("\n\n")
+  } catch (error) {
+    console.error("[Assistant service context error]", error)
+    return "Live service data is temporarily unavailable. Do not invent service details; direct the customer to the pharmacy team."
+  }
+}
 function isMedicalQuestion(text: string): boolean {
   return MEDICAL_PATTERNS.some((pattern) => pattern.test(text))
 }
@@ -129,6 +170,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ reply: ESCALATION_REPLY, escalated: true })
     }
 
+    const liveServiceContext = await getLiveServiceContext()
+
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 20_000)
 
@@ -141,7 +184,7 @@ export async function POST(request: Request) {
         },
         body: JSON.stringify({
           model: MODEL,
-          messages: [{ role: "system", content: SYSTEM_PROMPT }, ...safeMessages],
+          messages: [{ role: "system", content: SYSTEM_PROMPT + "\n\nLIVE SERVICE DATA:\n" + liveServiceContext }, ...safeMessages],
           temperature: 0.35,
           max_completion_tokens: 700,
           stream: false,
