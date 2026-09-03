@@ -15,6 +15,7 @@ export type ViewName =
   | "home"
   | "catalog"
   | "product"
+  | "services"
   | "cart"
   | "checkout"
   | "auth"
