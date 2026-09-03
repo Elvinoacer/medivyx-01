@@ -3,80 +3,15 @@
   isolation: isolate;
   min-height: 100vh;
   overflow-x: clip;
-  background: var(--background);
-}
-
-.ambient-page-shell::before,
-.ambient-page-shell::after {
-  content: "";
-  position: fixed;
-  inset: -18%;
-  pointer-events: none;
-  z-index: 0;
-  will-change: transform, filter;
-  transform: translate3d(0, 0, 0);
-}
-
-/* Light mode: gentle warm botanical watercolor ambient drift without harsh glare */
-.ambient-page-shell::before {
   background:
-    radial-gradient(44% 34% at 16% 16%, hsl(155 40% 48% / 0.05), transparent 68%),
-    radial-gradient(40% 32% at 84% 22%, hsl(165 35% 50% / 0.04), transparent 70%),
-    radial-gradient(42% 34% at 52% 88%, hsl(145 35% 48% / 0.035), transparent 72%),
-    radial-gradient(28% 24% at 70% 62%, hsl(175 30% 50% / 0.025), transparent 74%);
-  filter: blur(48px);
-  animation: ambient-drift-one 22s ease-in-out infinite alternate;
+    radial-gradient(800px 420px at 5% 34%, rgb(92 198 145 / 5%), transparent 72%),
+    radial-gradient(760px 420px at 96% 72%, rgb(79 177 130 / 4%), transparent 72%),
+    var(--background);
 }
 
-.ambient-page-shell::after {
-  background: conic-gradient(
-    from 220deg at 50% 50%,
-    transparent 0deg,
-    hsl(155 40% 48% / 0.03) 50deg,
-    transparent 118deg,
-    hsl(165 35% 50% / 0.025) 190deg,
-    transparent 258deg,
-    hsl(145 35% 48% / 0.02) 320deg,
-    transparent 360deg
-  );
-  mix-blend-mode: multiply;
-  opacity: 0.4;
-  filter: blur(32px);
-  animation: ambient-drift-two 34s linear infinite;
-}
+.ambient-page-shell #main-content { position: relative; background: transparent; }
 
-/* Do not change child positioning here. Overlay components such as the AI
-   assistant, sheets/dialogs and mobile navigation rely on their own fixed
-   positioning and z-index stacking contexts. */
-.ambient-page-shell > * {
-  z-index: 1;
-}
-
-.ambient-page-shell #main-content {
-  position: relative;
-  background: transparent;
-}
-
-.ambient-page-shell #main-content::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(720px 340px at 8% 10%, hsl(155 40% 48% / 0.03), transparent 72%),
-    radial-gradient(680px 330px at 92% 36%, hsl(165 35% 50% / 0.025), transparent 72%),
-    radial-gradient(720px 360px at 50% 92%, hsl(145 35% 48% / 0.02), transparent 74%);
-}
-
-.ambient-page-shell #main-content > * {
-  position: relative;
-  z-index: 1;
-}
-
-/* Keep the active header navigation readable in both themes. The default
-   accent surface can become too light, which makes accent-foreground text
-   disappear. */
+/* Active navigation always retains strong text contrast. */
 header nav button[class~="bg-accent"][class~="text-accent-foreground"],
 header nav button[class~="bg-accent"][class~="text-accent-foreground"]:hover,
 header nav button[class~="bg-accent"][class~="text-accent-foreground"]:focus-visible {
@@ -84,51 +19,9 @@ header nav button[class~="bg-accent"][class~="text-accent-foreground"]:focus-vis
   color: var(--primary-foreground);
 }
 
-@keyframes ambient-drift-one {
-  0% { transform: translate3d(-3%, -2%, 0) scale(1); }
-  50% { transform: translate3d(2%, 3%, 0) scale(1.05); }
-  100% { transform: translate3d(4%, -1%, 0) scale(1.02); }
-}
-
-@keyframes ambient-drift-two {
-  0% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(150deg) scale(1.08); }
-  100% { transform: rotate(360deg) scale(1); }
-}
-
-/* Dark mode overrides */
-.dark .ambient-page-shell::before {
+.dark .ambient-page-shell {
   background:
-    radial-gradient(44% 34% at 16% 16%, hsl(160 78% 48% / 0.18), transparent 68%),
-    radial-gradient(40% 32% at 84% 22%, hsl(170 76% 50% / 0.16), transparent 70%),
-    radial-gradient(42% 34% at 52% 88%, hsl(145 74% 48% / 0.13), transparent 72%),
-    radial-gradient(28% 24% at 70% 62%, hsl(180 74% 50% / 0.08), transparent 74%);
-  filter: blur(42px);
-  mix-blend-mode: normal;
-}
-
-.dark .ambient-page-shell::after {
-  background: conic-gradient(
-    from 220deg at 50% 50%,
-    transparent 0deg,
-    hsl(160 72% 45% / 0.06) 50deg,
-    transparent 118deg,
-    hsl(175 70% 48% / 0.06) 190deg,
-    transparent 258deg,
-    hsl(145 68% 46% / 0.05) 320deg,
-    transparent 360deg
-  );
-  mix-blend-mode: screen;
-  opacity: 1;
-  filter: blur(20px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ambient-page-shell::before,
-  .ambient-page-shell::after { animation: none; }
-}
-
-@media (max-width: 800px) {
-  .ambient-page-shell::before { filter: blur(52px); animation-duration: 25s; }
-  .ambient-page-shell::after { filter: blur(36px); animation-duration: 33s; }
+    radial-gradient(760px 420px at 5% 34%, rgb(60 184 120 / 8%), transparent 72%),
+    radial-gradient(740px 400px at 96% 72%, rgb(48 157 105 / 6%), transparent 72%),
+    var(--background);
 }

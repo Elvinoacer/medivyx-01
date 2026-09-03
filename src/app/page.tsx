@@ -1,31 +1,34 @@
 "use client"
 
 import { useEffect } from "react"
+import dynamic from "next/dynamic"
 import { useAppStore } from "@/store/use-app-store"
 import { useAuthStore } from "@/store/use-auth-store"
 import { Footer } from "@/components/layout/footer"
 import { MobileNav } from "@/components/layout/mobile-nav"
 import { CustomerHubNav } from "@/components/layout/customer-hub-nav"
-import { AssistantWidget } from "@/components/assistant/assistant-widget"
 import { ReferenceHomeHero } from "@/components/home/reference-home-hero"
 import "./reference-home.css"
 import "./reference-home-dark.css"
 import "./ambient-background.css"
 import "./services-showcase.css"
-import { HomeView } from "@/components/views/home-view"
-import { ServicesView } from "@/components/views/services-view"
-import { CatalogView } from "@/components/views/catalog-view"
-import { ProductView } from "@/components/views/product-view"
-import { CartView } from "@/components/views/cart-view"
-import { CheckoutView } from "@/components/views/checkout-view"
-import { AuthView } from "@/components/views/auth-view"
-import { OrdersView } from "@/components/views/orders-view"
-import { OrderDetailView } from "@/components/views/order-detail-view"
-import { PrescriptionsView } from "@/components/views/prescriptions-view"
-import { AccountView } from "@/components/views/account-view"
-import { AdminView } from "@/components/views/admin/admin-view"
-
+import "./premium-landing.css"
 import { setupForegroundNotificationListener } from "@/lib/firebase/client"
+
+const ViewLoading = () => <div className="mx-auto min-h-[60vh] max-w-7xl animate-pulse px-4 py-12" aria-label="Loading"><div className="h-10 w-52 rounded-xl bg-muted" /><div className="mt-8 h-72 rounded-3xl bg-muted/70" /></div>
+const HomeView = dynamic(() => import("@/components/views/home-view").then((m) => m.HomeView), { loading: ViewLoading })
+const ServicesView = dynamic(() => import("@/components/views/services-view").then((m) => m.ServicesView), { loading: ViewLoading })
+const CatalogView = dynamic(() => import("@/components/views/catalog-view").then((m) => m.CatalogView), { loading: ViewLoading })
+const ProductView = dynamic(() => import("@/components/views/product-view").then((m) => m.ProductView), { loading: ViewLoading })
+const CartView = dynamic(() => import("@/components/views/cart-view").then((m) => m.CartView), { loading: ViewLoading })
+const CheckoutView = dynamic(() => import("@/components/views/checkout-view").then((m) => m.CheckoutView), { loading: ViewLoading })
+const AuthView = dynamic(() => import("@/components/views/auth-view").then((m) => m.AuthView), { loading: ViewLoading })
+const OrdersView = dynamic(() => import("@/components/views/orders-view").then((m) => m.OrdersView), { loading: ViewLoading })
+const OrderDetailView = dynamic(() => import("@/components/views/order-detail-view").then((m) => m.OrderDetailView), { loading: ViewLoading })
+const PrescriptionsView = dynamic(() => import("@/components/views/prescriptions-view").then((m) => m.PrescriptionsView), { loading: ViewLoading })
+const AccountView = dynamic(() => import("@/components/views/account-view").then((m) => m.AccountView), { loading: ViewLoading })
+const AdminView = dynamic(() => import("@/components/views/admin/admin-view").then((m) => m.AdminView), { loading: ViewLoading })
+const AssistantWidget = dynamic(() => import("@/components/assistant/assistant-widget").then((m) => m.AssistantWidget))
 
 export default function Page() {
   const view = useAppStore((s) => s.view)

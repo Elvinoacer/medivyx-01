@@ -10,9 +10,8 @@ export function Footer() {
   const navigate = useAppStore((s) => s.navigate)
 
   return (
-    <footer className="mt-auto border-t bg-muted/40 pb-16 md:pb-0">
-      {/* slim top accent bar */}
-      <div className="h-1 bg-gradient-to-r from-teal-600 via-emerald-500 to-teal-600" aria-hidden />
+    <footer className="premium-footer mt-auto pb-16 md:pb-0">
+      <div className="premium-footer-line" aria-hidden />
       <div className="mx-auto max-w-7xl px-4 py-10">
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
           {/* brand */}
@@ -22,7 +21,7 @@ export function Footer() {
               <h3 className="text-base font-bold">Sphere Pharmacy</h3>
             </div>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Your community pharmacy on Lumumba Drive, Roysambu — browsing, ordering, prescriptions and delivery in one place.
+              Thoughtful pharmacy care on Lumumba Drive—medicines, prescriptions, and local delivery in one trusted place.
             </p>
             <div className="flex gap-2 pt-1">
               <a

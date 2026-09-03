@@ -1,9 +1,9 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
@@ -148,8 +148,6 @@ export function HomeView() {
   const setAssistantOpen = useAppStore((s) => s.setAssistantOpen)
   const recentIdList = useRecentStore((s) => s.ids)
   const recentIds = useMemo(() => recentIdList.map((i) => i.productId), [recentIdList])
-
-  const [query, setQuery] = useState("")
   const open = isOpenNow()
 
   const categories = useAsync<CategoryDTO[]>(() => catalogApi.categories(), [])
@@ -167,14 +165,6 @@ export function HomeView() {
     [recentIds.join(",")]
   )
 
-  function submitSearch(e: React.FormEvent) {
-    e.preventDefault()
-    const q = query.trim()
-    if (!q) return
-    setCatalogFilters({ search: q })
-    navigate("catalog")
-  }
-
   function shopCategory(c: CategoryDTO) {
     setCatalogFilters({ category: c.id, search: "" })
     navigate("catalog")
@@ -186,164 +176,17 @@ export function HomeView() {
   }
 
   return (
-    <div className="pb-10">
+    <div className="landing-page pb-10">
       <Toaster position="bottom-left" richColors closeButton />
 
-      {/* ============ HERO ============ */}
-      <section className="gradient-hero relative overflow-hidden">
-        <div className="mx-auto max-w-7xl px-4 pb-12 pt-10 sm:pb-16 sm:pt-14 lg:pb-20 lg:pt-16">
-          <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12 xl:gap-16">
-            {/* ---- left: copy ---- */}
-            <div className="mx-auto w-full max-w-xl text-center lg:mx-0 lg:text-left">
-              {/* open / closed pill */}
-              <div className="mb-5 flex justify-center lg:justify-start">
-                <span
-                  className={cn(
-                    "animate-rise inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-semibold shadow-sm",
-                    open
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
-                      : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
-                  )}
-                >
-                  <span className={cn("pulse-dot inline-block h-2 w-2 rounded-full", open ? "bg-emerald-500 text-emerald-500" : "bg-amber-500 text-amber-500")} aria-hidden />
-                  {open ? "Open now" : "Closed right now"} · {PHARMACY.hoursLabel}
-                </span>
-              </div>
-
-              <p className="animate-rise eyebrow mb-3 justify-center lg:justify-start">
-                <MapPin className="h-3.5 w-3.5" aria-hidden /> Community pharmacy · Lumumba Drive, Roysambu
-              </p>
-              <h1 className="animate-rise [animation-delay:60ms] text-balance text-3xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl sm:leading-[1.05] lg:text-6xl lg:leading-[1.02]">
-                Your pharmacy,{" "}
-                <span className="bg-gradient-to-r from-teal-700 to-emerald-600 bg-clip-text text-transparent dark:from-teal-400 dark:to-emerald-400">
-                  now online.
-                </span>
-              </h1>
-              <p className="animate-rise [animation-delay:120ms] mx-auto mt-5 text-balance text-base text-foreground/75 sm:text-lg lg:mx-0">
-                {PHARMACY.tagline}. Order medicines, vitamins and health devices for
-                pickup on Lumumba Drive or same-day delivery — prescriptions reviewed
-                by our pharmacist.
-              </p>
-
-              {/* search */}
-              <form onSubmit={submitSearch} className="animate-rise [animation-delay:180ms] mx-auto mt-7 flex max-w-xl items-center gap-2 lg:mx-0" role="search">
-                <div className="relative flex-1">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-                  <Input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search Panadol, amoxicillin, vitamins…"
-                    className="h-12 rounded-full border-2 bg-background pl-10 pr-4 text-base shadow-sm"
-                    aria-label="Search products"
-                    enterKeyHint="search"
-                  />
-                </div>
-                <Button type="submit" size="lg" className="btn-sheen h-12 rounded-full px-5 sm:px-7" disabled={!query.trim()}>
-                  Search
-                </Button>
-              </form>
-
-              {/* CTAs */}
-              <div className="animate-rise [animation-delay:240ms] mt-6 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
-                <Button size="lg" className="btn-sheen h-12 gap-2 rounded-full px-6 text-base" onClick={browseAll}>
-                  Browse products <ArrowRight className="h-4 w-4" />
-                </Button>
-                <Button size="lg" variant="outline" className="h-12 gap-2 rounded-full px-6 text-base" onClick={() => navigate("prescriptions")}>
-                  <Upload className="h-4 w-4" /> Upload prescription
-                </Button>
-              </div>
-
-              <div className="animate-rise [animation-delay:300ms] mt-4 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
-                <a
-                  href={waLink("Hello Sphere Pharmacy! I'd like to place an order.")}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex"
-                >
-                  <Button variant="secondary" size="sm" className="gap-1.5 rounded-full bg-emerald-700 text-white hover:bg-emerald-800">
-                    <MessageCircle className="h-4 w-4" /> Order via WhatsApp
-                  </Button>
-                </a>
-                <a href={`tel:${PHARMACY.phone}`} className="inline-flex">
-                  <Button variant="ghost" size="sm" className="gap-1.5 rounded-full">
-                    <Phone className="h-4 w-4" /> {PHARMACY.phoneDisplay}
-                  </Button>
-                </a>
-              </div>
-
-              {/* trust chips */}
-              <ul className="animate-rise [animation-delay:360ms] mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-muted-foreground lg:justify-start">
-                <li className="flex items-center gap-1.5">
-                  <MapPin className="h-3.5 w-3.5 text-primary" aria-hidden /> Pickup ready in ~2 hours
-                </li>
-                <li className="flex items-center gap-1.5">
-                  <Wallet className="h-3.5 w-3.5 text-primary" aria-hidden /> M-Pesa · card · cash
-                </li>
-                <li className="flex items-center gap-1.5">
-                  <MessageCircle className="h-3.5 w-3.5 text-primary" aria-hidden /> WhatsApp ordering
-                </li>
-              </ul>
-            </div>
-
-            {/* ---- right: photo ---- */}
-            <div className="animate-rise relative [animation-delay:200ms]">
-              {/* decorative tinted panel behind the frame */}
-              <div
-                aria-hidden
-                className="absolute -inset-2 -rotate-1 rounded-3xl bg-gradient-to-br from-teal-500/15 via-emerald-400/10 to-teal-600/10 dark:from-teal-400/10 dark:via-emerald-400/5 dark:to-teal-500/10"
-              />
-              <figure className="img-frame relative aspect-[16/10] sm:aspect-[16/9] lg:aspect-[4/3]">
-                <img
-                  src="/images/hero-pharmacy.png"
-                  alt="Inside Sphere Pharmacy — a bright, modern dispensing counter with neatly stocked shelves in teal tones"
-                  width={1344}
-                  height={768}
-                  className="h-full w-full object-cover dark:brightness-[0.92]"
-                  fetchPriority="high"
-                />
-                {/* teal gradient overlay, stronger at the bottom */}
-                <div
-                  aria-hidden
-                  className="absolute inset-0 bg-gradient-to-t from-teal-950/55 via-teal-900/10 to-transparent dark:from-teal-950/70 dark:via-teal-950/20"
-                />
-
-                {/* floating glass stat card — pharmacist review */}
-                <div className="absolute left-4 top-5 hidden select-none items-center gap-3 rounded-2xl border border-white/60 bg-white/70 p-3 pr-4 shadow-lifted backdrop-blur-md sm:flex dark:border-white/10 dark:bg-stone-900/70">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600/15 text-emerald-700 dark:text-emerald-400">
-                    <ShieldCheck className="h-5 w-5" aria-hidden />
-                  </span>
-                  <span className="block leading-tight">
-                    <span className="block text-sm font-bold">Pharmacist-reviewed ℞</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">Every prescription verified</span>
-                  </span>
-                </div>
-
-                {/* floating glass stat card — delivery */}
-                <div className="absolute bottom-5 right-4 hidden select-none items-center gap-3 rounded-2xl border border-white/60 bg-white/70 p-3 pr-4 shadow-lifted backdrop-blur-md sm:flex dark:border-white/10 dark:bg-stone-900/70">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-600/15 text-teal-700 dark:text-teal-400">
-                    <Truck className="h-5 w-5" aria-hidden />
-                  </span>
-                  <span className="block leading-tight">
-                    <span className="block text-sm font-bold">Same-day delivery</span>
-                    <span className="tnum mt-0.5 block text-xs text-muted-foreground">
-                      Roysambu from {formatKES(DELIVERY_DEFAULTS.zones[0].fee)}
-                    </span>
-                  </span>
-                </div>
-              </figure>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ============ CATEGORIES ============ */}
-      <section className="mx-auto max-w-7xl px-4 py-12" aria-labelledby="categories-heading">
+      <section className="landing-section mx-auto max-w-7xl px-4 py-12" aria-labelledby="categories-heading">
         <SectionHeader
-          title="Departments & Care Aisles"
-          subtitle="Curated collections from certified pharmaceuticals to daily nutritional vitality"
+          title="Shop by need"
+          subtitle="Everyday care, thoughtfully organised for quicker decisions"
           action={
             <Button variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={browseAll}>
-              View all aisles <ArrowRight className="h-4 w-4" />
+              Explore all categories <ArrowRight className="h-4 w-4" />
             </Button>
           }
         />
@@ -361,7 +204,7 @@ export function HomeView() {
 
       {/* ============ PROMOTIONS ============ */}
       {(promotions.loading || (promotions.data && promotions.data.length > 0)) && (
-        <section className="mx-auto max-w-7xl px-4 py-6" aria-labelledby="promotions-heading">
+        <section className="landing-section landing-promotions mx-auto max-w-7xl px-4 py-6" aria-labelledby="promotions-heading">
           <SectionHeader
             title="Offers & promotions"
             subtitle="Seasonal deals and health campaigns running right now"
@@ -423,13 +266,13 @@ export function HomeView() {
       )}
 
       {/* ============ CURATED PRIORITY PRODUCTS ============ */}
-      <section className="mx-auto max-w-7xl px-4 py-12" aria-labelledby="popular-heading">
+      <section className="landing-section mx-auto max-w-7xl px-4 py-12" aria-labelledby="popular-heading">
         <SectionHeader
-          title="Priority & Popular Care"
-          subtitle="Most trusted treatments, community staples, and pharmacist-verified formulations"
+          title="Community essentials"
+          subtitle="Popular medicines, wellness products, and trusted everyday staples"
           action={
             <Button variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={browseAll}>
-              Full pharmacy catalog <ArrowRight className="h-4 w-4" />
+              Browse the full pharmacy <ArrowRight className="h-4 w-4" />
             </Button>
           }
         />
@@ -447,7 +290,7 @@ export function HomeView() {
 
       {/* ============ RECENTLY VIEWED ============ */}
       {recent.data && recent.data.length > 0 ? (
-        <section className="mx-auto max-w-7xl px-4 py-8" aria-labelledby="recent-heading">
+        <section className="landing-section mx-auto max-w-7xl px-4 py-8" aria-labelledby="recent-heading">
           <SectionHeader
             title="Pick up where you left off"
             subtitle="Products you recently looked at"
@@ -469,7 +312,7 @@ export function HomeView() {
       ) : null}
 
       {/* ============ HOW ORDERING WORKS ============ */}
-      <section className="border-y bg-muted/30" aria-labelledby="how-heading">
+      <section className="landing-process border-y bg-muted/30" aria-labelledby="how-heading">
         <div className="mx-auto max-w-7xl px-4 py-12">
           <SectionHeader title="How ordering works" subtitle="From search to doorstep in five simple steps" />
           <h2 id="how-heading" className="sr-only">
@@ -497,13 +340,14 @@ export function HomeView() {
       </section>
 
       {/* ============ DELIVERY BANNER ============ */}
-      <section className="mx-auto max-w-7xl px-4 pt-10" aria-label="Delivery across Nairobi">
+      <section className="landing-delivery mx-auto max-w-7xl px-4 pt-10" aria-label="Delivery across Nairobi">
         <div className="img-frame group relative h-40 select-none sm:h-48">
-          <img
+          <Image
             src="/images/sphere_pharmacy_banner_url.webp"
             alt="Sphere Pharmacy brand banner"
             width={1344}
             height={768}
+            sizes="(max-width: 1280px) calc(100vw - 32px), 1280px"
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03] dark:brightness-[0.9]"
           />
           <div
@@ -521,7 +365,7 @@ export function HomeView() {
       </section>
 
       {/* ============ TRUST STRIP ============ */}
-      <section className="mx-auto max-w-7xl px-4 py-10" aria-label="Why shop with us">
+      <section className="landing-trust mx-auto max-w-7xl px-4 py-10" aria-label="Why shop with us">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {TRUST_ITEMS.map((t) => (
             <div key={t.title} className="flex items-start gap-3 rounded-xl border bg-card p-4">
@@ -538,7 +382,7 @@ export function HomeView() {
       </section>
 
       {/* ============ PHARMACY INFO + MAP ============ */}
-      <section className="mx-auto max-w-7xl px-4 py-6" aria-labelledby="visit-heading">
+      <section className="landing-visit mx-auto max-w-7xl px-4 py-6" aria-labelledby="visit-heading">
         <SectionHeader title="Visit or reach us" subtitle={PHARMACY.legalName} />
         <h2 id="visit-heading" className="sr-only">
           Pharmacy location and contact
@@ -546,11 +390,12 @@ export function HomeView() {
         <div className="grid gap-4 lg:grid-cols-5">
           {/* pharmacist photo */}
           <figure className="img-frame group relative aspect-[4/3] self-start lg:col-span-2">
-            <img
+            <Image
               src="/images/pharmacist-consult.png"
               alt="A friendly Sphere Pharmacy pharmacist handing medicine to a customer over the counter"
               width={1152}
               height={864}
+              sizes="(max-width: 1024px) calc(100vw - 32px), 40vw"
               className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 dark:brightness-[0.95]"
             />
             <div
@@ -659,7 +504,7 @@ export function HomeView() {
       </section>
 
       {/* ============ FAQ ============ */}
-      <section className="mx-auto max-w-3xl px-4 py-10" aria-labelledby="faq-heading">
+      <section className="landing-faq mx-auto max-w-3xl px-4 py-10" aria-labelledby="faq-heading">
         <SectionHeader title="Frequently asked questions" subtitle="Everything you need to know about ordering" />
         <h2 id="faq-heading" className="sr-only">
           Frequently asked questions

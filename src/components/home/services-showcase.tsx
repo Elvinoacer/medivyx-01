@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useState } from "react"
 import { ArrowRight, HeartPulse, MessageCircle, ShieldCheck, Sparkles } from "lucide-react"
 import { useAppStore } from "@/store/use-app-store"
@@ -31,7 +32,7 @@ export function ServicesShowcase() {
       <div className="reference-container reference-services-inner">
         <div className="reference-services-visual">
           <div className="reference-services-image">
-            <img src={leadImage} alt="Sphere Pharmacy care service" width={1152} height={864} loading="lazy" />
+            <Image src={leadImage} alt="Sphere Pharmacy care service" fill sizes="(max-width: 740px) 80vw, (max-width: 980px) 36vw, 420px" />
             <div className="reference-services-image-overlay" />
             <div className="reference-services-caption">
               <span className="reference-services-caption-icon"><ShieldCheck className="h-4 w-4" /></span>
@@ -47,7 +48,7 @@ export function ServicesShowcase() {
             {cards.map((service) => (
               <Card key={"id" in service ? service.id : service.title} className="reference-service-card">
                 <div className="reference-service-thumb">
-                  <img src={"id" in service ? (service.heroImage || "/images/pharmacist-consult.png") : service.image} alt="" aria-hidden loading="lazy" />
+                  <Image src={"id" in service ? (service.heroImage || "/images/pharmacist-consult.png") : service.image} alt="" aria-hidden fill sizes="(max-width: 520px) 96px, (max-width: 740px) 50vw, 92px" />
                   <span><HeartPulse className="h-4 w-4" /></span>
                 </div>
                 <div className="reference-service-content"><h3>{"name" in service ? service.name : service.title}</h3><p>{"shortDescription" in service ? (service.shortDescription || service.description || "") : service.text}</p><span>Explore services <ArrowRight className="h-3.5 w-3.5" /></span></div>
