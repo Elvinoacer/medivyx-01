@@ -74,6 +74,16 @@
   z-index: 1;
 }
 
+/* Keep the active header navigation readable in both themes. The default
+   accent surface can become too light, which makes accent-foreground text
+   disappear. */
+header nav button[class~="bg-accent"][class~="text-accent-foreground"],
+header nav button[class~="bg-accent"][class~="text-accent-foreground"]:hover,
+header nav button[class~="bg-accent"][class~="text-accent-foreground"]:focus-visible {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
 @keyframes ambient-drift-one {
   0% { transform: translate3d(-3%, -2%, 0) scale(1); }
   50% { transform: translate3d(2%, 3%, 0) scale(1.05); }
