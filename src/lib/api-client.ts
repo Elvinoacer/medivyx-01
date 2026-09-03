@@ -90,6 +90,23 @@ export const authApi = {
 
 // ---------- saved addresses ----------
 
+const ADDRESS_REQUEST_TIMEOUT_MS = 15_000
+
+async function addressReq<T>(path: string, init?: RequestInit): Promise<T> {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), ADDRESS_REQUEST_TIMEOUT_MS)
+  try {
+    return await req<T>(path, { ...init, signal: controller.signal })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new ApiError("Saving the address took too long. Please check your connection and try again.", 408)
+    }
+    throw err
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
+
 export const addressesApi = {
   list: () => req<AddressDTO[]>("/api/addresses"),
   create: (data: {
@@ -100,7 +117,7 @@ export const addressesApi = {
     isDefault?: boolean
     latitude?: number
     longitude?: number
-  }) => req<AddressDTO>("/api/addresses", { method: "POST", body: JSON.stringify(data) }),
+  }) => addressReq<AddressDTO>("/api/addresses", { method: "POST", body: JSON.stringify(data) }),
   update: (
     id: string,
     data: Partial<{
@@ -112,8 +129,8 @@ export const addressesApi = {
       latitude: number | null
       longitude: number | null
     }>
-  ) => req<AddressDTO>(`/api/addresses/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  remove: (id: string) => req<{ ok: boolean }>(`/api/addresses/${id}`, { method: "DELETE" }),
+  ) => addressReq<AddressDTO>(`/api/addresses/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  remove: (id: string) => addressReq<{ ok: boolean }>(`/api/addresses/${id}`, { method: "DELETE" }),
 }
 
 // ---------- catalogue ----------
@@ -385,14 +402,7 @@ export const servicesApi = {
   remove: (id: string) => req<{ ok: boolean }>(`/api/services/${id}`, { method: "DELETE" }),
 }
 
-export const servicesAdminApi = {
-  availability: (serviceId: string) =>
-    req<import("./types").ServiceAvailabilityDTO[]>(`/api/services/${serviceId}/availability`),
-  saveAvailability: (serviceId: string, availability: import("./types").ServiceAvailabilityDTO[]) =>
-    req<import("./types").ServiceAvailabilityDTO[]>(`/api/services/${serviceId}/availability`, {
-      method: "PUT", body: JSON.stringify({ availability }),
-    }),
-}
+export const servicesAdminApi = { list: () => req<import("./types").ServiceDTO[]>("/api/admin/service-staff") }
 
 export const serviceBookingsApi = {
   slots: (serviceId: string, date: string) =>
