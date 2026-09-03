@@ -254,71 +254,13 @@ export const settingsApi = {
   get: () => req<{ pharmacy: PharmacySettings; delivery: DeliverySettings; compliance: ComplianceInfo }>("/api/settings"),
   update: (data: { pharmacy?: Partial<PharmacySettings>; delivery?: Partial<DeliverySettings>; compliance?: Partial<ComplianceInfo> }) =>
     req<{ ok: boolean }>("/api/settings", { method: "PUT", body: JSON.stringify(data) }),
-  deliveryFee: (area: string) =>
-    req<{ fee: number; freeOver: number | null; mode: string }>(`/api/settings/delivery-fee?area=${encodeURIComponent(area)}`),
-}
-
-// ---------- notifications / addresses / assistant ----------
-
-export const notificationsApi = {
-  list: () => req<NotificationDTO[]>("/api/notifications"),
-  markRead: (id?: string) =>
-    req<{ ok: boolean }>("/api/notifications", { method: "PATCH", body: JSON.stringify({ id }) }),
-  prefs: () => req<NotificationPrefsDTO>("/api/notifications/prefs"),
-  updatePrefs: (data: Partial<NotificationPrefsDTO>) =>
-    req<NotificationPrefsDTO>("/api/notifications/prefs", { method: "PUT", body: JSON.stringify(data) }),
-}
-
-export const addressesApi = {
-  list: () => req<AddressDTO[]>("/api/addresses"),
-  create: (data: { label: string; text: string; area?: string; notes?: string; isDefault?: boolean }) =>
-    req<AddressDTO>("/api/addresses", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: Partial<AddressDTO>) =>
-    req<AddressDTO>(`/api/addresses/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  remove: (id: string) => req<{ ok: boolean }>(`/api/addresses/${id}`, { method: "DELETE" }),
-}
-
-export interface AssistantMessage {
-  role: "user" | "assistant"
-  content: string
-  escalated?: boolean
-}
-
-export const assistantApi = {
-  chat: (messages: AssistantMessage[]) =>
-    req<{ reply: string; escalated: boolean }>("/api/assistant", {
-      method: "POST",
-      body: JSON.stringify({ messages }),
-    }),
-}
-
-// ---------- cloud storage (Cloudflare R2) ----------
-
-export interface UploadResponse {
-  key: string
-  url: string
-  size: number
-  contentType: string
-}
-
-export const storageApi = {
-  uploadFile: async (
-    file: File,
-    folder: "products" | "prescriptions" | "avatars" | "services" | "general" = "general"
-  ): Promise<UploadResponse> => {
-    const formData = new FormData()
-    formData.append("file", file)
-    formData.append("folder", folder)
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data.error || `Upload failed (${res.status})`)
-    }
-    return res.json()
-  },
+  deliveryFee: (area: string, subtotal = 0, latitude?: number, longitude?: number) =>
+    req<{ fee: number; freeOver: number | null; mode: string; pricingMode?: string; distanceKm?: number | null }>(
+      "/api/settings/delivery-fee?area=" +
+        encodeURIComponent(area) +
+        "&subtotal=" + encodeURIComponent(String(subtotal)) +
+        (latitude != null && longitude != null ? "&lat=" + latitude + "&lon=" + longitude : "")
+    ),,
   uploadBase64: async (data: {
     fileData: string
     fileName: string
