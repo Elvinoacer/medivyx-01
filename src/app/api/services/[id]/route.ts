@@ -23,7 +23,10 @@ export async function PATCH(request:Request,ctx:{params:Promise<{id:string}>}){
  if("price" in body)data.price=body.price===null||body.price===""?null:Number(body.price)
  for(const k of ["featured","active"])if(k in body)data[k]=Boolean(body[k])
  if("sortOrder" in body)data.sortOrder=Number(body.sortOrder)||0
- const service=await db.service.update({where:{id},data,include:{images:{orderBy:{sortOrder:"asc"}}}})
+ const service=await db.$transaction(async(tx)=>{
+   if(Array.isArray(body.images)) await tx.serviceImage.deleteMany({where:{serviceId:id}})
+   return tx.service.update({where:{id},data:{...data,...(Array.isArray(body.images)?{images:{create:body.images.slice(0,10).map((img:any,i:number)=>({url:String(img.url||img),storageKey:img.storageKey?String(img.storageKey):null,alt:img.alt?String(img.alt):null,sortOrder:i}))}}:{})},include:{images:{orderBy:{sortOrder:"asc"}}})
+ })
  return NextResponse.json(dto(service))
 }
 export async function DELETE(_request:Request,ctx:{params:Promise<{id:string}>}){
