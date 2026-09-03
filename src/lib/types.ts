@@ -210,6 +210,8 @@ export interface AddressDTO {
   area: string | null
   notes: string | null
   isDefault: boolean
+  latitude?: number | null
+  longitude?: number | null
 }
 
 export interface StaffDTO {
@@ -267,7 +269,10 @@ export interface DeliverySettings {
   flatFee: number
   freeOver: number | null
   nightDelivery: boolean
-  zones: { name: string; fee: number }[]
+  zones: { name: string; fee: number; latitude?: number | null; longitude?: number | null }[]
+  pricingMode?: "zone" | "distance"
+  pharmacyLocation?: { latitude: number | null; longitude: number | null; label: string }
+  distanceBands?: { id: string; minKm: number; maxKm: number | null; fee: number; label: string }[]
 }
 
 export interface PharmacySettings {
