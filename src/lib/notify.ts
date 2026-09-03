@@ -2,7 +2,7 @@ import { db } from "@/lib/db"
 import { ORDER_STATUS_LABELS, type OrderStatus, type Role } from "@/lib/constants"
 import { sendPushNotification } from "@/lib/firebase/admin"
 import { sendEmail } from "@/lib/email/resend"
-import { adminNotificationTemplate } from "@/lib/email/templates"
+import { adminNotificationTemplate, serviceBookingTemplate } from "@/lib/email/templates"
 
 export type NotificationChannel = "IN_APP" | "SMS" | "WHATSAPP" | "EMAIL" | "PUSH"
 
@@ -294,4 +294,46 @@ export function statusNotification(status: OrderStatus, reference: string): { ti
                   ? `Payment received for order ${reference}. Thank you!`
                   : `Your order ${reference} is now: ${label}.`,
   }
+}
+
+
+export async function notifyServiceBooking(opts: {
+  userId: string
+  customerName?: string | null
+  customerEmail?: string | null
+  reference: string
+  serviceName: string
+  status: string
+  message: string
+  start: Date
+  end: Date
+  bookingId: string
+}): Promise<void> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+  const bookingUrl = `${appUrl}/#services`
+  const template = serviceBookingTemplate({
+    customerName: opts.customerName,
+    reference: opts.reference,
+    serviceName: opts.serviceName,
+    status: opts.status,
+    message: opts.message,
+    start: opts.start,
+    end: opts.end,
+    bookingUrl,
+  })
+  await notifyCustomer(opts.userId, "SERVICE_BOOKING", template.subject, opts.message, "IN_APP", {
+    link: bookingUrl,
+    metadata: {
+      bookingId: opts.bookingId,
+      reference: opts.reference,
+      serviceId: opts.serviceName,
+      status: opts.status,
+    },
+    email: opts.customerEmail ? {
+      to: opts.customerEmail,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+    } : undefined,
+  })
 }
