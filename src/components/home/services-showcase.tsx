@@ -25,12 +25,13 @@ export function ServicesShowcase() {
     return () => { cancelled = true }
   }, [])
   const cards = services.length ? services : FALLBACK
+  const leadImage = "id" in cards[0] ? (cards[0].heroImage || "/images/pharmacist-consult.png") : cards[0].image
   return (
     <section className="reference-services" aria-labelledby="services-heading">
       <div className="reference-container reference-services-inner">
         <div className="reference-services-visual">
           <div className="reference-services-image">
-            <img src={cards[0].image || cards[0].heroImage || "/images/pharmacist-consult.png"} alt="Sphere Pharmacy care service" width={1152} height={864} loading="lazy" />
+            <img src={leadImage} alt="Sphere Pharmacy care service" width={1152} height={864} loading="lazy" />
             <div className="reference-services-image-overlay" />
             <div className="reference-services-caption">
               <span className="reference-services-caption-icon"><ShieldCheck className="h-4 w-4" /></span>
