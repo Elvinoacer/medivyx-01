@@ -308,6 +308,7 @@ export async function notifyServiceBooking(opts: {
   start: Date
   end: Date
   bookingId: string
+  event?: string
 }): Promise<void> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
   const bookingUrl = `${appUrl}/#services`
