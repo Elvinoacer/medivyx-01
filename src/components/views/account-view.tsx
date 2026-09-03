@@ -47,6 +47,7 @@ import { DELIVERY_DEFAULTS, LOYALTY, ROLE_LABELS } from "@/lib/constants"
 import { formatDate, formatKES, initials, statusLabel, timeAgo } from "@/lib/format"
 import type { AddressDTO, LoyaltySummaryDTO, NotificationDTO, NotificationPrefsDTO, StockAlertDTO } from "@/lib/types"
 import { toast } from "sonner"
+import { UseCurrentLocationButton } from "@/components/shared/use-current-location-button"
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -1351,7 +1352,7 @@ export function AccountView() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="addr-text">Full address</Label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><Label htmlFor="addr-text">Full address</Label><UseCurrentLocationButton disabled={savingAddress} onResolved={(location) => { const matched = areaOptions.find((zone) => { const candidate = (location.area || "").toLowerCase(); return candidate && (candidate.includes(zone.toLowerCase()) || zone.toLowerCase().includes(candidate)) }); setAddressForm((current) => ({ ...current, text: location.displayName, area: matched || current.area })) }} /></div>
               <Textarea
                 id="addr-text"
                 rows={3}
