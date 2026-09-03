@@ -126,6 +126,8 @@ export interface CreateOrderPayload {
   prescriptionIds?: string[]
   promotionCode?: string
   redeemPoints?: boolean // redeem available Sphere Points at checkout
+  deliveryLatitude?: number
+  deliveryLongitude?: number
 }
 
 export const ordersApi = {
