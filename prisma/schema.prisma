@@ -332,6 +332,37 @@ model PushToken {
   @@index([role])
 }
 
+model Service {
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  shortDescription String?
+  description      String?
+  category         String?
+  durationMinutes  Int      @default(15)
+  price            Float?
+  priceLabel       String?
+  heroImage        String?
+  featured         Boolean  @default(false)
+  active           Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  images           ServiceImage[]
+}
+
+model ServiceImage {
+  id         String   @id @default(cuid())
+  serviceId  String
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  url        String
+  storageKey String?
+  alt        String?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  @@index([serviceId])
+}
+
 model Setting {
   key   String @id
   value String // JSON string
