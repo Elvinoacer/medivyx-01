@@ -4,13 +4,14 @@ import { FormEvent, useState, useSyncExternalStore } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { LogoFull } from "@/components/shared/logo"
+import { WishSheet } from "@/components/layout/header"
 import { useAppStore } from "@/store/use-app-store"
 import { useCartStore } from "@/store/use-cart-store"
 import { PHARMACY, DELIVERY_DEFAULTS, waLink } from "@/lib/constants"
 import { formatKES, isOpenNow } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
-import { Search, Phone, MessageCircle, Heart, ShoppingCart, User, MapPin, Clock, Truck, ShieldCheck, Upload, ArrowRight, Sun, Moon } from "lucide-react"
+import { Search, Phone, MessageCircle, ShoppingCart, User, MapPin, Clock, Truck, ShieldCheck, Upload, ArrowRight, Sun, Moon } from "lucide-react"
 
 export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
   const view = useAppStore((s) => s.view)
@@ -62,7 +63,7 @@ export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
           <div className="reference-actions">
             <a href={`tel:${PHARMACY.phone}`}><Button variant="outline" className="reference-action-button"><Phone className="h-4 w-4" />Call</Button></a>
             <a href={waLink("Hello Sphere Pharmacy! I'd like to place an order.")} target="_blank" rel="noreferrer"><Button variant="outline" className="reference-action-button"><MessageCircle className="h-4 w-4 text-emerald-700" />WhatsApp</Button></a>
-            <Button variant="outline" size="icon" className="reference-icon-button" aria-label="Wishlist"><Heart className="h-5 w-5" /></Button>
+            <WishSheet />
             <Button variant="outline" size="icon" className="reference-icon-button relative" onClick={() => navigate("cart")} aria-label={`Cart with ${cartCount} items`}><ShoppingCart className="h-5 w-5" />{cartCount > 0 ? <span className="reference-badge">{cartCount}</span> : null}</Button>
             <Button
               variant="outline"
