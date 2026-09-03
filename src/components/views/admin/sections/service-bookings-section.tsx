@@ -23,8 +23,20 @@ export function ServiceBookingsSection({refreshKey}:SectionProps){
  const [newStart,setNewStart]=useState("")
  const [newEnd,setNewEnd]=useState("")
  const [staff,setStaff]=useState<StaffDTO[]>([])
- async function load(){try{setBookings(await adminServiceBookingsApi.list(date));setError(null)}catch(err){setError(err instanceof Error?err.message:"Could not load bookings.")}}
- useEffect(()=>{void load(); serviceStaffApi.list().then(setStaff).catch(()=>{})},[date,refreshKey])
+ async function load(){
+   setError(null)
+   const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Bookings are taking too long to load. Check the database connection and try again.")), 10000))
+   try {
+     setBookings(await Promise.race([adminServiceBookingsApi.list(date), timeout]))
+   } catch(err) {
+     setBookings([])
+     setError(err instanceof Error ? err.message : "Could not load bookings.")
+   }
+ }
+ useEffect(()=>{
+   void load()
+   serviceStaffApi.list().then(setStaff).catch(()=>{})
+ },[date,refreshKey])
  const summary=useMemo(()=>({pending:(bookings??[]).filter(b=>b.status==="PENDING").length,confirmed:(bookings??[]).filter(b=>b.status==="CONFIRMED").length,total:(bookings??[]).length}),[bookings])
  async function setStatus(b:ServiceBookingDTO,status:ServiceBookingStatus){setBusy(b.id);try{await adminServiceBookingsApi.updateStatus(b.id,status,undefined);toast.success("Booking updated.");await load()}catch(err){toast.error(err instanceof Error?err.message:"Could not update booking.")}finally{setBusy(null)}}
  return <div className="space-y-5">
