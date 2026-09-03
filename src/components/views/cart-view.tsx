@@ -75,7 +75,7 @@ export function CartView() {
   }
 
   return (
-    <div className="pb-10">
+    <div className="app-page app-page-cart pb-10">
       <Toaster position="bottom-left" richColors closeButton />
 
       <div className="mx-auto max-w-5xl px-4 py-6">
@@ -166,7 +166,7 @@ export function CartView() {
           </section>
 
           {/* ============ SUMMARY ============ */}
-          <aside aria-label="Order summary">
+          <aside className="cart-summary" aria-label="Order summary">
             <Card className="sticky top-36">
               <CardContent className="space-y-4 p-6">
                 <h2 className="text-base font-bold">Order summary</h2>
@@ -213,7 +213,7 @@ export function CartView() {
                   <span className="text-xl font-extrabold text-primary">{formatKES(subtotal)}</span>
                 </div>
 
-                <Button size="lg" className="h-12 w-full gap-2 rounded-full text-base" onClick={handleCheckout}>
+                <Button size="lg" className="cart-checkout-action h-12 w-full gap-2 rounded-full text-base" onClick={handleCheckout}>
                   Proceed to checkout <ArrowRight className="h-4 w-4" />
                 </Button>
 
@@ -226,6 +226,16 @@ export function CartView() {
               </CardContent>
             </Card>
           </aside>
+        </div>
+
+        <div className="cart-mobile-checkout" aria-label="Cart total and checkout">
+          <span>
+            <small>{count} item{count === 1 ? "" : "s"}</small>
+            <strong>{formatKES(subtotal)}</strong>
+          </span>
+          <Button size="lg" className="h-12 flex-1 gap-2 rounded-full text-base" onClick={handleCheckout}>
+            Checkout <ArrowRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
     </div>

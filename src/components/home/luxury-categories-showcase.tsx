@@ -199,6 +199,15 @@ export function LuxuryCategoriesShowcase({
             <article
               key={c.id}
               onClick={() => shopCategory(c)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Browse ${c.name} category`}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault()
+                  shopCategory(c)
+                }
+              }}
               className={cn(
                 "group relative cursor-pointer overflow-hidden rounded-3xl border border-white/10 shadow-[0_16px_40px_-20px_rgba(0,0,0,0.3)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_24px_50px_-15px_rgba(16,117,47,0.25)]",
                 isWide ? "md:col-span-7" : "md:col-span-5"

@@ -82,6 +82,7 @@ export function ProductCard({
 }: ProductCardProps) {
   const navigate = useAppStore((s) => s.navigate)
   const add = useCartStore((s) => s.add)
+  const cartQty = useCartStore((s) => s.lines.find((line) => line.productId === product.id)?.qty ?? 0)
   const wishToggle = useWishStore((s) => s.toggle)
   const wishHas = useWishStore((s) => s.has(product.id))
   const outOfStock =
@@ -129,8 +130,18 @@ export function ProductCard({
     return (
       <article
         onClick={() => navigate("product", { productId: product.id })}
+        role="button"
+        tabIndex={0}
+        aria-label={`View ${product.name}`}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return
+          if (e.key === "Enter" || (e.key === " " && !e.repeat)) {
+            e.preventDefault()
+            navigate("product", { productId: product.id })
+          }
+        }}
         className={cn(
-          "group relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-card via-card/95 to-emerald-950/[0.04] p-5 shadow-[0_20px_50px_-20px_rgba(16,117,47,0.18)] transition-all duration-300 hover:border-emerald-500/40 hover:shadow-[0_24px_60px_-15px_rgba(16,117,47,0.24)] sm:p-7 md:p-8 dark:from-card dark:via-card/90 dark:to-emerald-950/20 dark:shadow-[0_20px_50px_-20px_rgba(0,0,0,0.5)] cursor-pointer",
+          "group relative cursor-pointer overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-card via-card/95 to-emerald-950/[0.04] p-5 shadow-[0_20px_50px_-20px_rgba(16,117,47,0.18)] transition-all duration-300 hover:border-emerald-500/40 hover:shadow-[0_24px_60px_-15px_rgba(16,117,47,0.24)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none sm:p-7 md:p-8 dark:from-card dark:via-card/90 dark:to-emerald-950/20 dark:shadow-[0_20px_50px_-20px_rgba(0,0,0,0.5)]",
           className
         )}
       >
@@ -242,9 +253,14 @@ export function ProductCard({
                   className="btn-sheen flex-1 h-12 gap-2 rounded-xl text-sm font-bold shadow-md"
                   disabled={outOfStock}
                   onClick={handleAdd}
+                  aria-label={cartQty > 0 ? `Add another ${product.name} to cart. ${cartQty} already in cart` : `Add ${product.name} to cart`}
                 >
                   {outOfStock ? (
                     "Temporarily Unavailable"
+                  ) : cartQty > 0 ? (
+                    <>
+                      <ShoppingCart className="h-4 w-4" /> Add another · {cartQty} in cart
+                    </>
                   ) : product.requiresPrescription ? (
                     <>
                       <ShoppingCart className="h-4 w-4" /> Add · ℞ Review at Checkout
@@ -276,8 +292,18 @@ export function ProductCard({
     return (
       <article
         onClick={() => navigate("product", { productId: product.id })}
+        role="button"
+        tabIndex={0}
+        aria-label={`View ${product.name}`}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return
+          if (e.key === "Enter" || (e.key === " " && !e.repeat)) {
+            e.preventDefault()
+            navigate("product", { productId: product.id })
+          }
+        }}
         className={cn(
-          "group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card/90 p-3.5 sm:p-4 shadow-sm backdrop-blur-sm transition-all duration-200 hover:border-primary/40 hover:bg-card hover:shadow-md cursor-pointer",
+          "group flex cursor-pointer flex-col justify-between gap-4 rounded-2xl border border-border/70 bg-card/90 p-3.5 shadow-sm backdrop-blur-sm transition-all duration-200 hover:border-primary/40 hover:bg-card hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none sm:flex-row sm:items-center sm:p-4",
           outOfStock && "opacity-80",
           className
         )}
@@ -363,9 +389,16 @@ export function ProductCard({
                 className="btn-sheen h-9 rounded-xl px-3 sm:px-4 text-xs font-semibold gap-1.5"
                 disabled={outOfStock}
                 onClick={handleAdd}
+                aria-label={cartQty > 0 ? `Add another ${product.name} to cart. ${cartQty} already in cart` : `Add ${product.name} to cart`}
               >
                 {outOfStock ? (
                   "Unavailable"
+                ) : cartQty > 0 ? (
+                  <>
+                    <ShoppingCart className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Add another · {cartQty}</span>
+                    <span className="sm:hidden">+{cartQty}</span>
+                  </>
                 ) : (
                   <>
                     <Plus className="h-3.5 w-3.5" />
@@ -391,6 +424,7 @@ export function ProductCard({
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return
         if (e.key === "Enter" || (e.key === " " && !e.repeat)) {
           e.preventDefault()
           navigate("product", { productId: product.id })
@@ -503,9 +537,15 @@ export function ProductCard({
                 variant={product.requiresPrescription ? "outline" : "default"}
                 disabled={outOfStock}
                 onClick={handleAdd}
+                aria-label={cartQty > 0 ? `Add another ${product.name} to cart. ${cartQty} already in cart` : `Add ${product.name} to cart`}
               >
                 {outOfStock ? (
                   "Unavailable"
+                ) : cartQty > 0 ? (
+                  <>
+                    <ShoppingCart className="h-3.5 w-3.5" />
+                    <span>Add another · {cartQty}</span>
+                  </>
                 ) : product.requiresPrescription ? (
                   <>
                     <ShoppingCart className="h-3.5 w-3.5" /> ℞ Add · Review

@@ -30,9 +30,9 @@ export function MobileNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:hidden"
+      className="mobile-primary-nav fixed inset-x-0 bottom-0 z-40 md:hidden"
     >
-      <ul className="mx-auto grid max-w-md grid-cols-5">
+      <ul className="mobile-primary-nav-list mx-auto grid max-w-md grid-cols-5">
         {TABS.map((tab) => {
           const active = tab.match.includes(view)
           return (
@@ -41,11 +41,11 @@ export function MobileNav() {
                 onClick={() => navigate(tab.view)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative flex w-full flex-col items-center gap-0.5 px-1 pb-1.5 pt-2 text-[11px] font-medium transition-colors",
-                  active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                  "mobile-primary-nav-action relative flex w-full flex-col items-center gap-0.5 px-1 text-xs font-semibold transition-colors",
+                  active ? "is-active text-primary" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <span className="relative">
+                <span className="mobile-primary-nav-icon relative">
                   <tab.icon className={cn("h-5 w-5", active && "stroke-[2.5]")} aria-hidden />
                   {tab.view === "cart" && cartCount > 0 ? (
                     <Badge className="absolute -right-2.5 -top-1.5 h-4 min-w-4 rounded-full bg-rose-600 px-1 text-[11px] font-bold leading-none text-white">
@@ -54,19 +54,13 @@ export function MobileNav() {
                   ) : null}
                 </span>
                 {tab.label}
-                {active ? (
-                  <span
-                    aria-hidden
-                    className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-primary"
-                  />
-                ) : null}
               </button>
             </li>
           )
         })}
       </ul>
       {/* safe-area padding for iPhones with a home indicator */}
-      <div className="h-[env(safe-area-inset-bottom)]" />
+      <div className="mobile-primary-nav-safe-area h-[env(safe-area-inset-bottom)]" />
     </nav>
   )
 }

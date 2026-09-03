@@ -211,7 +211,7 @@ export function OrdersView() {
   const EmptyIcon = TAB_EMPTY_ICONS[tab]
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 pb-12">
+    <div className="app-page app-page-orders mx-auto max-w-3xl px-4 py-8 pb-12">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">My orders</h1>

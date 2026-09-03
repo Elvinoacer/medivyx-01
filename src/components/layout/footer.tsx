@@ -1,7 +1,7 @@
 "use client"
 
 import { Separator } from "@/components/ui/separator"
-import { LogoMark } from "@/components/shared/logo"
+import { LogoFull } from "@/components/shared/logo"
 import { PHARMACY } from "@/lib/constants"
 import { useAppStore } from "@/store/use-app-store"
 import { Phone, MapPin, Clock, Mail, LayoutDashboard, ShieldAlert, MessageCircle } from "lucide-react"
@@ -16,9 +16,8 @@ export function Footer() {
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
           {/* brand */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2.5">
-              <LogoMark className="h-8 w-8 text-primary" aria-hidden />
-              <h3 className="text-base font-bold">Sphere Pharmacy</h3>
+            <div className="premium-footer-brand" aria-label="Sphere Pharmacy">
+              <LogoFull className="premium-footer-logo" />
             </div>
             <p className="text-sm leading-relaxed text-muted-foreground">
               Thoughtful pharmacy care on Lumumba Drive—medicines, prescriptions, and local delivery in one trusted place.

@@ -290,11 +290,11 @@ export function AdminView() {
   }
 
   return (
-    <div className="w-full">
+    <div className="app-page app-page-admin w-full">
       {toaster}
       <div className="mx-auto flex w-full max-w-7xl items-stretch">
         {/* ---------- desktop sidebar ---------- */}
-        <aside className="sticky top-32 hidden h-fit w-64 shrink-0 flex-col self-start border-r bg-muted/30 md:flex">
+        <aside className="admin-sidebar sticky top-32 hidden h-fit w-64 shrink-0 flex-col self-start border-r bg-muted/30 md:flex">
           <SidebarNav
             items={visibleNav}
             section={section}
@@ -308,7 +308,7 @@ export function AdminView() {
         {/* ---------- main column ---------- */}
         <div className="min-w-0 flex-1">
           {/* top bar */}
-          <div className="flex min-h-14 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 sm:px-5">
+          <div className="admin-topbar flex min-h-14 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 sm:px-5">
             {/* mobile hamburger */}
             <Sheet open={navOpen} onOpenChange={setNavOpen}>
               <SheetTrigger asChild>
@@ -426,7 +426,7 @@ export function AdminView() {
           </div>
 
           {/* section subtitle + content */}
-          <div className="p-3 sm:p-5 lg:p-6">
+          <div className="admin-content p-3 sm:p-5 lg:p-6">
             {active && allowed ? (
               <p className="mb-4 text-sm text-muted-foreground">{active.subtitle}</p>
             ) : null}

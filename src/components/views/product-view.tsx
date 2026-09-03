@@ -36,6 +36,7 @@ export function ProductView() {
   const navigate = useAppStore((s) => s.navigate)
   const openAuth = useAppStore((s) => s.openAuth)
   const add = useCartStore((s) => s.add)
+  const cartQty = useCartStore((s) => s.lines.find((line) => line.productId === productId)?.qty ?? 0)
   const wishToggle = useWishStore((s) => s.toggle)
   const wishHas = useWishStore((s) => s.has(productId ?? ""))
   const trackRecent = useRecentStore((s) => s.track)
@@ -251,7 +252,7 @@ export function ProductView() {
   }
 
   return (
-    <div className="pb-10">
+    <div className="app-page app-page-product pb-10">
       <Toaster position="bottom-left" richColors closeButton />
 
       <div className="mx-auto max-w-7xl px-4 py-6">
@@ -434,7 +435,7 @@ export function ProductView() {
                 ) : null}
               </div>
             ) : (
-              <div className="mt-6 flex flex-wrap items-center gap-3">
+              <div className="product-purchase-actions mt-6 flex flex-wrap items-center gap-3">
                 <div className="flex items-center rounded-full border" role="group" aria-label="Quantity">
                   <Button
                     variant="ghost"
@@ -465,14 +466,15 @@ export function ProductView() {
                   size="lg"
                   className="btn-sheen h-12 flex-1 gap-2 rounded-full px-6 text-base"
                   onClick={handleAdd}
+                  aria-label={cartQty > 0 ? `Add another ${product.name} to cart. ${cartQty} already in cart` : `Add ${product.name} to cart`}
                 >
                   <ShoppingCart className="h-5 w-5" />
-                  Add to cart · {formatKES(product.price * qty)}
+                  {cartQty > 0 ? `Add another · ${cartQty} in cart` : `Add to cart · ${formatKES(product.price * qty)}`}
                 </Button>
               </div>
             )}
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="product-secondary-actions mt-3 flex flex-wrap gap-2">
               <a href={waLink(waText)} target="_blank" rel="noopener noreferrer" className="flex-1">
                 <Button variant="outline" size="lg" className="h-11 w-full gap-2 rounded-full">
                   <MessageCircle className="h-4 w-4 text-emerald-600" /> Order via WhatsApp
@@ -597,6 +599,18 @@ export function ProductView() {
             </div>
           )}
         </section>
+
+        {!outOfStock ? (
+          <div className="product-mobile-action" aria-label="Product price and add to cart">
+            <span>
+              <small>{qty} × {product.packSize ?? "pack"}</small>
+              <strong>{formatKES(product.price * qty)}</strong>
+            </span>
+            <Button size="lg" className="h-12 flex-1 gap-2 rounded-full text-base" onClick={handleAdd}>
+              <ShoppingCart className="h-5 w-5" /> {cartQty > 0 ? `Add another · ${cartQty}` : "Add to cart"}
+            </Button>
+          </div>
+        ) : null}
       </div>
     </div>
   )

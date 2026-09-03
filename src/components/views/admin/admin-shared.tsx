@@ -145,7 +145,13 @@ export function KpiCard({
       onClick={onClick}
       role={clickable ? "button" : undefined}
       tabIndex={clickable ? 0 : undefined}
-      onKeyDown={clickable ? (e) => e.key === "Enter" && onClick?.() : undefined}
+      onKeyDown={clickable ? (e) => {
+        if (e.target !== e.currentTarget) return
+        if (e.key === "Enter" || (e.key === " " && !e.repeat)) {
+          e.preventDefault()
+          onClick?.()
+        }
+      } : undefined}
       aria-label={clickable ? `${label}: ${value}${hint ? ` — ${hint}` : ""}` : undefined}
     >
       {body}

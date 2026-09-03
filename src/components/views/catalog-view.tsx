@@ -340,7 +340,7 @@ export function CatalogView() {
   )
 
   return (
-    <div className="pb-12">
+    <div className="app-page app-page-catalog pb-12">
       <Toaster position="bottom-left" richColors closeButton />
 
       {/* page heading banner */}

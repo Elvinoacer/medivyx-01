@@ -84,7 +84,7 @@ export function AssistantWidget() {
         onClick={() => setOpen(!open)}
         size="icon"
         className={cn(
-          "fixed bottom-24 right-4 z-[70] h-14 w-14 rounded-full bg-primary shadow-[0_12px_30px_-12px_hsl(var(--primary))] ring-4 ring-background/80 transition-transform hover:scale-105 md:bottom-6 md:right-6",
+          "assistant-launcher fixed bottom-24 right-4 z-[70] h-14 w-14 rounded-full bg-primary shadow-[0_12px_30px_-12px_hsl(var(--primary))] ring-4 ring-background/80 transition-transform hover:scale-105 md:bottom-6 md:right-6",
           open && "hidden"
         )}
         aria-label="Open Sphere Pharmacy AI assistant"

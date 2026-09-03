@@ -117,6 +117,8 @@
 .premium-footer-line { height: 1px; background: linear-gradient(90deg, transparent, rgb(130 222 174 / 60%), transparent); }
 .premium-footer > div:nth-child(2) { position: relative; z-index: 1; padding-top: 62px; padding-bottom: 38px; }
 .premium-footer h3, .premium-footer h4 { color: #f0faf5; }
+.premium-footer-brand { width: fit-content; padding: 9px 14px; border-radius: 16px; background: #f7fbf8; box-shadow: 0 14px 30px -24px rgb(0 0 0 / 70%); }
+.premium-footer-logo { width: 185px; max-height: 58px; }
 .premium-footer h4 { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; }
 .premium-footer p, .premium-footer a, .premium-footer button { color: #a7c1b5; }
 .premium-footer a:hover, .premium-footer button:hover { color: #fff; }

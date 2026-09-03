@@ -709,7 +709,7 @@ export function CheckoutView() {
   // ============================== RENDER ==============================
 
   return (
-    <div className="pb-10">
+    <div className="app-page app-page-checkout pb-10">
       <Toaster position="bottom-left" richColors closeButton />
 
       <div className="mx-auto max-w-6xl px-4 py-6">
@@ -721,7 +721,7 @@ export function CheckoutView() {
         </p>
 
         {/* stepper */}
-        <ol className="mt-6 flex items-center gap-1 overflow-x-auto sm:gap-2" aria-label="Checkout steps">
+        <ol className="checkout-stepper mt-6 flex items-center gap-1 overflow-x-auto sm:gap-2" aria-label="Checkout steps">
           {STEPS.map((s, i) => {
             const done = step > s.id || (step === 4 && s.id === 4)
             const current = step === s.id
@@ -1543,7 +1543,7 @@ export function CheckoutView() {
             ) : null}
           </div>
 
-          <aside aria-label="Order summary">
+          <aside className="checkout-summary" aria-label="Order summary">
             <Card className="sticky top-36">
               <CardContent className="space-y-4 p-5">
                 <h2 className="text-base font-bold">Order summary</h2>

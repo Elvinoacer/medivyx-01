@@ -225,7 +225,7 @@ export function AuthView() {
   )
 
   return (
-    <div className="gradient-hero min-h-[calc(100vh-8rem)] px-4 py-10">
+    <div className="app-page app-page-auth gradient-hero min-h-[calc(100vh-8rem)] px-4 py-10">
       <Toaster position="bottom-left" richColors closeButton />
 
       <div className="mx-auto max-w-md">

@@ -310,7 +310,7 @@ export function PrescriptionsView() {
   // ============================== MAIN ==============================
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 pb-12">
+    <div className="app-page app-page-prescriptions mx-auto max-w-3xl px-4 py-8 pb-12">
       <Toaster position="bottom-left" richColors closeButton />
 
       <SectionHeader

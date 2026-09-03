@@ -606,7 +606,7 @@ export function AccountView() {
       : ZONE_NAMES
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 pb-12">
+    <div className="app-page app-page-account mx-auto max-w-6xl px-4 py-8 pb-12">
       <Toaster position="bottom-left" richColors closeButton />
 
       <SectionHeader

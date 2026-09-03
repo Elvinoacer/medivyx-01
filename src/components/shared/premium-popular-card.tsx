@@ -20,6 +20,7 @@ interface PremiumPopularCardProps {
 export function PremiumPopularCard({ product, rank }: PremiumPopularCardProps) {
   const navigate = useAppStore((s) => s.navigate)
   const add = useCartStore((s) => s.add)
+  const cartQty = useCartStore((s) => s.lines.find((line) => line.productId === product.id)?.qty ?? 0)
   const wishToggle = useWishStore((s) => s.toggle)
   const wishHas = useWishStore((s) => s.has(product.id))
   const outOfStock = product.stockStatus === "OUT_OF_STOCK" || product.stockStatus === "DISCONTINUED"
@@ -150,9 +151,10 @@ export function PremiumPopularCard({ product, rank }: PremiumPopularCardProps) {
             className="h-10 flex-1 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 font-semibold text-white shadow-[0_10px_24px_-12px_hsl(275_70%_45%_/_0.7)] transition-transform hover:scale-[1.01] hover:from-violet-500 hover:via-purple-500 hover:to-fuchsia-500"
             disabled={outOfStock}
             onClick={(event) => handleAdd(event)}
+            aria-label={cartQty > 0 ? `Add another ${product.name} to cart. ${cartQty} already in cart` : `Add ${product.name} to cart`}
           >
             <ShoppingBag className="h-4 w-4" />
-            {outOfStock ? "Unavailable" : "Add to cart"}
+            {outOfStock ? "Unavailable" : cartQty > 0 ? `Add another · ${cartQty}` : "Add to cart"}
           </Button>
           <Button
             type="button"

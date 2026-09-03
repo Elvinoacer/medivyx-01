@@ -27,6 +27,9 @@ export function ServicesShowcase() {
   }, [])
   const cards = services.length ? services : FALLBACK
   const leadImage = "id" in cards[0] ? (cards[0].heroImage || "/images/pharmacist-consult.png") : cards[0].image
+  function openService(service: (typeof cards)[number]) {
+    navigate("services", "id" in service ? { serviceId: service.id } : undefined)
+  }
   return (
     <section className="reference-services" aria-labelledby="services-heading">
       <div className="reference-container reference-services-inner">
@@ -46,12 +49,25 @@ export function ServicesShowcase() {
           <p className="reference-services-intro">Explore the health services our pharmacy offers alongside your everyday medicines and wellness products.</p>
           <div className="reference-services-grid">
             {cards.map((service) => (
-              <Card key={"id" in service ? service.id : service.title} className="reference-service-card">
+              <Card
+                key={"id" in service ? service.id : service.title}
+                className="reference-service-card reference-service-card-clickable"
+                role="button"
+                tabIndex={0}
+                aria-label={`View ${"name" in service ? service.name : service.title} service`}
+                onClick={() => openService(service)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    openService(service)
+                  }
+                }}
+              >
                 <div className="reference-service-thumb">
                   <Image src={"id" in service ? (service.heroImage || "/images/pharmacist-consult.png") : service.image} alt="" aria-hidden fill sizes="(max-width: 520px) 96px, (max-width: 740px) 50vw, 92px" />
                   <span><HeartPulse className="h-4 w-4" /></span>
                 </div>
-                <div className="reference-service-content"><h3>{"name" in service ? service.name : service.title}</h3><p>{"shortDescription" in service ? (service.shortDescription || service.description || "") : service.text}</p><span>Explore services <ArrowRight className="h-3.5 w-3.5" /></span></div>
+                <div className="reference-service-content"><h3>{"name" in service ? service.name : service.title}</h3><p>{"shortDescription" in service ? (service.shortDescription || service.description || "") : service.text}</p><span>View service <ArrowRight className="h-3.5 w-3.5" /></span></div>
               </Card>
             ))}
           </div>

@@ -532,7 +532,7 @@ export function OrderDetailView() {
   // ============================== MAIN ==============================
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 px-4 py-6 pb-16">
+    <div className="app-page app-page-order mx-auto max-w-3xl space-y-4 px-4 py-6 pb-16">
       <Toaster position="bottom-left" richColors closeButton />
 
       {/* ---------- header ---------- */}

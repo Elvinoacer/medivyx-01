@@ -13,6 +13,7 @@ import "./reference-home-dark.css"
 import "./ambient-background.css"
 import "./services-showcase.css"
 import "./premium-landing.css"
+import "./app-experience.css"
 import { setupForegroundNotificationListener } from "@/lib/firebase/client"
 
 const ViewLoading = () => <div className="mx-auto min-h-[60vh] max-w-7xl animate-pulse px-4 py-12" aria-label="Loading"><div className="h-10 w-52 rounded-xl bg-muted" /><div className="mt-8 h-72 rounded-3xl bg-muted/70" /></div>

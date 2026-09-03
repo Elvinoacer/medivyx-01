@@ -1,0 +1,974 @@
+/* Product-wide experience layer.
+   Kept CSS-first so the storefront stays fast and every lazy-loaded view shares
+   the same visual and interaction language without adding client runtime work. */
+
+:root {
+  --experience-line: color-mix(in oklab, var(--border) 76%, transparent);
+  --experience-glow: color-mix(in oklab, var(--primary) 9%, transparent);
+  --experience-shadow: 0 18px 52px -38px rgb(5 58 40 / 38%);
+  --mobile-action-offset: calc(5.45rem + env(safe-area-inset-bottom));
+}
+
+main[data-view]:not([data-view="home"]) .experience-view {
+  min-height: 68vh;
+  background:
+    radial-gradient(circle at 8% 1%, var(--experience-glow), transparent 25rem),
+    radial-gradient(circle at 94% 28%, color-mix(in oklab, var(--primary) 5%, transparent), transparent 30rem),
+    linear-gradient(180deg, color-mix(in oklab, var(--background) 96%, var(--primary) 4%), var(--background) 28rem);
+}
+
+.dark main[data-view]:not([data-view="home"]) .experience-view {
+  background:
+    radial-gradient(circle at 8% 1%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 25rem),
+    linear-gradient(180deg, color-mix(in oklab, var(--background) 94%, black 6%), var(--background) 28rem);
+}
+
+.app-page {
+  position: relative;
+  isolation: isolate;
+}
+
+.app-page [data-slot="card"] {
+  border-color: var(--experience-line);
+  box-shadow: var(--experience-shadow);
+}
+
+.app-page [data-slot="card"] [data-slot="card"] {
+  box-shadow: none;
+}
+
+.app-page [data-slot="button"],
+.app-page button,
+.customer-hub button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-page [data-slot="button"] {
+  min-height: 2.5rem;
+}
+
+.app-page [data-slot="input"],
+.app-page textarea,
+.app-page button[role="combobox"] {
+  border-color: color-mix(in oklab, var(--border) 88%, var(--foreground) 12%);
+  background: color-mix(in oklab, var(--background) 92%, transparent);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 45%);
+}
+
+.dark .app-page [data-slot="input"],
+.dark .app-page textarea,
+.dark .app-page button[role="combobox"] {
+  background: color-mix(in oklab, var(--background) 78%, white 4%);
+  box-shadow: none;
+}
+
+.app-page [data-slot="tabs-list"] {
+  border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+  background: color-mix(in oklab, var(--muted) 80%, transparent);
+  box-shadow: inset 0 1px rgb(255 255 255 / 44%);
+}
+
+.app-page [data-slot="tabs-trigger"][data-state="active"] {
+  color: var(--foreground);
+  box-shadow: 0 5px 16px -10px rgb(4 55 38 / 60%);
+}
+
+.app-page :is(button, a, [role="button"]):focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--ring) 38%, transparent);
+  outline-offset: 3px;
+}
+
+/* Sonner toasts stay above the mobile action dock and retain a clear primary action. */
+[data-sonner-toaster] {
+  z-index: 90;
+}
+
+[data-sonner-toast] {
+  border-radius: 1rem;
+  box-shadow: 0 18px 42px -22px rgb(3 55 37 / 48%);
+}
+
+[data-sonner-toast] [data-button] {
+  min-height: 2.25rem;
+  border-radius: 999px;
+  padding-inline: .8rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: .75rem;
+  font-weight: 700;
+}
+
+/* Floating mobile navigation: a compact, high-contrast thumb zone. */
+.mobile-primary-nav {
+  padding: 0 .65rem calc(.65rem + env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+
+.mobile-primary-nav-list {
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+  border-radius: 1.35rem;
+  background: color-mix(in oklab, var(--background) 91%, transparent);
+  box-shadow: 0 18px 45px -16px rgb(3 43 30 / 42%), inset 0 1px rgb(255 255 255 / 56%);
+  backdrop-filter: blur(18px) saturate(1.2);
+  pointer-events: auto;
+}
+
+.dark .mobile-primary-nav-list {
+  box-shadow: 0 18px 45px -16px rgb(0 0 0 / 70%), inset 0 1px rgb(255 255 255 / 7%);
+}
+
+.mobile-primary-nav-action {
+  min-height: 3.8rem;
+  padding-block: .4rem .35rem;
+}
+
+.mobile-primary-nav-icon {
+  display: grid;
+  width: 2.15rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 999px;
+  transition: width 180ms ease, color 180ms ease, background-color 180ms ease;
+}
+
+.mobile-primary-nav-action.is-active .mobile-primary-nav-icon {
+  width: 2.85rem;
+  color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 14%, transparent);
+}
+
+.mobile-primary-nav-action:not(.is-active):active .mobile-primary-nav-icon {
+  background: var(--accent);
+  transform: scale(.96);
+}
+
+.mobile-primary-nav-safe-area { display: none; }
+
+/* Account hub remains visible below the persistent storefront header. */
+.customer-hub {
+  top: 7.125rem;
+  border-block: 1px solid color-mix(in oklab, var(--border) 68%, transparent);
+  box-shadow: 0 14px 34px -30px rgb(3 50 35 / 44%);
+}
+
+.customer-hub-link {
+  position: relative;
+  min-height: 2.65rem;
+}
+
+.customer-hub-link.is-active::after {
+  position: absolute;
+  right: .85rem;
+  bottom: .25rem;
+  left: .85rem;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--primary);
+  content: "";
+}
+
+/* Catalogue: discovery first, filters second, products always dominant. */
+.app-page-catalog > div:first-of-type {
+  padding-top: 1.8rem;
+}
+
+.app-page-catalog > div:first-of-type > div:first-child {
+  position: relative;
+  padding: clamp(1.15rem, 2.5vw, 1.7rem);
+  overflow: hidden;
+  border: 1px solid var(--experience-line);
+  border-radius: 1.65rem;
+  background:
+    radial-gradient(circle at 92% 10%, color-mix(in oklab, var(--primary) 13%, transparent), transparent 14rem),
+    color-mix(in oklab, var(--card) 88%, transparent);
+  box-shadow: var(--experience-shadow);
+}
+
+.app-page-catalog > .sticky {
+  box-shadow: 0 16px 30px -30px rgb(3 45 31 / 60%);
+}
+
+.app-page-catalog aside [data-slot="card"] {
+  background: color-mix(in oklab, var(--card) 94%, transparent);
+}
+
+.app-page-catalog section[aria-live="polite"] > div:first-child {
+  box-shadow: 0 12px 34px -30px rgb(3 45 31 / 56%);
+}
+
+/* Product: calm reading surface with purchase decisions grouped together. */
+.app-page-product > div:first-of-type > div:nth-child(2) > div:first-child > div:first-child {
+  border-color: color-mix(in oklab, var(--primary) 17%, var(--border));
+  background:
+    radial-gradient(circle at 30% 24%, color-mix(in oklab, var(--primary) 8%, transparent), transparent 45%),
+    color-mix(in oklab, var(--muted) 72%, var(--background));
+  box-shadow: 0 26px 70px -48px rgb(5 68 46 / 52%);
+}
+
+.product-purchase-actions {
+  padding: .75rem;
+  border: 1px solid color-mix(in oklab, var(--primary) 18%, var(--border));
+  border-radius: 1.15rem;
+  background: color-mix(in oklab, var(--card) 94%, transparent);
+  box-shadow: 0 15px 36px -28px rgb(3 56 38 / 55%);
+}
+
+.product-secondary-actions > a,
+.product-secondary-actions > button {
+  min-width: 10rem;
+}
+
+.product-mobile-action,
+.cart-mobile-checkout {
+  display: none;
+}
+
+/* Cart: items scan quickly; the total and next step never get lost. */
+.app-page-cart > div:first-of-type > h1,
+.app-page-checkout > div:first-of-type > h1 {
+  letter-spacing: -.035em;
+}
+
+.app-page-cart section[aria-label="Cart items"] > [data-slot="card"] {
+  overflow: hidden;
+  background: color-mix(in oklab, var(--card) 96%, transparent);
+}
+
+.cart-summary > [data-slot="card"],
+.checkout-summary > [data-slot="card"] {
+  border-color: color-mix(in oklab, var(--primary) 20%, var(--border));
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--primary) 4%, var(--card)), var(--card) 9rem);
+  box-shadow: 0 26px 62px -38px rgb(3 58 39 / 48%);
+}
+
+.cart-checkout-action {
+  box-shadow: 0 12px 25px -15px color-mix(in oklab, var(--primary) 76%, transparent);
+}
+
+/* Checkout: the current step is always obvious and the summary stays secondary. */
+.checkout-stepper {
+  scrollbar-width: none;
+}
+
+.checkout-stepper::-webkit-scrollbar { display: none; }
+
+.checkout-stepper button[aria-current="step"] {
+  box-shadow: 0 10px 28px -22px color-mix(in oklab, var(--primary) 80%, transparent);
+}
+
+.app-page-checkout fieldset,
+.app-page-checkout [role="radiogroup"] > label {
+  scroll-margin-top: 10rem;
+}
+
+/* Authentication: one focused task, reassuring brand context, no visual noise. */
+.app-page-auth {
+  background:
+    radial-gradient(circle at 50% -5%, color-mix(in oklab, var(--primary) 15%, transparent), transparent 25rem),
+    linear-gradient(180deg, color-mix(in oklab, var(--background) 89%, var(--primary) 11%), var(--background) 30rem);
+}
+
+.app-page-auth > div {
+  padding: 0;
+}
+
+.app-page-auth > div > div:first-child > span {
+  box-shadow: 0 18px 38px -20px color-mix(in oklab, var(--primary) 76%, transparent);
+}
+
+.app-page-auth [data-slot="card"] {
+  border-color: color-mix(in oklab, var(--primary) 18%, var(--border));
+  box-shadow: 0 30px 80px -54px rgb(3 52 35 / 58%);
+}
+
+/* Customer account views: headings lead, related controls stay grouped. */
+.app-page-orders > div:first-child,
+.app-page-order > div:first-of-type,
+.app-page-account > .premium-section-heading,
+.app-page-prescriptions > .premium-section-heading {
+  position: relative;
+  padding: 1.1rem 1.2rem;
+  overflow: hidden;
+  border: 1px solid var(--experience-line);
+  border-radius: 1.35rem;
+  background:
+    radial-gradient(circle at 94% 8%, color-mix(in oklab, var(--primary) 11%, transparent), transparent 11rem),
+    color-mix(in oklab, var(--card) 90%, transparent);
+  box-shadow: var(--experience-shadow);
+}
+
+.app-page-account > .premium-section-heading::after,
+.app-page-prescriptions > .premium-section-heading::after {
+  display: none;
+}
+
+.app-page-orders [role="tablist"],
+.app-page-prescriptions [role="tablist"] {
+  min-height: 3.15rem;
+}
+
+.app-page-orders li > [data-slot="card"] {
+  background: color-mix(in oklab, var(--card) 96%, transparent);
+}
+
+.app-page-order > div:first-of-type [data-slot="button"] {
+  border-radius: 999px;
+}
+
+.app-page-order [data-slot="card"]:has(.font-mono.text-3xl) {
+  border-color: color-mix(in oklab, var(--primary) 24%, var(--border));
+}
+
+.app-page-prescriptions [role="button"][aria-label*="Upload"] {
+  background:
+    radial-gradient(circle at 50% 0, color-mix(in oklab, var(--primary) 9%, transparent), transparent 14rem),
+    color-mix(in oklab, var(--muted) 46%, transparent);
+}
+
+.app-page-account > div.grid > [data-slot="card"] {
+  overflow: hidden;
+}
+
+/* Services: stronger narrative hero and clear, equal-weight actions. */
+.app-page-services > section:first-of-type {
+  border-color: rgb(255 255 255 / 12%);
+  background:
+    radial-gradient(circle at 86% 15%, rgb(101 235 169 / 18%), transparent 21rem),
+    radial-gradient(circle at 9% 94%, rgb(53 190 142 / 14%), transparent 18rem),
+    linear-gradient(138deg, #052d22, #07523a 58%, #096044);
+  box-shadow: 0 34px 80px -46px rgb(2 46 31 / 75%);
+}
+
+.app-page-services > .mt-6.grid > [data-slot="card"] {
+  transform: translateZ(0);
+}
+
+.app-page-services > .mt-6.grid > [data-slot="card"] [data-slot="card-content"] {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.app-page-services > .mt-6.grid > [data-slot="card"] [data-slot="card-content"] > div:last-child {
+  margin-top: auto;
+  padding-top: 1.15rem;
+}
+
+.app-page-services > .mt-6.grid > [data-slot="card"] [data-slot="card-content"] > div:last-child > a,
+.app-page-services > .mt-6.grid > [data-slot="card"] [data-slot="card-content"] > div:last-child > button {
+  flex: 1;
+}
+
+.app-page-services > .mt-6.grid > [data-slot="card"] [data-slot="card-content"] > div:last-child [data-slot="button"] {
+  width: 100%;
+}
+
+/* Admin: persistent command bar, readable dense data, responsive tools. */
+main[data-view="admin"] {
+  background: color-mix(in oklab, var(--background) 96%, var(--primary) 4%);
+}
+
+main[data-view="admin"] + footer { display: none; }
+
+.app-page-admin {
+  min-height: calc(100vh - 7.125rem);
+}
+
+.admin-sidebar {
+  overflow: hidden;
+  border: 1px solid var(--experience-line);
+  border-radius: 0 0 1.4rem 1.4rem;
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  box-shadow: var(--experience-shadow);
+}
+
+.admin-topbar {
+  position: sticky;
+  top: 7.125rem;
+  z-index: 25;
+  background: color-mix(in oklab, var(--background) 91%, transparent);
+  box-shadow: 0 16px 30px -30px rgb(3 45 31 / 65%);
+  backdrop-filter: blur(16px) saturate(1.15);
+}
+
+.app-page-admin [data-slot="card"] {
+  border-color: var(--experience-line);
+  border-radius: 1.15rem;
+  box-shadow: 0 15px 38px -32px rgb(3 50 34 / 42%);
+}
+
+.app-page-admin [data-slot="table-container"] {
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.app-page-admin [data-slot="table-row"]:focus-within {
+  background: color-mix(in oklab, var(--primary) 7%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-page [role="button"]:hover,
+  .app-page-services > .mt-6.grid > [data-slot="card"]:hover {
+    border-color: color-mix(in oklab, var(--primary) 32%, var(--border));
+  }
+}
+
+@media (max-width: 920px) {
+  .customer-hub,
+  .admin-topbar { top: 4.5rem; }
+
+  .app-page-admin { min-height: calc(100vh - 4.5rem); }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .cart-mobile-checkout {
+    bottom: 1rem;
+  }
+}
+
+@media (max-width: 767px) {
+  :root { --experience-shadow: 0 14px 36px -30px rgb(4 55 38 / 38%); }
+
+  main[data-view]:not([data-view="home"]) .experience-view {
+    background:
+      radial-gradient(circle at 12% 0, var(--experience-glow), transparent 18rem),
+      var(--background);
+  }
+
+  .app-page [data-slot="button"],
+  .app-page button[role="combobox"] {
+    min-height: 2.75rem;
+  }
+
+  .app-page [data-slot="input"],
+  .app-page textarea {
+    font-size: 1rem;
+  }
+
+  .app-page [data-slot="card"] {
+    border-radius: 1.05rem;
+    box-shadow: var(--experience-shadow);
+  }
+
+  .app-page [data-slot="card-header"] {
+    padding-inline: 1rem;
+  }
+
+  .app-page [data-slot="card-content"] {
+    padding-inline: 1rem;
+  }
+
+  .app-page :is(h1, .premium-section-heading h2) {
+    font-size: clamp(1.55rem, 7vw, 1.9rem);
+    line-height: 1.08;
+    letter-spacing: -.035em;
+  }
+
+  .app-page :is(h2, h3) {
+    text-wrap: balance;
+  }
+
+  .premium-section-heading {
+    margin-bottom: 1rem;
+  }
+
+  .premium-section-heading p {
+    font-size: .875rem;
+    line-height: 1.5;
+  }
+
+  .customer-hub {
+    top: 4.25rem;
+    z-index: 31;
+    padding-block: .35rem;
+    border-top: 0;
+  }
+
+  .customer-hub-inner {
+    min-height: 3.15rem;
+    padding-inline: .65rem;
+  }
+
+  .customer-hub-links { gap: .15rem; }
+
+  .customer-hub-link {
+    min-height: 2.55rem;
+    padding-inline: .7rem;
+    font-size: .76rem;
+  }
+
+  .customer-hub-link svg { width: .95rem; height: .95rem; }
+
+  .customer-hub-shop {
+    min-height: 2.55rem;
+    padding-inline: .85rem;
+    font-size: .76rem;
+  }
+
+  .app-page-catalog > div:first-of-type {
+    padding-top: .9rem;
+  }
+
+  .app-page-catalog > div:first-of-type > div:first-child {
+    padding: .95rem 1rem;
+    border-radius: 1.15rem;
+  }
+
+  .app-page-catalog > div:first-of-type h1 {
+    margin-top: .2rem;
+    font-size: clamp(1.65rem, 7.4vw, 2.05rem);
+  }
+
+  .app-page-catalog > div:first-of-type h1 + p {
+    font-size: .82rem;
+    line-height: 1.45;
+  }
+
+  .app-page-catalog > div:first-of-type > div:first-child > div:first-child > div:first-child {
+    gap: .35rem;
+  }
+
+  .app-page-catalog > .sticky {
+    top: 4.25rem;
+    border-bottom-color: color-mix(in oklab, var(--primary) 12%, var(--border));
+  }
+
+  .app-page-catalog section[aria-live="polite"] > div:first-child {
+    margin-bottom: .85rem;
+    padding: .65rem;
+    border-radius: .9rem;
+  }
+
+  .app-page-catalog section[aria-live="polite"] .grid.grid-cols-2 {
+    gap: .65rem;
+  }
+
+  .app-page-product > div:first-of-type {
+    padding-top: .85rem;
+  }
+
+  .app-page-product > div:first-of-type > div:first-child {
+    margin-bottom: .65rem;
+  }
+
+  .app-page-product > div:first-of-type > div:nth-child(2) {
+    gap: 1.2rem;
+  }
+
+  .app-page-product > div:first-of-type > div:nth-child(2) > div:first-child > div:first-child {
+    border-radius: 1.15rem;
+  }
+
+  .app-page-product > div:first-of-type > div:nth-child(2) > div:first-child > div:first-child img {
+    padding: 1rem;
+  }
+
+  .app-page-product h1 {
+    font-size: clamp(1.45rem, 6.6vw, 1.8rem);
+  }
+
+  .app-page-product .text-3xl.font-extrabold.text-primary {
+    font-size: 1.65rem;
+  }
+
+  .product-purchase-actions {
+    align-items: stretch;
+    padding: .6rem;
+  }
+
+  .product-purchase-actions > div[role="group"] {
+    justify-content: space-between;
+  }
+
+  .product-secondary-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .product-secondary-actions > a,
+  .product-secondary-actions > button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .product-mobile-action,
+  .cart-mobile-checkout {
+    position: fixed;
+    right: .7rem;
+    bottom: var(--mobile-action-offset);
+    left: .7rem;
+    z-index: 38;
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    padding: .55rem;
+    border: 1px solid color-mix(in oklab, var(--primary) 22%, var(--border));
+    border-radius: 1.2rem;
+    background: color-mix(in oklab, var(--background) 92%, transparent);
+    box-shadow: 0 20px 45px -17px rgb(3 43 30 / 55%), inset 0 1px rgb(255 255 255 / 60%);
+    backdrop-filter: blur(18px) saturate(1.2);
+  }
+
+  [data-sonner-toaster][data-y-position="bottom"] {
+    right: .7rem !important;
+    bottom: calc(var(--mobile-action-offset) + 4.55rem) !important;
+    left: .7rem !important;
+    width: auto !important;
+  }
+
+  [data-sonner-toast] {
+    width: min(100%, 25rem) !important;
+    margin-inline: auto;
+  }
+
+  main[data-view="product"] ~ .assistant-launcher,
+  main[data-view="cart"] ~ .assistant-launcher {
+    bottom: calc(var(--mobile-action-offset) + 4.6rem);
+  }
+
+  .product-mobile-action > span,
+  .cart-mobile-checkout > span {
+    display: grid;
+    min-width: 5.6rem;
+    padding-left: .4rem;
+    line-height: 1.05;
+  }
+
+  .product-mobile-action small,
+  .cart-mobile-checkout small {
+    overflow: hidden;
+    color: var(--muted-foreground);
+    font-size: .66rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .product-mobile-action strong,
+  .cart-mobile-checkout strong {
+    margin-top: .28rem;
+    color: var(--primary);
+    font-size: .95rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .app-page-product,
+  .app-page-cart {
+    padding-bottom: 5.7rem;
+  }
+
+  .app-page-cart > div:first-of-type,
+  .app-page-checkout > div:first-of-type {
+    padding-top: 1.1rem;
+  }
+
+  .app-page-cart > div:first-of-type > h1,
+  .app-page-checkout > div:first-of-type > h1 {
+    font-size: 1.7rem;
+  }
+
+  .app-page-cart section[aria-label="Cart items"] [data-slot="card-content"] {
+    gap: .65rem;
+    padding: .75rem;
+  }
+
+  .app-page-cart section[aria-label="Cart items"] [role="group"] [data-slot="button"] {
+    min-height: 2.5rem;
+    min-width: 2.5rem;
+  }
+
+  .cart-summary {
+    margin-top: .25rem;
+  }
+
+  .cart-summary > [data-slot="card"],
+  .checkout-summary > [data-slot="card"] {
+    position: static;
+  }
+
+  .checkout-stepper {
+    position: sticky;
+    top: 4.25rem;
+    z-index: 28;
+    margin: 1rem -1rem 0;
+    padding: .55rem 1rem;
+    border-block: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+    background: color-mix(in oklab, var(--background) 92%, transparent);
+    box-shadow: 0 16px 30px -30px rgb(3 45 31 / 72%);
+    backdrop-filter: blur(16px) saturate(1.1);
+  }
+
+  .checkout-stepper > li { gap: .2rem; }
+
+  .checkout-stepper > li > button {
+    min-height: 3.45rem;
+    flex-direction: column;
+    justify-content: center;
+    gap: .2rem;
+    padding: .3rem .15rem;
+    border-radius: .8rem;
+    text-align: center;
+  }
+
+  .checkout-stepper > li > button > span:first-child {
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+
+  .checkout-stepper > li > button > span:last-child {
+    max-width: 4.5rem;
+    font-size: .65rem;
+  }
+
+  .app-page-checkout > div:first-of-type > div.mt-6.grid {
+    margin-top: 1rem;
+    gap: 1rem;
+  }
+
+  .app-page-checkout [data-slot="card-content"] > .flex.justify-end,
+  .app-page-checkout [data-slot="card-content"] > .flex.flex-wrap.justify-between {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .app-page-checkout [data-slot="card-content"] > .flex.justify-end [data-slot="button"],
+  .app-page-checkout [data-slot="card-content"] > .flex.flex-wrap.justify-between [data-slot="button"] {
+    width: 100%;
+  }
+
+  .app-page-auth {
+    min-height: calc(100vh - 4.25rem);
+    padding: 1.1rem .8rem 2rem;
+  }
+
+  .app-page-auth > div > div:first-child {
+    margin-bottom: .9rem;
+  }
+
+  .app-page-auth > div > div:first-child > span {
+    width: 3rem;
+    height: 3rem;
+    border-radius: .9rem;
+  }
+
+  .app-page-auth > div > div:first-child h1 {
+    font-size: 1.45rem;
+  }
+
+  .app-page-auth [data-slot="card-content"] {
+    padding: .9rem;
+  }
+
+  .app-page-auth [data-slot="tabs-list"] {
+    gap: .2rem;
+    padding: .2rem;
+  }
+
+  .app-page-auth [data-slot="tabs-trigger"] {
+    min-height: 2.7rem;
+    padding-inline: .3rem;
+    font-size: .7rem;
+  }
+
+  .app-page-orders,
+  .app-page-order,
+  .app-page-account,
+  .app-page-prescriptions {
+    padding-top: 1rem;
+  }
+
+  .app-page-orders > div:first-child,
+  .app-page-order > div:first-of-type,
+  .app-page-account > .premium-section-heading,
+  .app-page-prescriptions > .premium-section-heading {
+    padding: .9rem;
+    border-radius: 1.05rem;
+  }
+
+  .app-page-orders > div:first-child {
+    align-items: stretch;
+  }
+
+  .app-page-orders > div:first-child [data-slot="button"] {
+    align-self: flex-end;
+  }
+
+  .app-page-orders [role="tablist"] {
+    min-height: 3.5rem;
+  }
+
+  .app-page-orders [role="tab"] {
+    min-width: 0;
+    padding-inline: .2rem;
+    font-size: .68rem;
+  }
+
+  .app-page-order .font-mono.text-2xl {
+    font-size: 1.25rem;
+    overflow-wrap: anywhere;
+  }
+
+  .app-page-order .font-mono.text-3xl {
+    font-size: 1.65rem;
+  }
+
+  .app-page-prescriptions [role="button"][aria-label*="Upload"] {
+    padding: 1.75rem .9rem;
+  }
+
+  .app-page-prescriptions [role="tab"] {
+    min-height: 2.8rem;
+    font-size: .74rem;
+  }
+
+  .app-page-account > div.grid {
+    gap: 1rem;
+  }
+
+  .app-page-account [data-slot="card-title"] {
+    gap: .5rem;
+    font-size: .9rem;
+  }
+
+  .app-page-services {
+    padding: .8rem .85rem 3rem;
+  }
+
+  .app-page-services > section:first-of-type {
+    padding: 1.6rem 1.15rem;
+    border-radius: 1.25rem;
+  }
+
+  .app-page-services > section:first-of-type h1 {
+    margin-top: .8rem;
+    font-size: clamp(2rem, 9.5vw, 2.65rem);
+    line-height: 1.02;
+  }
+
+  .app-page-services > section:first-of-type p {
+    margin-top: .8rem;
+    font-size: .85rem;
+    line-height: 1.55;
+  }
+
+  .app-page-services > section:first-of-type > div:last-child > div:last-child {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .app-page-services > section:first-of-type > div:last-child > div:last-child > a,
+  .app-page-services > section:first-of-type > div:last-child > div:last-child [data-slot="button"] {
+    width: 100%;
+  }
+
+  .app-page-services > div:nth-of-type(2) {
+    margin-top: 1.25rem;
+  }
+
+  .app-page-services > div:nth-of-type(2) h2 {
+    font-size: 1.5rem;
+  }
+
+  .app-page-services > .mt-6.grid {
+    grid-template-columns: 1fr;
+    gap: .8rem;
+  }
+
+  .app-page-services > .mt-6.grid > [data-slot="card"] > div:first-child {
+    aspect-ratio: 16 / 8;
+  }
+
+  .app-page-services > .mt-6.grid > [data-slot="card"] [data-slot="card-content"] {
+    padding: .9rem;
+  }
+
+  .app-page-services > .mt-6.grid > [data-slot="card"] [data-slot="card-content"] > p {
+    min-height: 0;
+  }
+
+  .app-page-services > .mt-6.grid > [data-slot="card"] [data-slot="card-content"] > div:last-child {
+    display: grid;
+    grid-template-columns: 1fr 1.35fr;
+  }
+
+  .admin-topbar {
+    top: 4.25rem;
+    align-items: center;
+    padding: .5rem .65rem;
+  }
+
+  .admin-topbar > h1 {
+    order: 1;
+    width: auto;
+    flex: 1;
+    font-size: .95rem;
+  }
+
+  .admin-topbar > div:last-of-type {
+    order: 2;
+    margin-left: 0;
+  }
+
+  .admin-content {
+    padding: .75rem;
+  }
+
+  .app-page-admin [data-slot="card"] {
+    border-radius: .95rem;
+  }
+
+  .app-page-admin [data-slot="table"] {
+    min-width: 42rem;
+    font-size: .78rem;
+  }
+
+  .app-page-admin .grid.grid-cols-2 {
+    gap: .6rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .mobile-primary-nav-action {
+    font-size: .67rem;
+  }
+
+  .mobile-primary-nav-icon {
+    width: 1.9rem;
+  }
+
+  .mobile-primary-nav-action.is-active .mobile-primary-nav-icon {
+    width: 2.45rem;
+  }
+
+  .product-mobile-action > span,
+  .cart-mobile-checkout > span {
+    min-width: 4.8rem;
+  }
+
+  .product-mobile-action [data-slot="button"],
+  .cart-mobile-checkout [data-slot="button"] {
+    padding-inline: .8rem;
+    font-size: .82rem;
+  }
+
+  .app-page-catalog section[aria-live="polite"] .grid.grid-cols-2 {
+    gap: .5rem;
+  }
+
+  .app-page-services > .mt-6.grid > [data-slot="card"] [data-slot="card-content"] > div:last-child {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-primary-nav-icon,
+  .app-page *,
+  .customer-hub * {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

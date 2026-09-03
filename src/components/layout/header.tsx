@@ -315,7 +315,13 @@ export function WishSheet() {
   const items = useWishStore((s) => s.items)
   const remove = useWishStore((s) => s.remove)
   const add = useCartStore((s) => s.add)
+  const cartLines = useCartStore((s) => s.lines)
   const [open, setOpen] = useState(false)
+
+  function addSavedItem(item: (typeof items)[number]) {
+    add({ productId: item.productId, name: item.name, price: item.price, image: item.image, requiresPrescription: item.requiresPrescription, packSize: item.packSize, stockStatus: "IN_STOCK" })
+    toast.success(`${item.name} added to cart`, { action: { label: "View cart", onClick: () => { setOpen(false); navigate("cart") } } })
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -350,7 +356,9 @@ export function WishSheet() {
         ) : (
           <ScrollArea className="scroll-slim flex-1 p-4">
             <div className="flex flex-col gap-3">
-              {items.map((w) => (
+              {items.map((w) => {
+                const savedQty = cartLines.find((line) => line.productId === w.productId)?.qty ?? 0
+                return (
                 <div key={w.productId} className="flex items-center gap-3 rounded-xl border bg-card p-3">
                   <ProductImage src={w.image} alt={w.name} className="h-14 w-14 shrink-0 rounded-lg bg-muted object-cover" />
                   <div className="min-w-0 flex-1">
@@ -359,11 +367,14 @@ export function WishSheet() {
                     <p className="mt-0.5 text-sm font-bold text-primary">{formatKES(w.price)}</p>
                   </div>
                   <div className="flex shrink-0 flex-col gap-1">
-                    <Button size="sm" onClick={() => add({ productId: w.productId, name: w.name, price: w.price, image: w.image, requiresPrescription: w.requiresPrescription, packSize: w.packSize, stockStatus: "IN_STOCK" })} className="h-8 px-3">Add to cart</Button>
+                    <Button size="sm" onClick={() => addSavedItem(w)} className="h-8 px-3">
+                      {savedQty > 0 ? `Add another · ${savedQty}` : "Add to cart"}
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => remove(w.productId)} className="h-8 px-3 text-xs text-destructive">Remove</Button>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </ScrollArea>
         )}
