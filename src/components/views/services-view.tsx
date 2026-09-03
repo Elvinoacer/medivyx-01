@@ -73,7 +73,6 @@ export function ServicesView() {
     </div>
   )
 }
-}
 
 function ServicePaymentDialog({ booking, onClose }: { booking: ServiceBookingDTO; onClose: () => void }) {
   const [phone, setPhone] = useState("")
