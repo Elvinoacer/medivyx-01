@@ -41,14 +41,14 @@ export function ServicesView() {
   }, [session?.user?.id])
 
   useEffect(() => {
-    const pendingServiceId = authNextParams?.serviceId
+    const pendingServiceId = params.serviceId
     if (!session?.user || !pendingServiceId || !services) return
     const service = services.find((item) => item.id === pendingServiceId)
     if (!service) return
     setBookingService(service)
     clearAuthIntent()
     replace("services", {})
-  }, [session?.user?.id, authNextParams?.serviceId, services])
+  }, [session?.user?.id, params.serviceId, services])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
