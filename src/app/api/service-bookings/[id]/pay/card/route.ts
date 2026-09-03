@@ -8,6 +8,7 @@ export async function POST(_request:Request,ctx:{params:Promise<{id:string}>}){
  const {id}=await ctx.params
  const booking=await db.serviceBooking.findUnique({where:{id},include:{service:true}})
  if(!booking||booking.userId!==s.userId)return NextResponse.json({error:"Booking not found."},{status:404})
+ if(booking.paymentStatus==="PAID")return NextResponse.json({error:"This booking is already paid."},{status:409})
  if(!booking.price||booking.price<=0){await db.serviceBooking.update({where:{id},data:{paymentStatus:"PAID"}});return NextResponse.json({paymentId:null,status:"SUCCESS"})}
  const session=await createIntaSendCheckoutSession({orderId:booking.id,reference:booking.reference,amount:booking.price,customer:{name:s.user?.name||"Customer",email:s.user?.email,phone:s.user?.phone||undefined},redirectUrl:`${process.env.NEXT_PUBLIC_APP_URL||"https://spherepharmacy.co.ke"}/#services`})
  const payment=await db.servicePayment.create({data:{bookingId:id,provider:"INTASEND",method:"CARD",status:"PROCESSING",amount:booking.price,providerReference:session.id}})
