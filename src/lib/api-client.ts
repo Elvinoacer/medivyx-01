@@ -346,3 +346,19 @@ export const servicesApi = {
   update: (id: string, payload: Partial<ServiceDTO>) => req<ServiceDTO>(`/api/services/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   remove: (id: string) => req<{ ok: boolean }>(`/api/services/${id}`, { method: "DELETE" }),
 }
+
+
+export const serviceBookingsApi = {
+  slots: (serviceId: string, date: string) =>
+    req<import("./types").ServiceSlotDTO[]>(`/api/services/${serviceId}/slots?date=${encodeURIComponent(date)}`),
+  mine: () => req<import("./types").ServiceBookingDTO[]>("/api/service-bookings/mine"),
+  create: (payload: { serviceId: string; start: string; end: string; customerNotes?: string }) =>
+    req<import("./types").ServiceBookingDTO>("/api/service-bookings", { method: "POST", body: JSON.stringify(payload) }),
+}
+
+export const adminServiceBookingsApi = {
+  list: (date?: string) =>
+    req<import("./types").ServiceBookingDTO[]>(`/api/admin/service-bookings${date ? `?date=${encodeURIComponent(date)}` : ""}`),
+  updateStatus: (id: string, status: string, note?: string, staffNotes?: string) =>
+    req<{ ok: boolean; status: string }>("/api/admin/service-bookings", { method: "PATCH", body: JSON.stringify({ id, status, note, staffNotes }) }),
+}
