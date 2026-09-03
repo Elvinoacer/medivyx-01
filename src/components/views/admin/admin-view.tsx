@@ -25,7 +25,7 @@ import { toast } from "sonner"
 import {
   LayoutDashboard, Package, ClipboardList, Pill, Megaphone, Users, BarChart3,
   ShieldCheck, Settings, LogOut, Lock, Store, Menu, Loader2, RefreshCw, Bike, MessageSquareText,
-  Bell, BellRing, BriefcaseMedical,
+  Bell, BellRing, BriefcaseMedical, CalendarDays,
 } from "lucide-react"
 import { enablePushNotifications, getPushPermissionState } from "@/lib/firebase/client"
 import type { LucideIcon } from "lucide-react"
@@ -45,6 +45,7 @@ import { ComplianceSection } from "./sections/compliance-section"
 import { SettingsSection } from "./sections/settings-section"
 import { ServicesSection } from "./sections/services-section"
 import { ServiceBookingsSection } from "./sections/service-bookings-section"
+import { ServiceAnalyticsSection } from "./sections/service-analytics-section"
 
 const STAFF_ROLES: Role[] = ["ADMIN", "PHARMACIST", "STAFF", "RIDER"]
 const ALL_STAFF: Role[] = ["ADMIN", "PHARMACIST", "STAFF", "RIDER"]
@@ -79,6 +80,9 @@ const NAV: NavItem[] = [
   {
     key: "prescriptions", label: "Prescriptions", title: "Prescription review", subtitle: "Verify uploaded prescriptions before dispensing",
     icon: ClipboardList, roles: ["ADMIN", "PHARMACIST"],
+  },
+  {
+    key: "service-analytics", label: "Service analytics", title: "Service performance", subtitle: "Bookings, completion and care-service revenue", icon: BarChart3, roles: ["ADMIN", "PHARMACIST", "STAFF"],
   },
   {
     key: "service-bookings", label: "Bookings", title: "Service bookings", subtitle: "Manage appointments, confirmations and the daily care calendar",
@@ -262,6 +266,8 @@ export function AdminView() {
         return <DispatchSection {...sectionProps} />
       case "prescriptions":
         return <PrescriptionsSection {...sectionProps} />
+      case "service-analytics":
+        return <ServiceAnalyticsSection {...sectionProps} />
       case "service-bookings":
         return <ServiceBookingsSection {...sectionProps} />
       case "services":
