@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { adminServiceBookingsApi, adminApi } from "@/lib/api-client"
+import { adminServiceBookingsApi, serviceStaffApi } from "@/lib/api-client"
 import type { ServiceBookingDTO, ServiceBookingStatus, StaffDTO } from "@/lib/types"
 import { type SectionProps, SectionError } from "../admin-shared"
 import { toast } from "sonner"
@@ -25,7 +25,7 @@ export function ServiceBookingsSection({refreshKey}:SectionProps){
  const [newEnd,setNewEnd]=useState("")
  const [staff,setStaff]=useState<StaffDTO[]>([])
  async function load(){try{setBookings(await adminServiceBookingsApi.list(date));setError(null)}catch(err){setError(err instanceof Error?err.message:"Could not load bookings.")}}
- useEffect(()=>{void load(); adminApi.staff().then(setStaff).catch(()=>{})},[date,refreshKey])
+ useEffect(()=>{void load(); serviceStaffApi.list().then(setStaff).catch(()=>{})},[date,refreshKey])
  const summary=useMemo(()=>({pending:(bookings??[]).filter(b=>b.status==="PENDING").length,confirmed:(bookings??[]).filter(b=>b.status==="CONFIRMED").length,total:(bookings??[]).length}),[bookings])
  async function setStatus(b:ServiceBookingDTO,status:ServiceBookingStatus){setBusy(b.id);try{await adminServiceBookingsApi.updateStatus(b.id,status,undefined);toast.success("Booking updated.");await load()}catch(err){toast.error(err instanceof Error?err.message:"Could not update booking.")}finally{setBusy(null)}}
  return <div className="space-y-5">
