@@ -174,7 +174,7 @@ export async function POST(request: Request) {
 
     const subtotal = orderLines.reduce((s, l) => s + l.product.price * l.qty, 0)
     if (fulfillment === "DELIVERY") {
-      deliveryFee = computeDeliveryFee(deliveryArea, settings.delivery, subtotal)
+      deliveryFee = computeDeliveryFee(deliveryArea, settings.delivery, subtotal, body.deliveryLatitude != null ? Number(body.deliveryLatitude) : null, body.deliveryLongitude != null ? Number(body.deliveryLongitude) : null)
     }
 
     // ---- promo code (validated server-side; discounts apply to the subtotal) ----
