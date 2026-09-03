@@ -166,8 +166,8 @@ export function toOrderDTO(order: {
   }
 }
 
-export function toAddressDTO(a: { id: string; label: string; text: string; area: string | null; notes: string | null; isDefault: boolean }): AddressDTO {
-  return { id: a.id, label: a.label, text: a.text, area: a.area, notes: a.notes, isDefault: a.isDefault }
+export function toAddressDTO(a: { id: string; label: string; text: string; area: string | null; notes: string | null; isDefault: boolean; latitude?: number | null; longitude?: number | null }): AddressDTO {
+  return { id: a.id, label: a.label, text: a.text, area: a.area, notes: a.notes, isDefault: a.isDefault, latitude: a.latitude ?? null, longitude: a.longitude ?? null }
 }
 
 export function toPromotionDTO(p: {
