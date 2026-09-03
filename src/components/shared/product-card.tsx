@@ -173,7 +173,7 @@ export function ProductCard({
                   "absolute bottom-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border shadow-md backdrop-blur-md transition-transform duration-200 hover:scale-110 active:scale-95",
                   wishHas
                     ? "border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300"
-                    : "border-border/60 bg-background/80 text-muted-foreground hover:text-rose-600"
+                    : "border-border/70 bg-card/90 text-muted-foreground hover:text-rose-600 shadow-sm"
                 )}
               >
                 <Heart className={cn("h-4 w-4", wishHas && "fill-rose-500 text-rose-500")} />
@@ -429,7 +429,7 @@ export function ProductCard({
 
           {/* prescription pill */}
           {product.requiresPrescription ? (
-            <span className="absolute left-2.5 bottom-2.5 z-10 flex items-center gap-1 rounded-full border border-amber-300/80 bg-white/95 px-2 py-0.5 text-[10px] font-bold text-amber-800 shadow-sm backdrop-blur-md dark:border-amber-700/80 dark:bg-slate-900/90 dark:text-amber-300">
+            <span className="absolute left-2.5 bottom-2.5 z-10 flex items-center gap-1 rounded-full border border-amber-300/80 bg-amber-50/95 px-2 py-0.5 text-[10px] font-bold text-amber-800 shadow-sm backdrop-blur-md dark:border-amber-700/80 dark:bg-slate-900/90 dark:text-amber-300">
               ℞ Rx
             </span>
           ) : null}
@@ -443,7 +443,7 @@ export function ProductCard({
               "absolute right-2.5 bottom-2.5 z-10 flex h-8 w-8 items-center justify-center rounded-full border shadow-sm backdrop-blur-md transition-transform duration-200 hover:scale-110 active:scale-95",
               wishHas
                 ? "border-rose-200 bg-rose-50/95 text-rose-600 dark:border-rose-800 dark:bg-rose-950/90 dark:text-rose-300"
-                : "border-border/60 bg-white/90 text-muted-foreground hover:text-rose-600 dark:bg-background/90"
+                : "border-border/70 bg-card/90 text-muted-foreground hover:text-rose-600 dark:bg-background/90"
             )}
           >
             <Heart className={cn("h-4 w-4", wishHas && "fill-rose-500 text-rose-500")} />
