@@ -18,6 +18,17 @@ export async function PATCH(request:Request){
  const allowed=["PENDING","CONFIRMED","RESCHEDULED","ARRIVED","IN_PROGRESS","COMPLETED","CANCELLED","NO_SHOW","REJECTED"]
  if(!allowed.includes(status))return NextResponse.json({error:"Invalid booking status."},{status:400})
  const booking=await db.serviceBooking.findUnique({where:{id}}); if(!booking)return NextResponse.json({error:"Booking not found."},{status:404})
+ if(body.scheduledStart||body.scheduledEnd){
+   const nextStart=body.scheduledStart?new Date(String(body.scheduledStart)):booking.scheduledStart
+   const nextEnd=body.scheduledEnd?new Date(String(body.scheduledEnd)):booking.scheduledEnd
+   if(Number.isNaN(nextStart.getTime())||Number.isNaN(nextEnd.getTime())||nextEnd<=nextStart)return NextResponse.json({error:"Invalid reschedule time."},{status:400})
+   if(nextStart<new Date())return NextResponse.json({error:"Rescheduled time must be in the future."},{status:400})
+   const conflict=await db.serviceBooking.findFirst({where:{id:{not:id},serviceId:booking.serviceId,status:{notIn:["CANCELLED","REJECTED","NO_SHOW"]},scheduledStart:{lt:nextEnd},scheduledEnd:{gt:nextStart}}})
+   if(conflict)return NextResponse.json({error:"That time overlaps another booking."},{status:409})
+   await db.serviceBooking.update({where:{id},data:{scheduledStart:nextStart,scheduledEnd:nextEnd,status:"RESCHEDULED"}})
+   await db.serviceBookingStatusHistory.create({data:{bookingId:id,status:"RESCHEDULED",note:"Appointment rescheduled by staff.",actor:s!.staffId!}})
+   return NextResponse.json({ok:true,status:"RESCHEDULED"})
+ }
  const updated=await db.$transaction(async(tx)=>{
   const b=await tx.serviceBooking.update({where:{id},data:{status,staffNotes:body.staffNotes!==undefined?String(body.staffNotes):booking.staffNotes}})
   await tx.serviceBookingStatusHistory.create({data:{bookingId:id,status,note:body.note?String(body.note):null,actor:s!.staffId!}})
