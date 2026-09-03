@@ -236,6 +236,7 @@ export function CheckoutView() {
             (z) => z.name.toLowerCase() === (preferred.area ?? "").trim().toLowerCase()
           )
           if (match) setZone(match.name)
+          if (preferred.latitude != null && preferred.longitude != null) setDeliveryCoordinates({ latitude: preferred.latitude, longitude: preferred.longitude })
         } else {
           setAddressMode("new")
         }
@@ -252,6 +253,7 @@ export function CheckoutView() {
     setSelectedAddressId(a.id)
     const match = zones.find((z) => z.name.toLowerCase() === (a.area ?? "").trim().toLowerCase())
     if (match) setZone(match.name)
+    if (a.latitude != null && a.longitude != null) setDeliveryCoordinates({ latitude: a.latitude, longitude: a.longitude })
   }
 
   const selectedAddress = addresses?.find((a) => a.id === selectedAddressId) ?? null
@@ -1056,7 +1058,7 @@ export function CheckoutView() {
                             rows={3}
                           />
                           <p className="text-xs text-muted-foreground">
-                            Delivering to <strong>{zone || "— choose zone in step 1 —"}</strong>
+                            Delivering to <strong>{zone || (settings?.pricingMode === "distance" && deliveryCoordinates ? "Distance calculated automatically" : "— choose zone in step 1 —")}</strong>
                           </p>
                         </div>
                       )}
