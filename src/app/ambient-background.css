@@ -45,8 +45,10 @@
   animation: ambient-drift-two 34s linear infinite;
 }
 
+/* Do not change child positioning here. Overlay components such as the AI
+   assistant, sheets/dialogs and mobile navigation rely on their own fixed
+   positioning and z-index stacking contexts. */
 .ambient-page-shell > * {
-  position: relative;
   z-index: 1;
 }
 
@@ -73,27 +75,15 @@
 }
 
 @keyframes ambient-drift-one {
-  0% {
-    transform: translate3d(-3%, -2%, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(2%, 3%, 0) scale(1.05);
-  }
-  100% {
-    transform: translate3d(4%, -1%, 0) scale(1.02);
-  }
+  0% { transform: translate3d(-3%, -2%, 0) scale(1); }
+  50% { transform: translate3d(2%, 3%, 0) scale(1.05); }
+  100% { transform: translate3d(4%, -1%, 0) scale(1.02); }
 }
 
 @keyframes ambient-drift-two {
-  0% {
-    transform: rotate(0deg) scale(1);
-  }
-  50% {
-    transform: rotate(150deg) scale(1.08);
-  }
-  100% {
-    transform: rotate(360deg) scale(1);
-  }
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(150deg) scale(1.08); }
+  100% { transform: rotate(360deg) scale(1); }
 }
 
 /* Dark mode overrides */
@@ -125,18 +115,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ambient-page-shell::before,
-  .ambient-page-shell::after {
-    animation: none;
-  }
+  .ambient-page-shell::after { animation: none; }
 }
 
 @media (max-width: 800px) {
-  .ambient-page-shell::before {
-    filter: blur(52px);
-    animation-duration: 25s;
-  }
-  .ambient-page-shell::after {
-    filter: blur(36px);
-    animation-duration: 33s;
-  }
+  .ambient-page-shell::before { filter: blur(52px); animation-duration: 25s; }
+  .ambient-page-shell::after { filter: blur(36px); animation-duration: 33s; }
 }
