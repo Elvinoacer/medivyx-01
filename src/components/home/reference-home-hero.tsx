@@ -36,6 +36,7 @@ export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
   const navItems = [
     { label: "Home", view: "home" as const },
     { label: "Shop", view: "catalog" as const },
+    { label: "Services", view: "services" as const },
     { label: "My orders", view: "orders" as const },
     { label: "Prescriptions", view: "prescriptions" as const },
     { label: "Account", view: "account" as const },
