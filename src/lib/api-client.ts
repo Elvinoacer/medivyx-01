@@ -370,6 +370,8 @@ export const adminServiceBookingsApi = {
     req<import("./types").ServiceBookingDTO[]>(`/api/admin/service-bookings${date ? `?date=${encodeURIComponent(date)}` : ""}`),
   updateStatus: (id: string, status: string, note?: string, staffNotes?: string) =>
     req<{ ok: boolean; status: string }>("/api/admin/service-bookings", { method: "PATCH", body: JSON.stringify({ id, status, note, staffNotes }) }),
+  assign: (id: string, staffId: string | null) =>
+    req<{ ok: boolean; assignedStaffId: string | null }>(`/api/admin/service-bookings/${id}/assign`, { method: "PATCH", body: JSON.stringify({ staffId }) }),
 }
 
 
@@ -389,4 +391,9 @@ export const serviceReviewsApi = {
     req<{ ok: boolean }>(`/api/service-bookings/${bookingId}/review`, { method: "POST", body: JSON.stringify({ rating, comment }) }),
   list: (serviceId: string) =>
     req<{ average: number; count: number; reviews: { id: string; rating: number; comment: string | null; authorName: string; createdAt: string }[] }>(`/api/services/${serviceId}/reviews`),
+}
+
+export const serviceAnalyticsApi = {
+  summary: (from?: string, to?: string) =>
+    req<{ totalBookings:number; completed:number; cancelled:number; revenue:number; completionRate:number; byService:{service:string;bookings:number;completed:number;revenue:number}[] }>(`/api/admin/service-analytics${from ? `?from=${encodeURIComponent(from)}${to ? `&to=${encodeURIComponent(to)}` : ""}` : ""}`),
 }
