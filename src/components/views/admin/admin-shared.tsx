@@ -19,6 +19,7 @@ export type AdminSectionKey =
   | "overview"
   | "orders"
   | "dispatch"
+  | "services"
   | "prescriptions"
   | "catalogue"
   | "reviews"
