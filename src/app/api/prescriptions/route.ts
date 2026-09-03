@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { toPrescriptionDTOFull } from "@/lib/dto"
 import { addStatusEvent, notifyCustomer } from "@/lib/notify"
-import { getSession, requireCustomer, requireStaff } from "@/lib/session"
+import { requireCustomer, requireStaff } from "@/lib/session"
 import { uploadBase64ToR2 } from "@/lib/r2"
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10MB
@@ -45,21 +45,40 @@ export async function POST(request: Request) {
     const body = await request.json()
     const fileName = String(body.fileName ?? "").trim()
     const fileType = String(body.fileType ?? "").trim().toLowerCase()
-    let fileData = String(body.fileData ?? "")
+    let fileData = typeof body.fileData === "string" ? body.fileData : ""
+    let fileUrl: string | null = body.fileUrl ? String(body.fileUrl) : null
+    let storageKey: string | null = body.storageKey ? String(body.storageKey) : null
 
     if (!fileName) return NextResponse.json({ error: "Choose a file to upload." }, { status: 400 })
     if (!ALLOWED_TYPES.includes(fileType)) {
       return NextResponse.json({ error: "Upload an image (PNG/JPEG/WebP/HEIC) or a PDF." }, { status: 400 })
     }
-    // accept both raw base64 and data URLs
-    const dataUrlMatch = /^data:[^;]+;base64,([\s\S]*)$/.exec(fileData)
-    if (dataUrlMatch) fileData = dataUrlMatch[1]
-    if (!/^[A-Za-z0-9+/=\s]+$/.test(fileData) || fileData.length < 32) {
-      return NextResponse.json({ error: "The file appears to be corrupt. Try re-uploading." }, { status: 400 })
+
+    // The frontend may upload the binary to R2 first and then send only
+    // fileUrl/storageKey. In that case there is no base64 payload to validate.
+    const hasRemoteUpload = Boolean(fileUrl && storageKey)
+    if (hasRemoteUpload) {
+      const expectedPrefix = `prescriptions/${session.userId}/`
+      if (!storageKey!.startsWith(expectedPrefix)) {
+        return NextResponse.json({ error: "Invalid prescription storage reference." }, { status: 400 })
+      }
+      fileData = ""
+    } else {
+      // Accept both raw base64 and data URLs for the database/R2 fallback path.
+      const dataUrlMatch = /^data:[^;]+;base64,([\s\S]*)$/.exec(fileData)
+      if (dataUrlMatch) fileData = dataUrlMatch[1]
+      fileData = fileData.replace(/\s/g, "")
+
+      if (!fileData || !/^[A-Za-z0-9+/]*={0,2}$/.test(fileData) || fileData.length < 32 || fileData.length % 4 !== 0) {
+        return NextResponse.json({ error: "The file appears to be corrupt. Try re-uploading." }, { status: 400 })
+      }
+
+      const decodedBytes = Math.floor((fileData.length * 3) / 4) - (fileData.endsWith("==") ? 2 : fileData.endsWith("=") ? 1 : 0)
+      if (decodedBytes > MAX_FILE_BYTES) {
+        return NextResponse.json({ error: "File is too large — 10MB maximum." }, { status: 400 })
+      }
     }
-    if (fileData.length > Math.ceil(MAX_FILE_BYTES * 1.4)) {
-      return NextResponse.json({ error: "File is too large — 10MB maximum." }, { status: 400 })
-    }
+
     const notes = body.notes ? String(body.notes).trim().slice(0, 1000) : null
 
     // optional: attach to one of the customer's own orders
@@ -69,10 +88,8 @@ export async function POST(request: Request) {
       if (order) orderId = order.id
     }
 
-    let fileUrl: string | null = body.fileUrl ? String(body.fileUrl) : null
-    let storageKey: string | null = body.storageKey ? String(body.storageKey) : null
-
-    // If base64 provided, upload to R2
+    // If base64 was supplied, upload it to R2 here. If the client already uploaded
+    // directly to R2, preserve the supplied fileUrl/storageKey instead.
     if (fileData) {
       try {
         const ext = fileName.includes(".") ? `.${fileName.split(".").pop()}` : ""
@@ -90,13 +107,17 @@ export async function POST(request: Request) {
       }
     }
 
+    if (!fileData && !fileUrl && !storageKey) {
+      return NextResponse.json({ error: "The prescription file could not be stored. Please try again." }, { status: 400 })
+    }
+
     const rx = await db.prescription.create({
       data: {
         userId: session.userId,
         orderId,
         fileName,
         fileType,
-        fileData,
+        fileData: fileData || null,
         fileUrl,
         storageKey,
         notes,
