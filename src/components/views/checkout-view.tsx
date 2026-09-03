@@ -29,6 +29,7 @@ import { DELIVERY_DEFAULTS, LOYALTY, PHARMACY, maxRedeemablePoints, pointsForAmo
 import { formatKES } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { UseCurrentLocationButton } from "@/components/shared/use-current-location-button"
 import {
   MapPin, Truck, Store, ClipboardList, CreditCard, CheckCircle2, ChevronLeft, Loader2,
   FileWarning, Upload, FileText, X, Copy, Check, ShieldCheck, Banknote, Phone, User,
@@ -992,8 +993,17 @@ export function CheckoutView() {
 
                             {(addressMode === "new" || addresses.length === 0) && (
                               <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
-                                <div className="space-y-2">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                   <Label htmlFor="new-address">Address (building, street, estate) *</Label>
+                                  <UseCurrentLocationButton onResolved={(location) => {
+                                    setAddressText(location.displayName)
+                                    const matched = zones.find((candidate) => {
+                                      const value = (location.area || "").toLowerCase()
+                                      return value && (value.includes(candidate.name.toLowerCase()) || candidate.name.toLowerCase().includes(value))
+                                    })
+                                    if (matched) setZone(matched.name)
+                                  }} />
+                                </div>
                                   <Textarea
                                     id="new-address"
                                     value={addressText}
