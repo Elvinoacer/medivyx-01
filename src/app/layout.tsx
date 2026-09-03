@@ -28,6 +28,7 @@ export const metadata: Metadata = {
     description: "Your community pharmacy on Lumumba Drive, Roysambu — browse, order, upload prescriptions, choose delivery or pickup.",
     siteName: "Sphere Pharmacy",
     type: "website",
+    images: [{ url: "/images/sphere_pharmacy_banner_url.webp", width: 1200, height: 630, alt: "Sphere Pharmacy" }],
   },
   robots: { index: true, follow: true },
 };
