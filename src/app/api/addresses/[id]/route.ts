@@ -26,6 +26,8 @@ export async function PATCH(request: Request, { params }: Params) {
     if (body.area !== undefined) data.area = body.area ? String(body.area).trim() : null
     if (body.notes !== undefined) data.notes = body.notes ? String(body.notes).trim() : null
     if (body.isDefault !== undefined) data.isDefault = Boolean(body.isDefault)
+  if (body.latitude !== undefined) data.latitude = body.latitude === null ? null : Number(body.latitude)
+  if (body.longitude !== undefined) data.longitude = body.longitude === null ? null : Number(body.longitude)
 
     const updated = await db.address.update({ where: { id }, data })
     return NextResponse.json(toAddressDTO(updated))
