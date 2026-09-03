@@ -98,6 +98,7 @@ interface AppState {
   /** Convenience: open the auth view in a given mode, optionally returning to `next` (with params) after login. */
   openAuth: (mode?: AuthMode, next?: ViewName, message?: string, nextParams?: ViewParams) => void
   setAuthMode: (mode: AuthMode) => void
+  clearAuthIntent: () => void
   setAssistantOpen: (open: boolean) => void
   setCatalogFilters: (filters: Partial<CatalogFilters>) => void
   resetCatalogFilters: () => void
@@ -162,6 +163,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setAuthMode: (mode) => set({ authMode: mode }),
+  clearAuthIntent: () => set({ authNext: null, authNextParams: null, authMessage: null }),
 
   setAssistantOpen: (open) => set({ assistantOpen: open }),
 
