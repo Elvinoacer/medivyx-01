@@ -7,57 +7,51 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
-// ---------- Customers ----------
-
 model User {
-  id            String   @id @default(cuid())
-  name          String?
-  phone         String?  @unique
-  email         String?  @unique
-  passwordHash  String?
-  avatar        String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  addresses          Address[]
-  orders             Order[]
-  prescriptions      Prescription[]
-  notifications      Notification[]
-  notificationPref   NotificationPref?
-  sessions           Session[]
-  reviews            Review[]
-  stockAlerts        ProductAlert[]
-  pushTokens         PushToken[]
-  serviceBookings    ServiceBooking[]
-  serviceReviews     ServiceReview[]
-
-  // Sphere Points loyalty balance (includes legacy in-store activity)
-  loyaltyPoints      Int      @default(0)
+  id               String            @id @default(cuid())
+  name             String?
+  phone            String?           @unique
+  email            String?           @unique
+  passwordHash     String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  loyaltyPoints    Int               @default(0)
+  avatar           String?
+  addresses        Address[]
+  notifications    Notification[]
+  notificationPref NotificationPref?
+  orders           Order[]
+  prescriptions    Prescription[]
+  stockAlerts      ProductAlert[]
+  pushTokens       PushToken[]
+  reviews          Review[]
+  serviceBookings  ServiceBooking[]
+  serviceReviews   ServiceReview[]
+  sessions         Session[]
 }
 
 model Address {
-  id        String  @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   label     String
   text      String
   area      String?
   notes     String?
-  isDefault Boolean @default(false)
+  isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Session {
-  id        String   @id @default(cuid())
-  token     String   @unique
+  id        String     @id @default(cuid())
+  token     String     @unique
   userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   staffId   String?
-  staff     StaffUser? @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  role      String   // CUSTOMER | ADMIN | PHARMACIST | STAFF | RIDER
+  role      String
   expiresAt DateTime
-  createdAt DateTime @default(now())
+  createdAt DateTime   @default(now())
+  staff     StaffUser? @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model OtpCode {
@@ -69,129 +63,115 @@ model OtpCode {
   createdAt DateTime @default(now())
 }
 
-// ---------- Staff ----------
-
 model StaffUser {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  phone        String?
-  passwordHash String
-  role         String   // ADMIN | PHARMACIST | STAFF | RIDER
-  title        String?  // e.g. "Superintendent Pharmacist"
-  avatar       String?
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-
-  sessions       Session[]
-  prescriptions  Prescription[] @relation("RxReviewer")
-  notifications  Notification[]
-  pushTokens     PushToken[]
+  id               String           @id @default(cuid())
+  name             String
+  email            String           @unique
+  phone            String?
+  passwordHash     String
+  role             String
+  title            String?
+  active           Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  avatar           String?
+  notifications    Notification[]
+  prescriptions    Prescription[]   @relation("RxReviewer")
+  pushTokens       PushToken[]
   assignedBookings ServiceBooking[] @relation("ServiceAssignedStaff")
   serviceReviews   ServiceReview[]
+  sessions         Session[]
 }
 
-// ---------- Catalogue ----------
-
 model Category {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   name        String
-  slug        String   @unique
+  slug        String    @unique
   description String?
-  icon        String?  // lucide icon name or emoji
-  sortOrder   Int      @default(0)
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-
-  products Product[]
+  icon        String?
+  sortOrder   Int       @default(0)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  products    Product[]
 }
 
 model Product {
-  id                   String   @id @default(cuid())
+  id                   String         @id @default(cuid())
   name                 String
-  sku                  String   @unique
+  sku                  String         @unique
   categoryId           String?
-  category             Category? @relation(fields: [categoryId], references: [id])
   brand                String?
   packSize             String?
   price                Float
   compareAtPrice       Float?
-  stockStatus          String   @default("IN_STOCK") // IN_STOCK | LOW_STOCK | OUT_OF_STOCK | DISCONTINUED
-  stockQty             Int      @default(0)
-  lowStockThreshold    Int      @default(5)
-  requiresPrescription Boolean  @default(false)
+  stockStatus          String         @default("IN_STOCK")
+  stockQty             Int            @default(0)
+  lowStockThreshold    Int            @default(5)
+  requiresPrescription Boolean        @default(false)
   description          String
   usageInfo            String?
   warnings             String?
-  image                String?  // emoji or primary R2 image URL
-  images               String[] @default([]) // additional gallery image URLs from R2
-  active               Boolean  @default(true)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  reviews              Review[]
+  image                String?
+  active               Boolean        @default(true)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  images               String[]       @default([])
+  category             Category?      @relation(fields: [categoryId], references: [id])
   stockAlerts          ProductAlert[]
+  reviews              Review[]
 }
 
-// Customer star ratings + written reviews for products (FR: trust & social proof)
-// status: PUBLISHED (visible) or HIDDEN (moderated out by staff)
 model Review {
-  id         String   @id @default(cuid())
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rating     Int      // 1-5 stars
-  comment    String?
-  status     String   @default("PUBLISHED") // PUBLISHED | HIDDEN
-  createdAt  DateTime @default(now())
-
-  @@unique([productId, userId]) // one review per customer per product
-}
-
-// Back-in-stock watch requests — notified in-app when the product is restocked
-model ProductAlert {
-  id         String    @id @default(cuid())
-  productId  String
-  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  notifiedAt DateTime?
-  createdAt  DateTime  @default(now())
+  id        String   @id @default(cuid())
+  productId String
+  userId    String
+  rating    Int
+  comment   String?
+  status    String   @default("PUBLISHED")
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([productId, userId])
 }
 
-// ---------- Orders ----------
+model ProductAlert {
+  id         String    @id @default(cuid())
+  productId  String
+  userId     String
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
+}
 
 model Order {
-  id              String   @id @default(cuid())
-  reference       String   @unique // SPH-XXXXXX
+  id              String               @id @default(cuid())
+  reference       String               @unique
   userId          String?
-  user            User?    @relation(fields: [userId], references: [id])
   guestName       String?
   guestPhone      String?
-  type            String   // OTC | PRESCRIPTION | MIXED | RESERVATION
-  status          String   // see ORDER_STATUSES
-  fulfillment     String   // PICKUP | DELIVERY
+  type            String
+  status          String
+  fulfillment     String
   deliveryAddress String?
   deliveryArea    String?
   deliveryNotes   String?
-  deliveryFee     Float    @default(0)
+  deliveryFee     Float                @default(0)
   subtotal        Float
-  discountAmount  Float    @default(0)
+  discountAmount  Float                @default(0)
   promotionCode   String?
   total           Float
   notes           String?
   pickupCode      String?
   riderId         String?
   riderName       String?
-  // Sphere Points earned (awarded when payment succeeds) / redeemed at checkout
-  pointsEarned    Int      @default(0)
-  pointsRedeemed  Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
+  pointsEarned    Int                  @default(0)
+  pointsRedeemed  Int                  @default(0)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  user            User?                @relation(fields: [userId], references: [id])
   items           OrderItem[]
   statusHistory   OrderStatusHistory[]
   payments        Payment[]
@@ -201,59 +181,54 @@ model Order {
 model OrderItem {
   id                   String  @id @default(cuid())
   orderId              String
-  order                Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId            String?
   name                 String
   price                Float
   qty                  Int
   requiresPrescription Boolean @default(false)
   lineTotal            Float
+  order                Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 model OrderStatusHistory {
   id        String   @id @default(cuid())
   orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   status    String
   note      String?
   actor     String
   createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
-
-// ---------- Prescriptions ----------
 
 model Prescription {
-  id             String    @id @default(cuid())
+  id             String     @id @default(cuid())
   userId         String?
-  user           User?     @relation(fields: [userId], references: [id])
   orderId        String?
-  order          Order?    @relation(fields: [orderId], references: [id])
   fileName       String
   fileType       String
-  fileData       String?   // base64 fallback or inline cache
-  fileUrl        String?   // Cloudflare R2 storage URL
-  storageKey     String?   // Cloudflare R2 object key (e.g. prescriptions/rx_xxx.pdf)
+  fileData       String?
   notes          String?
-  status         String    @default("PENDING") // PENDING | APPROVED | REJECTED | CLARIFICATION_REQUESTED | PARTIALLY_APPROVED
+  status         String     @default("PENDING")
   reviewNotes    String?
   reviewedById   String?
-  reviewedBy     StaffUser? @relation("RxReviewer", fields: [reviewedById], references: [id])
   reviewedAt     DateTime?
-  refillsAllowed Int       @default(0)
-  refillsUsed    Int       @default(0)
+  refillsAllowed Int        @default(0)
+  refillsUsed    Int        @default(0)
   validUntil     DateTime?
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime   @default(now())
+  fileUrl        String?
+  storageKey     String?
+  order          Order?     @relation(fields: [orderId], references: [id])
+  reviewedBy     StaffUser? @relation("RxReviewer", fields: [reviewedById], references: [id])
+  user           User?      @relation(fields: [userId], references: [id])
 }
-
-// ---------- Payments ----------
 
 model Payment {
   id                String   @id @default(cuid())
   orderId           String
-  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  provider          String   // MPESA | INTASEND | CASH
-  method            String?  // STK_PUSH | CARD | PAYBILL | CASH_ON_PICKUP | CASH_ON_DELIVERY
-  status            String   @default("PENDING") // PENDING | PROCESSING | SUCCESS | FAILED | REFUNDED
+  provider          String
+  method            String?
+  status            String   @default("PENDING")
   amount            Float
   phone             String?
   cardLast4         String?
@@ -262,9 +237,8 @@ model Payment {
   failureReason     String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
-
-// ---------- Marketing / ops ----------
 
 model Promotion {
   id          String    @id @default(cuid())
@@ -273,7 +247,7 @@ model Promotion {
   badge       String?
   code        String?
   discountPct Int?
-  color       String?   // theme key: teal | amber | rose
+  color       String?
   active      Boolean   @default(true)
   startsAt    DateTime?
   endsAt      DateTime?
@@ -294,16 +268,16 @@ model AuditLog {
 model Notification {
   id        String     @id @default(cuid())
   userId    String?
-  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  staffId   String?
-  staff     StaffUser? @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  channel   String     // IN_APP | SMS | WHATSAPP | EMAIL | PUSH
+  channel   String
   event     String?
   title     String
   message   String
-  metadata  String?    // JSON string e.g. { orderId, url }
   read      Boolean    @default(false)
   createdAt DateTime   @default(now())
+  metadata  String?
+  staffId   String?
+  staff     StaffUser? @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([staffId])
@@ -312,24 +286,24 @@ model Notification {
 model NotificationPref {
   id       String  @id @default(cuid())
   userId   String  @unique
-  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   sms      Boolean @default(true)
   whatsapp Boolean @default(true)
   email    Boolean @default(true)
   push     Boolean @default(true)
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PushToken {
   id        String     @id @default(cuid())
   token     String     @unique
   userId    String?
-  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
   staffId   String?
-  staff     StaffUser? @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  role      String?    // CUSTOMER | ADMIN | PHARMACIST | STAFF | RIDER
+  role      String?
   platform  String?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+  staff     StaffUser? @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([staffId])
@@ -337,122 +311,128 @@ model PushToken {
 }
 
 model Service {
-  id               String   @id @default(cuid())
+  id               String                @id @default(cuid())
   name             String
-  slug             String   @unique
+  slug             String                @unique
   shortDescription String?
   description      String?
   category         String?
-  durationMinutes  Int      @default(15)
+  durationMinutes  Int                   @default(15)
   price            Float?
   priceLabel       String?
   heroImage        String?
-  featured         Boolean  @default(false)
-  active           Boolean  @default(true)
-  sortOrder        Int      @default(0)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  images           ServiceImage[]
+  featured         Boolean               @default(false)
+  active           Boolean               @default(true)
+  sortOrder        Int                   @default(0)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
   availability     ServiceAvailability[]
   bookings         ServiceBooking[]
+  images           ServiceImage[]
 }
 
 model ServiceImage {
   id         String   @id @default(cuid())
   serviceId  String
-  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   url        String
   storageKey String?
   alt        String?
   sortOrder  Int      @default(0)
   createdAt  DateTime @default(now())
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
   @@index([serviceId])
 }
 
 model ServiceAvailability {
-  id            String   @id @default(cuid())
-  serviceId     String
-  service       Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  dayOfWeek     Int
-  startTime     String
-  endTime       String
-  enabled       Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id        String   @id @default(cuid())
+  serviceId String
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
   @@index([serviceId, dayOfWeek, enabled])
 }
 
 model ServiceBooking {
-  id               String   @id @default(cuid())
-  reference        String   @unique
-  serviceId        String
-  service          Service  @relation(fields: [serviceId], references: [id])
-  userId           String
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  scheduledStart   DateTime
-  scheduledEnd     DateTime
-  status           String   @default("PENDING")
-  customerNotes    String?
-  staffNotes       String?
-  price            Float?
-  paymentStatus    String   @default("UNPAID")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  statusHistory    ServiceBookingStatusHistory[]
-  payments         ServicePayment[]
-  reviews          ServiceReview[]
-  assignedStaffId  String?
-  assignedStaff    StaffUser? @relation("ServiceAssignedStaff", fields: [assignedStaffId], references: [id], onDelete: SetNull)
+  id              String                        @id @default(cuid())
+  reference       String                        @unique
+  serviceId       String
+  userId          String
+  scheduledStart  DateTime
+  scheduledEnd    DateTime
+  status          String                        @default("PENDING")
+  customerNotes   String?
+  staffNotes      String?
+  price           Float?
+  paymentStatus   String                        @default("UNPAID")
+  createdAt       DateTime                      @default(now())
+  updatedAt       DateTime                      @updatedAt
+  assignedStaffId String?
+  assignedStaff   StaffUser?                    @relation("ServiceAssignedStaff", fields: [assignedStaffId], references: [id])
+  service         Service                       @relation(fields: [serviceId], references: [id])
+  user            User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  statusHistory   ServiceBookingStatusHistory[]
+  payments        ServicePayment[]
+  reviews         ServiceReview[]
+
   @@index([serviceId, scheduledStart, scheduledEnd])
   @@index([userId, scheduledStart])
   @@index([status])
 }
 
 model ServiceBookingStatusHistory {
-  id         String         @id @default(cuid())
-  bookingId  String
-  booking    ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  status     String
-  note       String?
-  actor      String
-  createdAt  DateTime       @default(now())
+  id        String         @id @default(cuid())
+  bookingId String
+  status    String
+  note      String?
+  actor     String
+  createdAt DateTime       @default(now())
+  booking   ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
   @@index([bookingId, createdAt])
 }
 
 model ServicePayment {
-  id                String @id @default(cuid())
+  id                String         @id @default(cuid())
   bookingId         String
-  booking           ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   provider          String
   method            String?
-  status            String @default("PENDING")
+  status            String         @default("PENDING")
   amount            Float
   phone             String?
   providerReference String?
   checkoutRequestId String?
   failureReason     String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  booking           ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
   @@index([bookingId, status])
 }
 
 model ServiceReview {
-  id         String @id @default(cuid())
-  bookingId  String
-  booking    ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  staffId    String?
-  staff      StaffUser? @relation(fields: [staffId], references: [id], onDelete: SetNull)
-  rating     Int
-  comment    String?
-  status     String @default("PUBLISHED")
-  createdAt  DateTime @default(now())
+  id        String         @id @default(cuid())
+  bookingId String
+  userId    String
+  staffId   String?
+  rating    Int
+  comment   String?
+  status    String         @default("PUBLISHED")
+  createdAt DateTime       @default(now())
+  booking   ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  staff     StaffUser?     @relation(fields: [staffId], references: [id])
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([bookingId, userId])
   @@index([userId])
 }
 
 model Setting {
   key   String @id
-  value String // JSON string
+  value String
 }
