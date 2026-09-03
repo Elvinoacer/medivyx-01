@@ -20,6 +20,7 @@ export function ServicesView() {
   const [query, setQuery] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [bookingService, setBookingService] = useState<ServiceDTO | null>(null)
+  const [paymentBooking, setPaymentBooking] = useState<ServiceBookingDTO | null>(null)
   const [bookings, setBookings] = useState<ServiceBookingDTO[]>([])
 
   useEffect(() => {
@@ -67,9 +68,38 @@ export function ServicesView() {
        ))}</div>}
       {bookings.length > 0 ? <section className="mt-12"><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Your bookings</p><h2 className="mt-1 text-2xl font-bold">Upcoming & recent care</h2></div><div className="grid gap-3 lg:grid-cols-2">{bookings.slice(0,6).map((b) => <Card key={b.id}><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">{b.serviceName}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(b.scheduledStart).toLocaleString("en-KE",{dateStyle:"medium",timeStyle:"short",timeZone:"Africa/Nairobi"})}</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">{b.status.replaceAll("_"," ")}</span></CardContent></Card>)}</div></section> : null}
       <div className="mt-10 rounded-2xl border bg-muted/30 p-5 sm:p-7"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-bold">Need help choosing a service?</p><p className="mt-1 text-sm text-muted-foreground">Talk to the Sphere Pharmacy team and we will help you choose the right service.</p></div><a href={waLink("Hello Sphere Pharmacy! I need help choosing a service.")} target="_blank" rel="noreferrer"><Button className="rounded-full"><MessageCircle className="h-4 w-4"/> Talk to our team</Button></a></div></div>
-      {bookingService ? <BookingDialog service={bookingService} onClose={() => setBookingService(null)} onCreated={(b) => { setBookings((prev) => [b, ...prev]); setBookingService(null) }} /> : null}
+      {paymentBooking ? <ServicePaymentDialog booking={paymentBooking} onClose={() => setPaymentBooking(null)} /> : null}
+      {bookingService ? <BookingDialog service={bookingService} onClose={() => setBookingService(null)} onCreated={(b) => { setBookings((prev) => [b, ...prev]); setBookingService(null); if (b.price && b.price > 0) setPaymentBooking(b) }} /> : null}
     </div>
   )
+}
+}
+
+function ServicePaymentDialog({ booking, onClose }: { booking: ServiceBookingDTO; onClose: () => void }) {
+  const [phone, setPhone] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const [paid, setPaid] = useState(false)
+  async function payMpesa() {
+    setBusy(true); setMessage(null)
+    try {
+      const res = await servicePaymentsApi.mpesa(booking.id, phone)
+      setMessage(res.message + " You can close this window after authorising the prompt.")
+      const poll = window.setInterval(async () => {
+        try {
+          const status = await servicePaymentsApi.status(booking.id)
+          if (status.paymentStatus === "SUCCESS") { window.clearInterval(poll); setPaid(true); setBusy(false) }
+        } catch {}
+      }, 3000)
+      window.setTimeout(() => { window.clearInterval(poll); setBusy(false) }, 120000)
+    } catch (err) { setMessage(err instanceof Error ? err.message : "Could not start M-Pesa payment."); setBusy(false) }
+  }
+  async function payCard() {
+    setBusy(true); setMessage(null)
+    try { const res = await servicePaymentsApi.card(booking.id); window.location.href = res.checkoutUrl }
+    catch (err) { setMessage(err instanceof Error ? err.message : "Could not start card payment."); setBusy(false) }
+  }
+  return <Dialog open onOpenChange={(open) => !open && onClose()}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>Complete service payment</DialogTitle><DialogDescription>{booking.serviceName} · KSh {(booking.price || 0).toLocaleString()}</DialogDescription></DialogHeader>{paid ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center text-emerald-800"><CheckCircle2 className="mx-auto h-10 w-10" /><p className="mt-2 font-bold">Payment received</p><p className="mt-1 text-sm">Your booking remains confirmed with reference {booking.reference}.</p></div> : <div className="space-y-5"><div className="rounded-xl bg-muted/50 p-4"><p className="text-sm font-semibold">Choose how to pay</p><p className="mt-1 text-xs text-muted-foreground">You can also choose to pay when you arrive.</p></div><div><label className="text-sm font-semibold">M-Pesa number</label><Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0712 345 678" className="mt-2" /></div><div className="grid gap-2 sm:grid-cols-2"><Button onClick={() => void payMpesa()} disabled={busy || !phone}>Pay with M-Pesa</Button><Button variant="outline" onClick={() => void payCard()} disabled={busy}>Pay by card</Button></div><Button variant="ghost" className="w-full" onClick={async () => { setBusy(true); try { await servicePaymentsApi.payAtPharmacy(booking.id); onClose() } catch (err) { setMessage(err instanceof Error ? err.message : "Could not save payment preference.") } finally { setBusy(false) } }}>Pay at pharmacy</Button>{message ? <p className="text-sm text-muted-foreground">{message}</p> : null}</div>}<DialogFooter><Button variant="outline" onClick={onClose} disabled={busy}>Close</Button></DialogFooter></DialogContent></Dialog>
 }
 
 function BookingDialog({ service, onClose, onCreated }: { service: ServiceDTO; onClose: () => void; onCreated: (booking: import("@/lib/types").ServiceBookingDTO) => void }) {
