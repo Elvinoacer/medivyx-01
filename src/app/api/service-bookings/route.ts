@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { requireCustomer } from "@/lib/session"
+import { notifyServiceBooking } from "@/lib/notify"
+import { notifyStaff } from "@/lib/notify"
 
 function ref(){return "SPB-"+Math.random().toString(36).slice(2,8).toUpperCase()}
 function startOfDay(date:Date){const d=new Date(date);d.setHours(0,0,0,0);return d}
@@ -40,5 +42,26 @@ export async function POST(request:Request){
  const conflict=await db.serviceBooking.findFirst({where:{serviceId:service.id,status:{notIn:["CANCELLED","REJECTED","NO_SHOW"]},scheduledStart:{lt:end},scheduledEnd:{gt:start}}})
  if(conflict)return NextResponse.json({error:"That slot was just booked. Please choose another time."},{status:409})
  const created=await db.serviceBooking.create({data:{reference:ref(),serviceId:service.id,userId:session!.userId!,scheduledStart:start,scheduledEnd:end,status:"PENDING",customerNotes:body.customerNotes?String(body.customerNotes):null,price:service.price,paymentStatus:"UNPAID",statusHistory:{create:{status:"PENDING",actor:"CUSTOMER"}}},include:{service:true,statusHistory:{orderBy:{createdAt:"asc"}}}})
+ await notifyServiceBooking({
+  userId: session!.userId!,
+  customerName: session!.user?.name,
+  customerEmail: session!.user?.email,
+  reference: created.reference,
+  serviceName: service.name,
+  status: "PENDING",
+  message: `We received your booking request for ${service.name}. Our pharmacy team will confirm the appointment shortly.`,
+  start: created.scheduledStart,
+  end: created.scheduledEnd,
+  bookingId: created.id,
+ })
+ await notifyStaff({
+  roles: ["ADMIN","PHARMACIST","STAFF"],
+  event: "SERVICE_BOOKING",
+  title: "New care service booking",
+  message: `${session!.user?.name || "A customer"} requested ${service.name} for ${created.scheduledStart.toLocaleString("en-KE",{dateStyle:"medium",timeStyle:"short",timeZone:"Africa/Nairobi"})}.`,
+  link: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/#admin`,
+  metadata: { bookingId: created.id, reference: created.reference, serviceName: service.name },
+  details: { Reference: created.reference, Service: service.name },
+ })
  return NextResponse.json({...created,serviceName:service.name,statusHistory:created.statusHistory.map((h:any)=>({...h,createdAt:h.createdAt.toISOString()})),createdAt:created.createdAt.toISOString(),updatedAt:created.updatedAt.toISOString(),scheduledStart:created.scheduledStart.toISOString(),scheduledEnd:created.scheduledEnd.toISOString(),customerName:session!.user?.name,customerPhone:session!.user?.phone,customerEmail:session!.user?.email},{status:201})
 }
