@@ -394,15 +394,28 @@ export const settingsApi = {
   },
 }
 
+type ServiceWritePayload = Omit<Partial<ServiceDTO>, "images"> & {
+  images?: { url: string; storageKey?: string | null; alt?: string | null }[]
+}
+
 export const servicesApi = {
   list: (includeInactive = false) => req<ServiceDTO[]>(`/api/services${includeInactive ? "?includeInactive=true" : ""}`),
   get: (id: string) => req<ServiceDTO>(`/api/services/${id}`),
-  create: (payload: Partial<ServiceDTO>) => req<ServiceDTO>("/api/services", { method: "POST", body: JSON.stringify(payload) }),
-  update: (id: string, payload: Partial<ServiceDTO>) => req<ServiceDTO>(`/api/services/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  create: (payload: ServiceWritePayload) => req<ServiceDTO>("/api/services", { method: "POST", body: JSON.stringify(payload) }),
+  update: (id: string, payload: ServiceWritePayload) => req<ServiceDTO>(`/api/services/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   remove: (id: string) => req<{ ok: boolean }>(`/api/services/${id}`, { method: "DELETE" }),
 }
 
-export const servicesAdminApi = { list: () => req<import("./types").ServiceDTO[]>("/api/admin/service-staff") }
+export const servicesAdminApi = {
+  list: () => req<import("./types").ServiceDTO[]>("/api/admin/service-staff"),
+  availability: (serviceId: string) =>
+    req<import("./types").ServiceAvailabilityDTO[]>(`/api/services/${serviceId}/availability`),
+  saveAvailability: (serviceId: string, rows: import("./types").ServiceAvailabilityDTO[]) =>
+    req<import("./types").ServiceAvailabilityDTO[]>(`/api/services/${serviceId}/availability`, {
+      method: "PUT",
+      body: JSON.stringify({ availability: rows }),
+    }),
+}
 
 export const serviceBookingsApi = {
   slots: (serviceId: string, date: string) =>

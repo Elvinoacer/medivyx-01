@@ -15,9 +15,9 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon: Icon, title, description, action, className }: EmptyStateProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center rounded-xl border border-dashed bg-muted/30 px-6 py-14 text-center", className)}>
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-        <Icon className="h-7 w-7 text-muted-foreground" />
+    <div className={cn("premium-empty flex flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/30 px-6 py-14 text-center", className)}>
+      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+        <Icon className="h-7 w-7 text-primary" />
       </div>
       <h3 className="text-base font-semibold">{title}</h3>
       {description ? <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">{description}</p> : null}
@@ -42,9 +42,9 @@ export function SectionHeader({
   className?: string
 }) {
   return (
-    <div className={cn("mb-5 flex flex-wrap items-end justify-between gap-3", className)}>
+    <div className={cn("premium-section-heading mb-6 flex flex-wrap items-end justify-between gap-3", className)}>
       <div>
-        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">{title}</h2>
+        <h2 className="text-2xl font-extrabold tracking-[-0.025em] sm:text-3xl">{title}</h2>
         {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
       </div>
       {action}

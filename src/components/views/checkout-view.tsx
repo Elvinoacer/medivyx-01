@@ -139,6 +139,7 @@ export function CheckoutView() {
 
   const zones = (settings?.zones ?? DELIVERY_DEFAULTS.zones).map((z) => ({ name: z.name.trim(), fee: z.fee }))
   const freeOver = settings?.freeOver ?? DELIVERY_DEFAULTS.freeOver
+  const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0)
 
   // ---------- delivery fee ----------
   const [feeInfo, setFeeInfo] = useState<{ fee: number; freeOver: number | null; mode: string } | null>(null)
@@ -160,9 +161,8 @@ export function CheckoutView() {
     return () => {
       cancelled = true
     }
-  }, [fulfillment, zone])
+  }, [fulfillment, zone, subtotal, deliveryCoordinates?.latitude, deliveryCoordinates?.longitude])
 
-  const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0)
   const rxCount = lines.filter((l) => l.requiresPrescription).length
   const hasRx = rxCount > 0
   const fallbackFee = zone ? (zones.find((z) => z.name.toLowerCase() === zone.toLowerCase())?.fee ?? DELIVERY_DEFAULTS.flatFee) : null

@@ -606,12 +606,12 @@ export function AccountView() {
       : ZONE_NAMES
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 pb-12">
+    <div className="mx-auto max-w-6xl px-4 py-8 pb-12">
       <Toaster position="bottom-left" richColors closeButton />
 
       <SectionHeader
-        title="My account"
-        subtitle="Profile, addresses, notifications and security."
+        title="Your health, orders and preferences"
+        subtitle="Manage the details that make every Sphere Pharmacy visit faster and more personal."
       />
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -1222,7 +1222,7 @@ export function AccountView() {
                   onClick={async () => {
                     setMarkingRead(true)
                     try {
-                      await notificationsApi.markRead()
+                      await notificationsApi.markAllRead()
                       await reloadNotifications()
                       toast.success("All notifications marked as read")
                     } catch (err) {
@@ -1401,7 +1401,6 @@ export function AccountView() {
                   value={addressForm.area || undefined}
                   onValueChange={(v) => setAddressForm({ ...addressForm, area: v })}
                   disabled={savingAddress}
-                  modal={false}
                 >
                   <SelectTrigger id="addr-area" className="w-full">
                     <SelectValue placeholder="Choose your delivery zone" />

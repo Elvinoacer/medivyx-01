@@ -23,7 +23,7 @@ import { toast } from "sonner"
 import {
   Search, ShoppingCart, Phone, Menu, X, Home, Pill, Package, Upload, User,
   LayoutDashboard, Trash2, Minus, Plus, ChevronRight, MapPin, Loader2,
-  Heart, Sun, Moon, Tag
+  Heart, HeartPulse, Sun, Moon, Tag
 } from "lucide-react"
 
 export function Header() {
@@ -351,16 +351,16 @@ export function WishSheet() {
           <ScrollArea className="scroll-slim flex-1 p-4">
             <div className="flex flex-col gap-3">
               {items.map((w) => (
-                <div key={w.product.id} className="flex items-center gap-3 rounded-xl border bg-card p-3">
-                  <ProductImage src={w.product.image} alt={w.product.name} className="h-14 w-14 shrink-0 rounded-lg bg-muted object-cover" />
+                <div key={w.productId} className="flex items-center gap-3 rounded-xl border bg-card p-3">
+                  <ProductImage src={w.image} alt={w.name} className="h-14 w-14 shrink-0 rounded-lg bg-muted object-cover" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{w.product.name}</p>
-                    <p className="text-xs text-muted-foreground">{w.product.brand ?? "Sphere Pharmacy"}</p>
-                    <p className="mt-0.5 text-sm font-bold text-primary">{formatKES(w.product.price)}</p>
+                    <p className="truncate text-sm font-semibold">{w.name}</p>
+                    <p className="text-xs text-muted-foreground">{w.brand ?? "Sphere Pharmacy"}</p>
+                    <p className="mt-0.5 text-sm font-bold text-primary">{formatKES(w.price)}</p>
                   </div>
                   <div className="flex shrink-0 flex-col gap-1">
-                    <Button size="sm" onClick={() => add(w.product)} className="h-8 px-3">Add to cart</Button>
-                    <Button variant="ghost" size="sm" onClick={() => remove(w.product.id)} className="h-8 px-3 text-xs text-destructive">Remove</Button>
+                    <Button size="sm" onClick={() => add({ productId: w.productId, name: w.name, price: w.price, image: w.image, requiresPrescription: w.requiresPrescription, packSize: w.packSize, stockStatus: "IN_STOCK" })} className="h-8 px-3">Add to cart</Button>
+                    <Button variant="ghost" size="sm" onClick={() => remove(w.productId)} className="h-8 px-3 text-xs text-destructive">Remove</Button>
                   </div>
                 </div>
               ))}
@@ -377,10 +377,10 @@ export function WishSheet() {
 function CartSheet() {
   const lines = useCartStore((s) => s.lines)
   const add = useCartStore((s) => s.add)
-  const dec = useCartStore((s) => s.dec)
+  const setQty = useCartStore((s) => s.setQty)
   const remove = useCartStore((s) => s.remove)
   const navigate = useAppStore((s) => s.navigate)
-  const total = lines.reduce((sum, l) => sum + l.product.price * l.qty, 0)
+  const total = lines.reduce((sum, l) => sum + l.price * l.qty, 0)
 
   return (
     <Sheet>
@@ -408,18 +408,18 @@ function CartSheet() {
           <ScrollArea className="scroll-slim flex-1 p-4">
             <div className="flex flex-col gap-3">
               {lines.map((line) => (
-                <div key={line.product.id} className="flex items-center gap-3 rounded-xl border bg-card p-3">
-                  <ProductImage src={line.product.image} alt={line.product.name} className="h-14 w-14 shrink-0 rounded-lg bg-muted object-cover" />
+                <div key={line.productId} className="flex items-center gap-3 rounded-xl border bg-card p-3">
+                  <ProductImage src={line.image} alt={line.name} className="h-14 w-14 shrink-0 rounded-lg bg-muted object-cover" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{line.product.name}</p>
-                    <p className="text-xs text-muted-foreground">{line.product.brand ?? "Sphere Pharmacy"}</p>
-                    <p className="mt-0.5 text-sm font-bold text-primary">{formatKES(line.product.price * line.qty)}</p>
+                    <p className="truncate text-sm font-semibold">{line.name}</p>
+                    <p className="text-xs text-muted-foreground">{line.packSize ?? "Sphere Pharmacy"}</p>
+                    <p className="mt-0.5 text-sm font-bold text-primary">{formatKES(line.price * line.qty)}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => dec(line.product.id)} aria-label={`Decrease ${line.product.name}`}><Minus className="h-3.5 w-3.5" /></Button>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQty(line.productId, line.qty - 1)} aria-label={`Decrease ${line.name}`}><Minus className="h-3.5 w-3.5" /></Button>
                     <span className="min-w-7 text-center text-sm">{line.qty}</span>
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => add(line.product)} aria-label={`Increase ${line.product.name}`}><Plus className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(line.product.id)} aria-label={`Remove ${line.product.name}`}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQty(line.productId, line.qty + 1)} aria-label={`Increase ${line.name}`}><Plus className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(line.productId)} aria-label={`Remove ${line.name}`}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               ))}

@@ -3,4 +3,43 @@
 @media (max-width:800px){.reference-home-shell{background-image:linear-gradient(180deg,rgba(239,248,244,.72),rgba(248,251,249,.96)),url('/images/hero_bg_mobile.webp')}.reference-topbar{display:none}.reference-container{width:calc(100% - 28px)}.reference-mainbar{height:72px;margin-top:12px;border-radius:19px;padding:0 12px}.reference-logo{width:175px}.reference-header-search,.reference-actions{display:none}.reference-nav{display:none}.reference-hero-inner{display:flex;flex-direction:column;gap:28px;padding-top:28px}.reference-hero-copy{padding:0;text-align:center;max-width:650px}.reference-open-pill{font-size:12px}.reference-hero-copy h1{font-size:48px;line-height:1.02;margin-top:22px}.reference-hero-description{font-size:16px;margin-top:22px}.reference-hero-search{margin:22px auto 0;width:100%;height:55px}.reference-hero-ctas{justify-content:center;flex-wrap:wrap}.reference-contact-row{justify-content:center}.reference-hero-visual{width:100%;min-height:390px}.reference-visual-frame{height:390px;margin:0}.reference-pharmacist-card{left:12px;top:12px}.reference-delivery-card{right:12px;bottom:12px}.reference-glass-stack{display:none}.reference-trust-strip{height:auto;grid-template-columns:1fr 1fr;margin-top:18px;border-radius:19px}.reference-trust-strip>div{min-height:85px;padding:15px 18px;border-bottom:1px solid rgba(68,98,83,.15)}.reference-trust-strip>div:nth-child(2){border-right:0}.reference-trust-strip>div:nth-child(3),.reference-trust-strip>div:nth-child(4){border-bottom:0}.reference-home-shell-compact .reference-header{padding-bottom:4px}}
 @media (prefers-reduced-motion:reduce){.reference-home-shell *{scroll-behavior:auto}}
 
+/* Premium navigation and hero refinements */
+.reference-mobile-actions{display:none;margin-left:auto;align-items:center;gap:2px}
+.reference-home-shell{background-color:#f1f7f3}
+.reference-header{position:sticky;top:0;z-index:40;padding-bottom:2px;background:linear-gradient(180deg,rgba(235,246,241,.94),rgba(235,246,241,.72) 80%,transparent);backdrop-filter:blur(16px) saturate(1.2)}
+.reference-mainbar{border-color:rgba(255,255,255,.9);background:rgba(253,255,254,.72);box-shadow:0 18px 55px -34px rgba(15,68,47,.55)}
+.reference-nav-inner{background:rgba(253,255,254,.62);box-shadow:0 14px 45px -36px rgba(15,68,47,.5)}
+.reference-nav-inner>button{border-radius:999px;font-weight:650}
+.reference-nav-active{background:#176b49;box-shadow:0 7px 20px rgba(23,107,73,.2)}
+.reference-search-button,.reference-primary-cta{background:#176b49}
+.reference-hero-copy h1{font-weight:780;color:#123a2d}
+.reference-hero-copy h1 span{color:#176b49}
+.reference-hero-description{color:#455f56}
+.reference-visual-frame{border-color:rgba(255,255,255,.95);box-shadow:0 35px 80px -46px rgba(15,74,50,.62)}
+.reference-trust-strip{box-shadow:0 28px 65px -48px rgba(15,74,50,.58)}
+
+@media (max-width:800px){
+  .reference-mainbar{height:68px;margin-top:8px;border-radius:18px;padding:0 8px 0 13px}
+  .reference-logo{width:158px}
+  .reference-mobile-actions{display:flex}
+  .reference-mobile-actions button{width:38px;height:38px;border-radius:12px}
+  .reference-mobile-actions .reference-badge{right:-3px;top:-5px}
+}
+@media (max-width:480px){
+  .reference-logo{width:136px}
+  .reference-mobile-actions{gap:0}
+  .reference-mobile-actions button{width:35px;height:35px}
+  .reference-hero-copy h1{font-size:42px}
+  .reference-hero-ctas{display:grid}
+  .reference-hero-ctas button{width:100%}
+  .reference-contact-row{gap:12px;flex-wrap:wrap}
+  .reference-trust-strip{grid-template-columns:1fr}
+  .reference-trust-strip>div{border-right:0!important;border-bottom:1px solid rgba(68,98,83,.15)!important}
+  .reference-trust-strip>div:last-child{border-bottom:0!important}
+  .reference-hero-visual{min-height:330px}
+  .reference-visual-frame{height:330px}
+  .reference-glass-card{padding:9px 11px}
+  .reference-glass-card small{display:none}
+}
+
 

@@ -14,6 +14,7 @@ export interface ResolvedSession {
   staffId: string | null
   staffName: string | null
   staffRole: Role | null
+  user: UserDTO | null
 }
 
 /** Read the current session from the cookie. Returns null if none/expired. */
@@ -30,6 +31,7 @@ export async function getSession(): Promise<ResolvedSession | null> {
     staffId: session.staffId,
     staffName: session.staff?.name ?? null,
     staffRole: (session.staff?.role as Role) ?? null,
+    user: session.user ? toUserDTO(session.user) : null,
   }
 }
 

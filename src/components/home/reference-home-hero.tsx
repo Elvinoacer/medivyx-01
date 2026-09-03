@@ -11,7 +11,7 @@ import { PHARMACY, DELIVERY_DEFAULTS, waLink } from "@/lib/constants"
 import { formatKES, isOpenNow } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
-import { Search, Phone, MessageCircle, ShoppingCart, User, MapPin, Clock, Truck, ShieldCheck, Upload, ArrowRight, Sun, Moon } from "lucide-react"
+import { Search, Phone, MessageCircle, ShoppingCart, User, MapPin, Clock, Truck, ShieldCheck, Upload, ArrowRight, Sun, Moon, CreditCard, UsersRound } from "lucide-react"
 import { ServicesShowcase } from "@/components/home/services-showcase"
 
 export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
@@ -72,6 +72,11 @@ export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
             </Button>
             <Button variant="outline" className="reference-action-button" onClick={() => navigate("account")}><User className="h-4 w-4" />Account</Button>
           </div>
+          <div className="reference-mobile-actions">
+            <Button variant="ghost" size="icon" onClick={() => navigate("catalog")} aria-label="Search the catalogue"><Search className="h-5 w-5" /></Button>
+            <Button variant="ghost" size="icon" className="relative" onClick={() => navigate("cart")} aria-label={`Open cart with ${cartCount} items`}><ShoppingCart className="h-5 w-5" />{cartCount > 0 ? <span className="reference-badge">{cartCount}</span> : null}</Button>
+            <Button variant="ghost" size="icon" onClick={() => navigate("account")} aria-label="Open your account"><User className="h-5 w-5" /></Button>
+          </div>
         </div>
         <nav className="reference-nav">
           <div className="reference-container reference-nav-inner">
@@ -121,9 +126,9 @@ export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
         </div>
         <div className="reference-trust-strip reference-container">
           <div><Clock className="h-6 w-6" /><span><strong>Pickup ready in ~2 hours</strong><small>Fast &amp; convenient</small></span></div>
-          <div><span className="reference-payment-icon">▣</span><span><strong>M-Pesa · card · cash</strong><small>Multiple secure options</small></span></div>
+          <div><CreditCard className="h-6 w-6" /><span><strong>M-Pesa · card · cash</strong><small>Multiple secure options</small></span></div>
           <div><MessageCircle className="h-6 w-6" /><span><strong>WhatsApp ordering</strong><small>Easy. Quick. Reliable.</small></span></div>
-          <div><span className="reference-people-icon">♧</span><span><strong>Trusted by your community</strong><small>Local care you can count on</small></span></div>
+          <div><UsersRound className="h-6 w-6" /><span><strong>Trusted by your community</strong><small>Local care you can count on</small></span></div>
         </div>
       </section>
 
