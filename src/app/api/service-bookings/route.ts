@@ -5,7 +5,7 @@ import { notifyServiceBooking } from "@/lib/notify"
 import { notifyStaff } from "@/lib/notify"
 
 function ref(){return "SPB-"+Math.random().toString(36).slice(2,8).toUpperCase()}
-function startOfDay(date:Date){const d=new Date(date);d.setHours(0,0,0,0);return d}
+function nairobiParts(date:Date){const parts=new Intl.DateTimeFormat("en-KE",{timeZone:"Africa/Nairobi",weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(date);const get=(type:string)=>parts.find(p=>p.type===type)?.value||"";const day=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(get("weekday"));return {day,minutes:Number(get("hour"))*60+Number(get("minute"))}}
 
 export async function GET(){
  const {session,error}=await requireCustomer()
@@ -33,10 +33,11 @@ export async function POST(request:Request){
  if(Number.isNaN(start.getTime())||Number.isNaN(end.getTime())||end<=start)return NextResponse.json({error:"Invalid appointment time."},{status:400})
  if(end.getTime()-start.getTime()!==service.durationMinutes*60000)return NextResponse.json({error:"Appointment duration does not match the selected service."},{status:400})
  if(start<new Date())return NextResponse.json({error:"Please choose a future appointment."},{status:400})
- if(startOfDay(start).getTime()!==startOfDay(end).getTime())return NextResponse.json({error:"Appointment must fit within one day."},{status:400})
- const day=start.getDay()
- const mins=start.getHours()*60+start.getMinutes()
- const endMins=end.getHours()*60+end.getMinutes()
+ const startLocal=nairobiParts(start), endLocal=nairobiParts(end)
+ if(startLocal.day!==endLocal.day)return NextResponse.json({error:"Appointment must fit within one Nairobi day."},{status:400})
+ const day=startLocal.day
+ const mins=startLocal.minutes
+ const endMins=endLocal.minutes
  const allowed=service.availability.some((r:any)=>r.dayOfWeek===day&&mins>=Number(r.startTime.slice(0,2))*60+Number(r.startTime.slice(3))&&endMins<=Number(r.endTime.slice(0,2))*60+Number(r.endTime.slice(3)))
  if(!allowed)return NextResponse.json({error:"That time is outside service availability."},{status:409})
  const conflict=await db.serviceBooking.findFirst({where:{serviceId:service.id,status:{notIn:["CANCELLED","REJECTED","NO_SHOW"]},scheduledStart:{lt:end},scheduledEnd:{gt:start}}})
