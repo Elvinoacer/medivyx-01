@@ -22,7 +22,7 @@ function nairobiDate(base:Date,minutes:number){
 export async function GET(request:Request,ctx:{params:Promise<{id:string}>}){
   const {id}=await ctx.params
   const date=parseDate(new URL(request.url).searchParams.get("date")||"")
-  if(!date)return NextResponse.json({error:"A valid date is required (YYYY-MM-DD)."),status:400})
+  if(!date)return NextResponse.json({error:"A valid date is required (YYYY-MM-DD)."},{status:400})
   const service=await db.service.findUnique({where:{id},include:{availability:{where:{enabled:true},orderBy:{startTime:"asc"}}}})
   if(!service||!service.active)return NextResponse.json({error:"Service not found."},{status:404})
   const rules=service.availability.filter(r=>r.dayOfWeek===date.getUTCDay())
