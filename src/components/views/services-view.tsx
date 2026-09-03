@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { ArrowRight, CalendarDays, CheckCircle2, Clock3, Loader2, MessageCircle, Search, ShieldCheck, Sparkles } from "lucide-react"
+import { ArrowRight, CalendarDays, CheckCircle2, Clock3, Loader2, MessageCircle, Search, ShieldCheck, Sparkles, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Toaster } from "@/components/ui/sonner"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { ApiError, serviceBookingsApi, servicePaymentsApi, servicesApi } from "@/lib/api-client"
+import { ApiError, serviceBookingsApi, servicePaymentsApi, serviceReviewsApi, servicesApi } from "@/lib/api-client"
 import { waLink } from "@/lib/constants"
 import type { ServiceBookingDTO, ServiceDTO } from "@/lib/types"
 import { useAppStore } from "@/store/use-app-store"
@@ -22,6 +22,7 @@ export function ServicesView() {
   const [bookingService, setBookingService] = useState<ServiceDTO | null>(null)
   const [paymentBooking, setPaymentBooking] = useState<ServiceBookingDTO | null>(null)
   const [bookings, setBookings] = useState<ServiceBookingDTO[]>([])
+  const [reviewBooking, setReviewBooking] = useState<ServiceBookingDTO | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -66,12 +67,28 @@ export function ServicesView() {
            <CardContent className="p-5"><h3 className="text-lg font-bold">{service.name}</h3><p className="mt-2 min-h-12 text-sm leading-5 text-muted-foreground">{service.shortDescription||service.description||"Care service available from Sphere Pharmacy."}</p><div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground"><span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1"><Clock3 className="h-3.5 w-3.5"/> {service.durationMinutes} min</span><span className="rounded-full bg-muted px-2.5 py-1">{service.priceLabel||(service.price!=null?"KSh "+service.price.toLocaleString():"Contact us")}</span></div><div className="mt-5 flex items-center justify-between gap-2"><a href={waLink("Hello Sphere Pharmacy! I would like more information about "+service.name+".")} target="_blank" rel="noreferrer"><Button variant="outline" size="sm" className="rounded-full">Ask</Button></a><Button size="sm" className="gap-1.5 rounded-full" onClick={() => setBookingService(service)}><CalendarDays className="h-3.5 w-3.5"/> Book</Button></div></CardContent>
          </Card>
        ))}</div>}
-      {bookings.length > 0 ? <section className="mt-12"><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Your bookings</p><h2 className="mt-1 text-2xl font-bold">Upcoming & recent care</h2></div><div className="grid gap-3 lg:grid-cols-2">{bookings.slice(0,6).map((b) => <Card key={b.id}><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">{b.serviceName}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(b.scheduledStart).toLocaleString("en-KE",{dateStyle:"medium",timeStyle:"short",timeZone:"Africa/Nairobi"})}</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">{b.status.replaceAll("_"," ")}</span></CardContent></Card>)}</div></section> : null}
+      {bookings.length > 0 ? <section className="mt-12"><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Your bookings</p><h2 className="mt-1 text-2xl font-bold">Upcoming & recent care</h2></div><div className="grid gap-3 lg:grid-cols-2">{bookings.slice(0,6).map((b) => <Card key={b.id}><CardContent className="flex flex-col gap-3 p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">{b.serviceName}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(b.scheduledStart).toLocaleString("en-KE",{dateStyle:"medium",timeStyle:"short",timeZone:"Africa/Nairobi"})}</p><p className="mt-1 text-xs text-muted-foreground">{b.reference}</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">{b.status.replaceAll("_"," ")}</span></div><div className="flex flex-wrap justify-end gap-2">{b.price && b.price>0 && b.paymentStatus!=="PAID" && b.status!=="CANCELLED" && b.status!=="REJECTED" ? <Button size="sm" variant="outline" className="rounded-full" onClick={()=>setPaymentBooking(b)}>Pay now</Button> : null}{b.status==="COMPLETED" ? <Button size="sm" variant="outline" className="rounded-full" onClick={()=>setReviewBooking(b)}><Star className="h-3.5 w-3.5"/> Review</Button> : null}</div></CardContent></Card>)}</div></section> : null}
       <div className="mt-10 rounded-2xl border bg-muted/30 p-5 sm:p-7"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-bold">Need help choosing a service?</p><p className="mt-1 text-sm text-muted-foreground">Talk to the Sphere Pharmacy team and we will help you choose the right service.</p></div><a href={waLink("Hello Sphere Pharmacy! I need help choosing a service.")} target="_blank" rel="noreferrer"><Button className="rounded-full"><MessageCircle className="h-4 w-4"/> Talk to our team</Button></a></div></div>
+      {reviewBooking ? <ServiceReviewDialog booking={reviewBooking} onClose={() => setReviewBooking(null)} onSubmitted={() => setReviewBooking(null)} /> : null}
       {paymentBooking ? <ServicePaymentDialog booking={paymentBooking} onClose={() => setPaymentBooking(null)} /> : null}
       {bookingService ? <BookingDialog service={bookingService} onClose={() => setBookingService(null)} onCreated={(b) => { setBookings((prev) => [b, ...prev]); setBookingService(null); if (b.price && b.price > 0) setPaymentBooking(b) }} /> : null}
     </div>
   )
+}
+
+function ServiceReviewDialog({ booking, onClose, onSubmitted }: { booking: ServiceBookingDTO; onClose: () => void; onSubmitted: () => void }) {
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  async function submit() {
+    if (!rating) { setError("Please choose a rating."); return }
+    setBusy(true); setError(null)
+    try { await serviceReviewsApi.create(booking.id, rating, comment.trim() || undefined); toast.success("Thank you for reviewing this service."); onSubmitted() }
+    catch (err) { setError(err instanceof Error ? err.message : "Could not submit your review.") }
+    finally { setBusy(false) }
+  }
+  return <Dialog open onOpenChange={(open)=>!open&&onClose()}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>Review {booking.serviceName}</DialogTitle><DialogDescription>Tell us how your completed visit went.</DialogDescription></DialogHeader><div className="space-y-5"><div className="flex justify-center gap-1.5">{[1,2,3,4,5].map((value)=><button key={value} type="button" onClick={()=>setRating(value)} aria-label={value+" stars"} className="rounded-full p-1.5"><Star className={value<=rating?"h-8 w-8 fill-current text-amber-500":"h-8 w-8 text-muted-foreground/40"}/></button>)}</div><Textarea rows={5} value={comment} onChange={e=>setComment(e.target.value)} placeholder="What did you like about the service? How could we improve?"/>{error?<p className="text-sm text-destructive">{error}</p>:null}</div><DialogFooter><Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button><Button onClick={()=>void submit()} disabled={busy||!rating}>{busy?<Loader2 className="h-4 w-4 animate-spin"/>:<Star className="h-4 w-4"/>}{busy?"Submitting…":"Submit review"}</Button></DialogFooter></DialogContent></Dialog>
 }
 
 function ServicePaymentDialog({ booking, onClose }: { booking: ServiceBookingDTO; onClose: () => void }) {
