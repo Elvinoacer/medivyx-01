@@ -353,3 +353,49 @@ export interface ServiceDTO {
   createdAt: string
   updatedAt: string
 }
+
+
+export interface ServiceAvailabilityDTO {
+  id: string
+  serviceId: string
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  enabled: boolean
+}
+
+export interface ServiceSlotDTO {
+  start: string
+  end: string
+  label: string
+}
+
+export type ServiceBookingStatus =
+  | "PENDING" | "CONFIRMED" | "RESCHEDULED" | "ARRIVED"
+  | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "NO_SHOW" | "REJECTED"
+
+export interface ServiceBookingDTO {
+  id: string
+  reference: string
+  serviceId: string
+  serviceName: string
+  userId: string
+  customerName?: string | null
+  customerPhone?: string | null
+  customerEmail?: string | null
+  scheduledStart: string
+  scheduledEnd: string
+  status: ServiceBookingStatus
+  customerNotes?: string | null
+  staffNotes?: string | null
+  price?: number | null
+  paymentStatus: string
+  createdAt: string
+  updatedAt: string
+  statusHistory: { id: string; status: string; note?: string | null; actor: string; createdAt: string }[]
+}
+
+export interface ServiceAvailabilityResponse {
+  service: ServiceDTO
+  availability: ServiceAvailabilityDTO[]
+}
