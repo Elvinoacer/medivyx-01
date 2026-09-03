@@ -13,6 +13,7 @@ import { ApiError, serviceBookingsApi, servicePaymentsApi, serviceReviewsApi, se
 import { waLink } from "@/lib/constants"
 import type { ServiceBookingDTO, ServiceDTO } from "@/lib/types"
 import { useAppStore } from "@/store/use-app-store"
+import { toast } from "sonner"
 
 export function ServicesView() {
   const navigate = useAppStore((s) => s.navigate)
