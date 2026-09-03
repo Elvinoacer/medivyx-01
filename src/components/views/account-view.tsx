@@ -255,7 +255,7 @@ export function AccountView() {
   const [addressesError, setAddressesError] = useState<string | null>(null)
   const [addressDialog, setAddressDialog] = useState<
     { mode: "add" } | { mode: "edit"; address: AddressDTO } | null
-  >(null)
+  >()
   const [addressForm, setAddressForm] = useState<AddressForm>(EMPTY_ADDRESS_FORM)
   const [addressError, setAddressError] = useState<string | null>(null)
   const [savingAddress, setSavingAddress] = useState(false)
@@ -312,6 +312,14 @@ export function AccountView() {
   // ---------- notification channel preferences (API-backed) ----------
   const [prefs, setPrefs] = useState<NotificationPrefsDTO | null>(null)
   const [prefsSaving, setPrefsSaving] = useState(false)
+
+  async function reloadPrefs() {
+    try {
+      setPrefs(await notificationsApi.prefs())
+    } catch {
+      setPrefs(null)
+    }
+  }
 
   async function toggleChannel(key: keyof NotificationPrefsDTO, label: string) {
     if (!prefs) return
@@ -399,7 +407,7 @@ export function AccountView() {
   }
 
   async function saveAddress() {
-    if (!addressDialog || savingAddress) return
+    if (!addressDialog) return
     const label = addressForm.label.trim()
     const text = addressForm.text.trim()
     if (!label) {
@@ -422,26 +430,17 @@ export function AccountView() {
         latitude: addressForm.latitude ?? undefined,
         longitude: addressForm.longitude ?? undefined,
       }
-      const saved =
-        addressDialog.mode === "add"
-          ? await addressesApi.create(payload)
-          : await addressesApi.update(addressDialog.address.id, payload)
-
-      // The API has confirmed the save. Update the visible list immediately,
-      // close the modal now, and refresh in the background for canonical ordering.
-      setAddresses((current) => {
-        const existing = current ?? []
-        const withoutSaved = existing.filter((address) => address.id !== saved.id)
-        return addressDialog.mode === "add" ? [saved, ...withoutSaved] : [saved, ...withoutSaved]
-      })
-      setAddressesError(null)
+      if (addressDialog.mode === "add") {
+        await addressesApi.create(payload)
+        toast.success("Address saved")
+      } else {
+        await addressesApi.update(addressDialog.address.id, payload)
+        toast.success("Address updated")
+      }
       setAddressDialog(null)
-      toast.success(addressDialog.mode === "edit" ? "Address updated successfully" : "Address saved successfully")
-      void reloadAddresses()
+      await reloadAddresses()
     } catch (err) {
-      const message = errMessage(err, "Couldn't save the address. Please try again.")
-      setAddressError(message)
-      toast.error(message)
+      setAddressError(errMessage(err, "Couldn't save the address. Please try again."))
     } finally {
       setSavingAddress(false)
     }
@@ -765,9 +764,12 @@ export function AccountView() {
         <Card className="overflow-hidden md:col-span-2">
           <CardContent className="p-0">
             <div className="grid md:grid-cols-[minmax(0,300px)_1fr]">
+              {/* balance panel */}
               <div className="relative flex flex-col gap-3 bg-gradient-to-br from-teal-600 via-teal-600 to-emerald-700 p-6 text-white">
                 <Sparkles className="absolute right-5 top-5 h-5 w-5 text-white/70" aria-hidden />
-                <p className="text-xs font-bold uppercase tracking-widest text-white/80">Sphere Points</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-white/80">
+                  Sphere Points
+                </p>
                 {loyalty === null ? (
                   <div className="space-y-2">
                     <Skeleton className="h-12 w-32 bg-white/20" />
@@ -779,48 +781,110 @@ export function AccountView() {
                       {loyalty.balance.toLocaleString()}
                       <span className="ml-1.5 text-lg font-bold text-white/70">pts</span>
                     </p>
-                    <p className="text-sm font-medium text-white/85">≈ {formatKES(loyalty.balance * loyalty.pointValue)} value at checkout</p>
+                    <p className="text-sm font-medium text-white/85">
+                      ≈ {formatKES(loyalty.balance * loyalty.pointValue)} value at checkout
+                    </p>
                     <dl className="mt-2 grid grid-cols-2 gap-3 border-t border-white/20 pt-3 text-sm">
                       <div>
-                        <dt className="flex items-center gap-1 text-xs text-white/70"><ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> Earned</dt>
+                        <dt className="flex items-center gap-1 text-xs text-white/70">
+                          <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> Earned
+                        </dt>
                         <dd className="font-bold tabular-nums">{loyalty.lifetimeEarned.toLocaleString()} pts</dd>
                       </div>
                       <div>
-                        <dt className="flex items-center gap-1 text-xs text-white/70"><ArrowDownRight className="h-3.5 w-3.5" aria-hidden /> Redeemed</dt>
+                        <dt className="flex items-center gap-1 text-xs text-white/70">
+                          <ArrowDownRight className="h-3.5 w-3.5" aria-hidden /> Redeemed
+                        </dt>
                         <dd className="font-bold tabular-nums">{loyalty.redeemedTotal.toLocaleString()} pts</dd>
                       </div>
                     </dl>
                   </>
                 )}
               </div>
+
+              {/* rules + history */}
               <div className="space-y-4 p-5 sm:p-6">
                 <div>
                   <h3 className="text-sm font-bold">How Sphere Points work</h3>
                   <ul className="mt-2 grid gap-1.5 text-sm text-muted-foreground sm:grid-cols-2">
-                    <li className="flex items-start gap-1.5"><Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />1 pt per KSh {LOYALTY.earnPerKES} spent</li>
-                    <li className="flex items-start gap-1.5"><Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />1 pt = KSh {LOYALTY.pointValue} at checkout</li>
-                    <li className="flex items-start gap-1.5"><Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />Redeem from {LOYALTY.minRedeem} pts</li>
-                    <li className="flex items-start gap-1.5"><Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />Max {LOYALTY.maxRedeemPct}% of an order</li>
+                    <li className="flex items-start gap-1.5">
+                      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
+                      1 pt per KSh {LOYALTY.earnPerKES} spent
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
+                      1 pt = KSh {LOYALTY.pointValue} at checkout
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
+                      Redeem from {LOYALTY.minRedeem} pts
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
+                      Max {LOYALTY.maxRedeemPct}% of an order
+                    </li>
                   </ul>
                 </div>
+
                 <div>
-                  <h3 className="flex items-center gap-1.5 text-sm font-bold"><History className="h-4 w-4 text-primary" aria-hidden />Points history</h3>
+                  <h3 className="flex items-center gap-1.5 text-sm font-bold">
+                    <History className="h-4 w-4 text-primary" aria-hidden />
+                    Points history
+                  </h3>
                   {loyalty === null ? (
-                    <div className="mt-2 space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}</div>
+                    <div className="mt-2 space-y-2">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                      ))}
+                    </div>
                   ) : loyalty.history.length === 0 ? (
-                    <p className="mt-2 rounded-lg border border-dashed bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">Your points activity will appear here as you earn and redeem.</p>
+                    <p className="mt-2 rounded-lg border border-dashed bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
+                      Your points activity will appear here as you earn and redeem.
+                    </p>
                   ) : (
-                    <ul className="scroll-slim mt-2 max-h-96 space-y-2 overflow-y-auto pr-1" aria-label="Sphere Points history">
+                    <ul
+                      className="scroll-slim mt-2 max-h-96 space-y-2 overflow-y-auto pr-1"
+                      aria-label="Sphere Points history"
+                    >
                       {loyalty.history.map((h) => (
                         <li key={h.orderId} className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
-                          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", h.pointsRedeemed > h.pointsEarned ? "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300")}>{h.pointsRedeemed > h.pointsEarned ? <ArrowDownRight className="h-4 w-4" aria-hidden /> : <ArrowUpRight className="h-4 w-4" aria-hidden />}</span>
+                          <span
+                            className={cn(
+                              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                              h.pointsRedeemed > h.pointsEarned
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
+                                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                            )}
+                          >
+                            {h.pointsRedeemed > h.pointsEarned ? (
+                              <ArrowDownRight className="h-4 w-4" aria-hidden />
+                            ) : (
+                              <ArrowUpRight className="h-4 w-4" aria-hidden />
+                            )}
+                          </span>
                           <div className="min-w-0 flex-1">
-                            <button className="truncate font-mono text-sm font-semibold hover:text-primary hover:underline" onClick={() => navigate("order", { orderId: h.orderId })} aria-label={`View order ${h.reference}`}>{h.reference}</button>
-                            <p className="text-xs text-muted-foreground">{formatDate(h.createdAt)} · {statusLabel(h.status)}</p>
+                            <button
+                              className="truncate font-mono text-sm font-semibold hover:text-primary hover:underline"
+                              onClick={() => navigate("order", { orderId: h.orderId })}
+                              aria-label={`View order ${h.reference}`}
+                            >
+                              {h.reference}
+                            </button>
+                            <p className="text-xs text-muted-foreground">
+                              {formatDate(h.createdAt)} · {statusLabel(h.status)}
+                            </p>
                           </div>
                           <div className="flex shrink-0 flex-col items-end gap-1">
-                            {h.pointsEarned > 0 ? <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">+{h.pointsEarned} pts</span> : null}
-                            {h.pointsRedeemed > 0 ? <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">−{h.pointsRedeemed} pts</span> : null}
+                            {h.pointsEarned > 0 ? (
+                              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                +{h.pointsEarned} pts
+                              </span>
+                            ) : null}
+                            {h.pointsRedeemed > 0 ? (
+                              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                                −{h.pointsRedeemed} pts
+                              </span>
+                            ) : null}
                           </div>
                         </li>
                       ))}
@@ -832,68 +896,587 @@ export function AccountView() {
           </CardContent>
         </Card>
 
+        {/* ---------- password ---------- */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base"><KeyRound className="h-4 w-4 text-primary" aria-hidden />Change password</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <KeyRound className="h-4 w-4 text-primary" aria-hidden />
+              Change password
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
-            <div className="space-y-2"><Label htmlFor="pw-current">Current password</Label><Input id="pw-current" type="password" autoComplete="current-password" value={pwForm.current} onChange={(e) => setPwForm({ ...pwForm, current: e.target.value })} disabled={savingPw} /></div>
-            <div className="space-y-2"><Label htmlFor="pw-next">New password</Label><Input id="pw-next" type="password" autoComplete="new-password" value={pwForm.next} onChange={(e) => setPwForm({ ...pwForm, next: e.target.value })} disabled={savingPw} aria-describedby="pw-next-hint" /><p id="pw-next-hint" className="text-xs text-muted-foreground">At least 6 characters.</p></div>
-            <div className="space-y-2"><Label htmlFor="pw-confirm">Confirm new password</Label><Input id="pw-confirm" type="password" autoComplete="new-password" value={pwForm.confirm} onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })} disabled={savingPw} /></div>
-            {pwError ? <p className="text-sm text-destructive" role="alert">{pwError}</p> : null}
-            <Button onClick={() => void savePassword()} disabled={savingPw} className="w-full">{savingPw ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <KeyRound className="h-4 w-4" aria-hidden />}Update password</Button>
+            <div className="space-y-2">
+              <Label htmlFor="pw-current">Current password</Label>
+              <Input
+                id="pw-current"
+                type="password"
+                autoComplete="current-password"
+                value={pwForm.current}
+                onChange={(e) => setPwForm({ ...pwForm, current: e.target.value })}
+                disabled={savingPw}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pw-next">New password</Label>
+              <Input
+                id="pw-next"
+                type="password"
+                autoComplete="new-password"
+                value={pwForm.next}
+                onChange={(e) => setPwForm({ ...pwForm, next: e.target.value })}
+                disabled={savingPw}
+                aria-describedby="pw-next-hint"
+              />
+              <p id="pw-next-hint" className="text-xs text-muted-foreground">
+                At least 6 characters.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pw-confirm">Confirm new password</Label>
+              <Input
+                id="pw-confirm"
+                type="password"
+                autoComplete="new-password"
+                value={pwForm.confirm}
+                onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
+                disabled={savingPw}
+              />
+            </div>
+            {pwError ? (
+              <p className="text-sm text-destructive" role="alert">
+                {pwError}
+              </p>
+            ) : null}
+            <Button onClick={() => void savePassword()} disabled={savingPw} className="w-full">
+              {savingPw ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <KeyRound className="h-4 w-4" aria-hidden />
+              )}
+              Update password
+            </Button>
           </CardContent>
         </Card>
 
+        {/* ---------- notification channels ---------- */}
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><MessageCircle className="h-4 w-4 text-primary" aria-hidden />Notification channels</CardTitle></CardHeader>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <MessageCircle className="h-4 w-4 text-primary" aria-hidden />
+              Notification channels
+            </CardTitle>
+          </CardHeader>
           <CardContent className="space-y-4 pt-0">
-            {prefs === null ? <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}</div> : <>
-              {([{"key":"push","label":"Push Notifications","icon":BellRing,"text":"Instant order alerts via Firebase Cloud Messaging"},{"key":"sms","label":"SMS","icon":Smartphone,"text":"Order & refill updates by text"},{"key":"whatsapp","label":"WhatsApp","icon":MessageCircle,"text":"Updates on your WhatsApp number"},{"key":"email","label":"Email","icon":Mail,"text":"Order confirmations and receipts via Resend"}] as const).map((ch) => (
-                <div key={ch.key} className="flex items-center justify-between gap-3"><div className="flex items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted"><ch.icon className="h-4 w-4 text-muted-foreground" aria-hidden /></span><div><Label htmlFor={`channel-${ch.key}`} className="text-sm font-medium">{ch.label}</Label><p className="text-xs text-muted-foreground">{ch.text}</p></div></div><Switch id={`channel-${ch.key}`} checked={prefs[ch.key]} onCheckedChange={() => void toggleChannel(ch.key, ch.label)} disabled={prefsSaving} aria-label={`${ch.label} notifications`} /></div>
-              ))}
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed bg-muted/30 p-3"><div className="flex items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"><Bell className="h-4 w-4" aria-hidden /></span><div><Label htmlFor="channel-inapp" className="text-sm font-medium">In-app</Label><p className="text-xs text-muted-foreground">Order updates inside your account — always on</p></div></div><Switch id="channel-inapp" checked disabled aria-label="In-app notifications (always on)" /></div>
-              <p className="text-xs text-muted-foreground">Channel preferences apply to order, prescription and refill updates. In-app notifications are always on.</p>
-            </>}
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-2">
-          <CardHeader className="pb-3"><CardTitle className="flex items-center justify-between text-base"><span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" aria-hidden />Saved addresses</span><Button variant="outline" size="sm" onClick={openAddAddress}><Plus className="h-3.5 w-3.5" aria-hidden />Add address</Button></CardTitle></CardHeader>
-          <CardContent className="pt-0">
-            {addressesError && addresses === null ? <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-8 text-center"><p className="text-sm text-muted-foreground">{addressesError}</p><Button variant="outline" size="sm" onClick={() => void reloadAddresses()}><Loader2 className="h-3.5 w-3.5" aria-hidden />Try again</Button></div> : addresses === null ? <div className="space-y-3">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}</div> : addresses.length === 0 ? <div className="rounded-lg border border-dashed bg-muted/30 px-6 py-10 text-center"><MapPin className="mx-auto mb-3 h-8 w-8 text-muted-foreground" aria-hidden /><p className="text-sm font-medium">No saved addresses yet</p><p className="mt-1 text-sm text-muted-foreground">Save your home or work address for faster delivery checkout.</p><Button size="sm" className="mt-4" onClick={openAddAddress}><Plus className="h-3.5 w-3.5" aria-hidden />Add your first address</Button></div> : (
-              <ul className="grid gap-3 sm:grid-cols-2">{addresses.map((address) => { const LabelIcon = labelIcon(address.label); return <li key={address.id}><div className="rounded-lg border p-4"><div className="flex flex-wrap items-center gap-2"><span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium"><LabelIcon className="h-3.5 w-3.5" aria-hidden />{address.label}</span>{address.isDefault ? <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"><Star className="h-3 w-3" aria-hidden />Default</span> : null}</div><p className="mt-2 text-sm leading-snug">{address.text}</p>{address.area ? <p className="mt-1 text-xs text-muted-foreground">{address.area}</p> : null}{address.notes ? <p className="mt-1 text-xs text-muted-foreground"><span className="font-medium">Notes:</span> {address.notes}</p> : null}<div className="mt-3 flex gap-2"><Button variant="outline" size="sm" onClick={() => openEditAddress(address)} aria-label={`Edit ${address.label} address`}><Pencil className="h-3.5 w-3.5" aria-hidden />Edit</Button><Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeletingAddress(address)} aria-label={`Remove ${address.label} address`}><Trash2 className="h-3.5 w-3.5" aria-hidden />Remove</Button></div></div></li> } )}</ul>
+            {prefs === null ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : (
+              <>
+                {(
+                  [
+                    { key: "push", label: "Push Notifications", icon: BellRing, text: "Instant order alerts via Firebase Cloud Messaging" },
+                    { key: "sms", label: "SMS", icon: Smartphone, text: "Order & refill updates by text" },
+                    { key: "whatsapp", label: "WhatsApp", icon: MessageCircle, text: "Updates on your WhatsApp number" },
+                    { key: "email", label: "Email", icon: Mail, text: "Order confirmations and receipts via Resend" },
+                  ] as const
+                ).map((ch) => (
+                  <div key={ch.key} className="flex items-center justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                        <ch.icon className="h-4 w-4 text-muted-foreground" aria-hidden />
+                      </span>
+                      <div>
+                        <Label htmlFor={`channel-${ch.key}`} className="text-sm font-medium">
+                          {ch.label}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">{ch.text}</p>
+                      </div>
+                    </div>
+                    <Switch
+                      id={`channel-${ch.key}`}
+                      checked={prefs[ch.key]}
+                      onCheckedChange={() => void toggleChannel(ch.key, ch.label)}
+                      disabled={prefsSaving}
+                      aria-label={`${ch.label} notifications`}
+                    />
+                  </div>
+                ))}
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed bg-muted/30 p-3">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                      <Bell className="h-4 w-4" aria-hidden />
+                    </span>
+                    <div>
+                      <Label htmlFor="channel-inapp" className="text-sm font-medium">
+                        In-app
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Order updates inside your account — always on
+                      </p>
+                    </div>
+                  </div>
+                  <Switch id="channel-inapp" checked disabled aria-label="In-app notifications (always on)" />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Channel preferences apply to order, prescription and refill updates. In-app notifications are always on.
+                </p>
+              </>
             )}
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-2"><CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><BellRing className="h-4 w-4 text-primary" aria-hidden />Back-in-stock watchlist{(watchlist?.filter((w) => w.active).length ?? 0) > 0 ? <Badge variant="secondary" className="font-semibold tabular-nums">{watchlist!.filter((w) => w.active).length} active</Badge> : null}</CardTitle></CardHeader><CardContent className="pt-0">{watchlist === null ? <div className="space-y-3">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}</div> : watchlist.length === 0 ? <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed bg-muted/30 py-8 text-center"><BellOff className="h-7 w-7 text-muted-foreground" aria-hidden /><p className="text-sm font-medium">Nothing on your watchlist</p><p className="max-w-sm text-sm text-muted-foreground">Out of stock? Open the product page and tap “Notify me when back in stock” and we&apos;ll message you here.</p></div> : <ul className="space-y-2">{watchlist.map((w) => <li key={w.id} className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3"><span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", w.active ? "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300")}>{w.active ? <Bell className="h-4 w-4" aria-hidden /> : <CheckCheck className="h-4 w-4" aria-hidden />}</span><div className="min-w-0 flex-1"><button className="truncate text-left text-sm font-semibold hover:text-primary hover:underline" onClick={() => navigate("product", { productId: w.productId })}>{w.productName}</button><p className="text-xs text-muted-foreground">{w.active ? `Watching · added ${timeAgo(w.createdAt)}` : `Notified · ${timeAgo(w.createdAt)}`}</p></div><Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={async () => { try { await catalogApi.stockAlert.remove(w.id); await reloadWatchlist(); toast.success("Removed from your watchlist") } catch (err) { toast.error(errMessage(err, "Couldn't remove the alert.")) } }}>Remove</Button></li>)}</ul>}</CardContent></Card>
+        {/* ---------- addresses ---------- */}
+        <Card className="md:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between text-base">
+              <span className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-primary" aria-hidden />
+                Saved addresses
+              </span>
+              <Button variant="outline" size="sm" onClick={openAddAddress}>
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+                Add address
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {addressesError && addresses === null ? (
+              <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-8 text-center">
+                <p className="text-sm text-muted-foreground">{addressesError}</p>
+                <Button variant="outline" size="sm" onClick={() => void reloadAddresses()}>
+                  <Loader2 className="h-3.5 w-3.5" aria-hidden />
+                  Try again
+                </Button>
+              </div>
+            ) : addresses === null ? (
+              <div className="space-y-3">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <Skeleton key={i} className="h-24 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : addresses.length === 0 ? (
+              <div className="rounded-lg border border-dashed bg-muted/30 px-6 py-10 text-center">
+                <MapPin className="mx-auto mb-3 h-8 w-8 text-muted-foreground" aria-hidden />
+                <p className="text-sm font-medium">No saved addresses yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Save your home or work address for faster delivery checkout.
+                </p>
+                <Button size="sm" className="mt-4" onClick={openAddAddress}>
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                  Add your first address
+                </Button>
+              </div>
+            ) : (
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {addresses.map((address) => {
+                  const LabelIcon = labelIcon(address.label)
+                  return (
+                    <li key={address.id}>
+                      <div className="rounded-lg border p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
+                            <LabelIcon className="h-3.5 w-3.5" aria-hidden />
+                            {address.label}
+                          </span>
+                          {address.isDefault ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                              <Star className="h-3 w-3" aria-hidden />
+                              Default
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-2 text-sm leading-snug">{address.text}</p>
+                        {address.area ? (
+                          <p className="mt-1 text-xs text-muted-foreground">{address.area}</p>
+                        ) : null}
+                        {address.notes ? (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            <span className="font-medium">Notes:</span> {address.notes}
+                          </p>
+                        ) : null}
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditAddress(address)}
+                            aria-label={`Edit ${address.label} address`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" aria-hidden />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDeletingAddress(address)}
+                            aria-label={`Remove ${address.label} address`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
 
-        <Card className="md:col-span-2"><CardHeader className="pb-3"><CardTitle className="flex items-center justify-between text-base"><span className="flex items-center gap-2"><Bell className="h-4 w-4 text-primary" aria-hidden />Notifications{unreadCount > 0 ? <Badge variant="secondary" className="font-semibold tabular-nums">{unreadCount} new</Badge> : null}</span>{unreadCount > 0 ? <Button variant="ghost" size="sm" onClick={async () => { setMarkingRead(true); try { await notificationsApi.markRead(); await reloadNotifications(); toast.success("All notifications marked as read") } catch (err) { toast.error(errMessage(err, "Couldn't update notifications.")) } finally { setMarkingRead(false) } }} disabled={markingRead}>{markingRead ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <CheckCheck className="h-3.5 w-3.5" aria-hidden />}Mark all read</Button> : null}</CardTitle></CardHeader><CardContent className="pt-0">{notificationsError && notifications === null ? <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-8 text-center"><p className="text-sm text-muted-foreground">{notificationsError}</p><Button variant="outline" size="sm" onClick={() => void reloadNotifications()}><Loader2 className="h-3.5 w-3.5" aria-hidden />Try again</Button></div> : notifications === null ? <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}</div> : notifications.length === 0 ? <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed bg-muted/30 py-10 text-center"><BellOff className="h-8 w-8 text-muted-foreground" aria-hidden /><p className="text-sm font-medium">You're all caught up</p><p className="max-w-xs text-sm text-muted-foreground">Order updates, prescription reviews and refill reminders will appear here.</p></div> : <ul className="scroll-slim max-h-96 space-y-1 overflow-y-auto" aria-label="Notifications list">{notifications.map((n) => <li key={n.id} className="flex items-start gap-3 rounded-lg p-3 transition-colors hover:bg-muted/50"><span className="relative mt-1.5 flex h-2 w-2 shrink-0">{n.read ? <span className="h-2 w-2 rounded-full bg-transparent" aria-hidden /> : <span className="h-2 w-2 rounded-full bg-primary" aria-label="Unread notification" />}</span><div className="min-w-0 flex-1"><p className="text-sm font-medium">{n.title}</p><p className="mt-0.5 text-sm text-muted-foreground">{n.message}</p></div><p className="shrink-0 text-xs text-muted-foreground">{timeAgo(n.createdAt)}</p></li>)}</ul>}</CardContent></Card>
+        {/* ---------- back-in-stock watchlist ---------- */}
+        <Card className="md:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <BellRing className="h-4 w-4 text-primary" aria-hidden />
+              Back-in-stock watchlist
+              {(watchlist?.filter((w) => w.active).length ?? 0) > 0 ? (
+                <Badge variant="secondary" className="font-semibold tabular-nums">
+                  {watchlist!.filter((w) => w.active).length} active
+                </Badge>
+              ) : null}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {watchlist === null ? (
+              <div className="space-y-3">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : watchlist.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed bg-muted/30 py-8 text-center">
+                <BellOff className="h-7 w-7 text-muted-foreground" aria-hidden />
+                <p className="text-sm font-medium">Nothing on your watchlist</p>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  Out of stock? Open the product page and tap “Notify me when back in stock” and we&apos;ll message you here.
+                </p>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {watchlist.map((w) => (
+                  <li
+                    key={w.id}
+                    className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3"
+                  >
+                    <span className={cn(
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                      w.active ? "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                    )}>
+                      {w.active ? <Bell className="h-4 w-4" aria-hidden /> : <CheckCheck className="h-4 w-4" aria-hidden />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <button
+                        className="truncate text-left text-sm font-semibold hover:text-primary hover:underline"
+                        onClick={() => navigate("product", { productId: w.productId })}
+                      >
+                        {w.productName}
+                      </button>
+                      <p className="text-xs text-muted-foreground">
+                        {w.active ? `Watching · added ${timeAgo(w.createdAt)}` : `Notified · ${timeAgo(w.createdAt)}`}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs text-muted-foreground"
+                      onClick={async () => {
+                        try {
+                          await catalogApi.stockAlert.remove(w.id)
+                          await reloadWatchlist()
+                          toast.success("Removed from your watchlist")
+                        } catch (err) {
+                          toast.error(errMessage(err, "Couldn't remove the alert."))
+                        }
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
 
-        <Card className="md:col-span-2"><CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="h-4 w-4 text-primary" aria-hidden />Security &amp; data</CardTitle></CardHeader><CardContent className="flex flex-col gap-3 pt-0 sm:flex-row"><Button variant="outline" onClick={() => void signOut()} disabled={signingOut} className="sm:w-auto">{signingOut ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <LogOut className="h-4 w-4" aria-hidden />}Sign out</Button><Tooltip><TooltipTrigger asChild><span className="inline-flex"><Button variant="ghost" disabled className="w-full sm:w-auto"><Download className="h-4 w-4" aria-hidden />Download my data</Button></span></TooltipTrigger><TooltipContent>Coming soon</TooltipContent></Tooltip></CardContent></Card>
+        {/* ---------- notifications ---------- */}
+        <Card className="md:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between text-base">
+              <span className="flex items-center gap-2">
+                <Bell className="h-4 w-4 text-primary" aria-hidden />
+                Notifications
+                {unreadCount > 0 ? (
+                  <Badge variant="secondary" className="font-semibold tabular-nums">
+                    {unreadCount} new
+                  </Badge>
+                ) : null}
+              </span>
+              {unreadCount > 0 ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    setMarkingRead(true)
+                    try {
+                      await notificationsApi.markRead()
+                      await reloadNotifications()
+                      toast.success("All notifications marked as read")
+                    } catch (err) {
+                      toast.error(errMessage(err, "Couldn't update notifications."))
+                    } finally {
+                      setMarkingRead(false)
+                    }
+                  }}
+                  disabled={markingRead}
+                >
+                  {markingRead ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <CheckCheck className="h-3.5 w-3.5" aria-hidden />
+                  )}
+                  Mark all read
+                </Button>
+              ) : null}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {notificationsError && notifications === null ? (
+              <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-8 text-center">
+                <p className="text-sm text-muted-foreground">{notificationsError}</p>
+                <Button variant="outline" size="sm" onClick={() => void reloadNotifications()}>
+                  <Loader2 className="h-3.5 w-3.5" aria-hidden />
+                  Try again
+                </Button>
+              </div>
+            ) : notifications === null ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed bg-muted/30 py-10 text-center">
+                <BellOff className="h-8 w-8 text-muted-foreground" aria-hidden />
+                <p className="text-sm font-medium">You're all caught up</p>
+                <p className="max-w-xs text-sm text-muted-foreground">
+                  Order updates, prescription reviews and refill reminders will appear here.
+                </p>
+              </div>
+            ) : (
+              <ul className="scroll-slim max-h-96 space-y-1 overflow-y-auto" aria-label="Notifications list">
+                {notifications.map((n) => (
+                  <li
+                    key={n.id}
+                    className="flex items-start gap-3 rounded-lg p-3 transition-colors hover:bg-muted/50"
+                  >
+                    <span className="relative mt-1.5 flex h-2 w-2 shrink-0">
+                      {n.read ? (
+                        <span className="h-2 w-2 rounded-full bg-transparent" aria-hidden />
+                      ) : (
+                        <span
+                          className="h-2 w-2 rounded-full bg-primary"
+                          aria-label="Unread notification"
+                        />
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{n.title}</p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">{n.message}</p>
+                    </div>
+                    <p className="shrink-0 text-xs text-muted-foreground">{timeAgo(n.createdAt)}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ---------- security / account actions ---------- */}
+        <Card className="md:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShieldCheck className="h-4 w-4 text-primary" aria-hidden />
+              Security &amp; data
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 pt-0 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => void signOut()}
+              disabled={signingOut}
+              className="sm:w-auto"
+            >
+              {signingOut ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <LogOut className="h-4 w-4" aria-hidden />
+              )}
+              Sign out
+            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex">
+                  <Button variant="ghost" disabled className="w-full sm:w-auto">
+                    <Download className="h-4 w-4" aria-hidden />
+                    Download my data
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Coming soon</TooltipContent>
+            </Tooltip>
+          </CardContent>
+        </Card>
       </div>
 
-      <Dialog open={Boolean(addressDialog)} onOpenChange={(open) => { if (!open && !savingAddress) setAddressDialog(null) }}>
+      {/* ---------- address add/edit dialog ---------- */}
+      <Dialog
+        open={addressDialog !== null}
+        onOpenChange={(open) => {
+          if (!open && !savingAddress) setAddressDialog(null)
+        }}
+      >
         <DialogContent className="max-h-[90dvh] overflow-y-auto px-4 sm:max-w-lg sm:px-6">
-          <DialogHeader><DialogTitle>{addressDialog?.mode === "edit" ? "Edit address" : "Add a new address"}</DialogTitle><DialogDescription>Saved addresses speed up delivery checkout — pick one at step 2.</DialogDescription></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>
+              {addressDialog?.mode === "edit" ? "Edit address" : "Add a new address"}
+            </DialogTitle>
+            <DialogDescription>
+              Saved addresses speed up delivery checkout — pick one at step 2.
+            </DialogDescription>
+          </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label htmlFor="addr-label">Label</Label><Input id="addr-label" placeholder="e.g. Home, Work" value={addressForm.label} onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })} disabled={savingAddress} /></div>
-            <div className="space-y-2"><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><Label htmlFor="addr-text">Full address</Label><UseCurrentLocationButton disabled={savingAddress} onResolved={(location) => { const matched = areaOptions.find((zone) => { const candidate = (location.area || "").toLowerCase(); return candidate && (candidate.includes(zone.toLowerCase()) || zone.toLowerCase().includes(candidate)) }); setAddressForm((current) => ({ ...current, text: location.displayName, area: matched || current.area, latitude: location.latitude, longitude: location.longitude })) }} /></div><Textarea id="addr-text" rows={3} placeholder="Building, street, estate / landmark — e.g. Amani Heights, Lumumba Drive, Roysambu" value={addressForm.text} onChange={(e) => setAddressForm({ ...addressForm, text: e.target.value })} disabled={savingAddress} /></div>
-            <div className="space-y-2"><Label htmlFor="addr-area">Delivery zone</Label><Select value={addressForm.area || undefined} onValueChange={(v) => setAddressForm({ ...addressForm, area: v })} disabled={savingAddress}><SelectTrigger id="addr-area" className="w-full"><SelectValue placeholder="Choose your delivery zone" /></SelectTrigger><SelectContent>{areaOptions.map((zone) => <SelectItem key={zone} value={zone}>{zone}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-2"><Label htmlFor="addr-notes">Rider notes (optional)</Label><Input id="addr-notes" placeholder="e.g. Gate 3, ask for the caretaker" value={addressForm.notes} onChange={(e) => setAddressForm({ ...addressForm, notes: e.target.value })} disabled={savingAddress} /></div>
-            <div className="flex items-center justify-between gap-3 rounded-lg border p-3"><div><Label htmlFor="addr-default" className="text-sm font-medium">Default address</Label><p className="text-xs text-muted-foreground">Pre-selected automatically at checkout.</p></div><Switch id="addr-default" checked={addressForm.isDefault} onCheckedChange={(v) => setAddressForm({ ...addressForm, isDefault: v })} disabled={savingAddress} aria-label="Set as default address" /></div>
-            {addressError ? <p className="text-sm text-destructive" role="alert">{addressError}</p> : null}
+            <div className="space-y-2">
+              <Label htmlFor="addr-label">Label</Label>
+              <Input
+                id="addr-label"
+                placeholder="e.g. Home, Work"
+                value={addressForm.label}
+                onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })}
+                disabled={savingAddress}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><Label htmlFor="addr-text">Full address</Label><UseCurrentLocationButton disabled={savingAddress} onResolved={(location) => { const matched = areaOptions.find((zone) => { const candidate = (location.area || "").toLowerCase(); return candidate && (candidate.includes(zone.toLowerCase()) || zone.toLowerCase().includes(candidate)) }); setAddressForm((current) => ({ ...current, text: location.displayName, area: matched || current.area, latitude: location.latitude, longitude: location.longitude })) }} /></div>
+              <Textarea
+                id="addr-text"
+                rows={3}
+                placeholder="Building, street, estate / landmark — e.g. Amani Heights, Lumumba Drive, Roysambu"
+                value={addressForm.text}
+                onChange={(e) => setAddressForm({ ...addressForm, text: e.target.value })}
+                disabled={savingAddress}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="addr-area">Delivery zone</Label>
+              <Select
+                value={addressForm.area || undefined}
+                onValueChange={(v) => setAddressForm({ ...addressForm, area: v })}
+                disabled={savingAddress}
+              >
+                <SelectTrigger id="addr-area" className="w-full">
+                  <SelectValue placeholder="Choose your delivery zone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {areaOptions.map((zone) => (
+                    <SelectItem key={zone} value={zone}>
+                      {zone}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="addr-notes">Rider notes (optional)</Label>
+              <Input
+                id="addr-notes"
+                placeholder="e.g. Gate 3, ask for the caretaker"
+                value={addressForm.notes}
+                onChange={(e) => setAddressForm({ ...addressForm, notes: e.target.value })}
+                disabled={savingAddress}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div>
+                <Label htmlFor="addr-default" className="text-sm font-medium">
+                  Default address
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Pre-selected automatically at checkout.
+                </p>
+              </div>
+              <Switch
+                id="addr-default"
+                checked={addressForm.isDefault}
+                onCheckedChange={(v) => setAddressForm({ ...addressForm, isDefault: v })}
+                disabled={savingAddress}
+                aria-label="Set as default address"
+              />
+            </div>
+            {addressError ? (
+              <p className="text-sm text-destructive" role="alert">
+                {addressError}
+              </p>
+            ) : null}
           </div>
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => setAddressDialog(null)} disabled={savingAddress} className="w-full sm:w-auto">Cancel</Button>
-            <Button type="button" onClick={() => void saveAddress()} disabled={savingAddress} aria-busy={savingAddress}>{savingAddress ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden />Saving address…</> : <><CheckCheck className="h-4 w-4" aria-hidden />{addressDialog?.mode === "edit" ? "Save address" : "Add address"}</>}</Button>
+            <Button
+              variant="outline"
+              onClick={() => setAddressDialog(null)}
+              disabled={savingAddress}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button onClick={() => void saveAddress()} disabled={savingAddress}>
+              {savingAddress ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <CheckCheck className="h-4 w-4" aria-hidden />
+              )}
+              {addressDialog?.mode === "edit" ? "Save address" : "Add address"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deletingAddress !== null} onOpenChange={(open) => { if (!open && !removingAddress) setDeletingAddress(null) }}>
-        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Remove this address?</AlertDialogTitle><AlertDialogDescription>“{deletingAddress?.label}” — {deletingAddress?.text}. You can always add it again later.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="flex-row gap-2 sm:justify-end"><AlertDialogCancel disabled={removingAddress}>Keep address</AlertDialogCancel><AlertDialogAction onClick={(e) => { e.preventDefault(); void removeAddress() }} disabled={removingAddress} className="bg-destructive text-white hover:bg-destructive/90">{removingAddress ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Trash2 className="h-4 w-4" aria-hidden />}Remove</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+      {/* ---------- delete address confirm ---------- */}
+      <AlertDialog
+        open={deletingAddress !== null}
+        onOpenChange={(open) => {
+          if (!open && !removingAddress) setDeletingAddress(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this address?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{deletingAddress?.label}” — {deletingAddress?.text}. You can always add it again
+              later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row gap-2 sm:justify-end">
+            <AlertDialogCancel disabled={removingAddress}>Keep address</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                void removeAddress()
+              }}
+              disabled={removingAddress}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {removingAddress ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <Trash2 className="h-4 w-4" aria-hidden />
+              )}
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
     </div>
   )
