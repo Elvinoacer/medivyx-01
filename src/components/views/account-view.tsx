@@ -122,6 +122,8 @@ interface AddressForm {
   area: string
   notes: string
   isDefault: boolean
+  latitude: number | null
+  longitude: number | null
 }
 
 const EMPTY_ADDRESS_FORM: AddressForm = {
@@ -130,6 +132,8 @@ const EMPTY_ADDRESS_FORM: AddressForm = {
   area: "",
   notes: "",
   isDefault: false,
+  latitude: null,
+  longitude: null,
 }
 
 const ZONE_NAMES = DELIVERY_DEFAULTS.zones.map((z) => z.name.trim())
@@ -421,6 +425,8 @@ export function AccountView() {
         area: addressForm.area.trim() || undefined,
         notes: addressForm.notes.trim() || undefined,
         isDefault: addressForm.isDefault || undefined,
+        latitude: addressForm.latitude ?? undefined,
+        longitude: addressForm.longitude ?? undefined,
       }
       if (addressDialog.mode === "add") {
         await addressesApi.create(payload)
@@ -1352,7 +1358,7 @@ export function AccountView() {
               />
             </div>
             <div className="space-y-2">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><Label htmlFor="addr-text">Full address</Label><UseCurrentLocationButton disabled={savingAddress} onResolved={(location) => { const matched = areaOptions.find((zone) => { const candidate = (location.area || "").toLowerCase(); return candidate && (candidate.includes(zone.toLowerCase()) || zone.toLowerCase().includes(candidate)) }); setAddressForm((current) => ({ ...current, text: location.displayName, area: matched || current.area })) }} /></div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><Label htmlFor="addr-text">Full address</Label><UseCurrentLocationButton disabled={savingAddress} onResolved={(location) => { const matched = areaOptions.find((zone) => { const candidate = (location.area || "").toLowerCase(); return candidate && (candidate.includes(zone.toLowerCase()) || zone.toLowerCase().includes(candidate)) }); setAddressForm((current) => ({ ...current, text: location.displayName, area: matched || current.area, latitude: location.latitude, longitude: location.longitude })) }} /></div>
               <Textarea
                 id="addr-text"
                 rows={3}
