@@ -84,7 +84,7 @@ export function AssistantWidget() {
         onClick={() => setOpen(!open)}
         size="icon"
         className={cn(
-          "fixed bottom-24 right-4 z-50 h-14 w-14 rounded-full bg-primary shadow-[0_12px_30px_-12px_hsl(var(--primary))] ring-4 ring-background/80 transition-transform hover:scale-105 md:bottom-6 md:right-6",
+          "fixed bottom-24 right-4 z-[70] h-14 w-14 rounded-full bg-primary shadow-[0_12px_30px_-12px_hsl(var(--primary))] ring-4 ring-background/80 transition-transform hover:scale-105 md:bottom-6 md:right-6",
           open && "hidden"
         )}
         aria-label="Open Sphere Pharmacy AI assistant"
@@ -97,7 +97,7 @@ export function AssistantWidget() {
         <div
           role="dialog"
           aria-label="Sphere Pharmacy AI assistant"
-          className="fixed inset-x-3 bottom-24 z-50 flex max-h-[78vh] flex-col overflow-hidden rounded-[26px] border border-border/80 bg-background/95 shadow-2xl backdrop-blur-xl md:bottom-6 md:right-6 md:left-auto md:w-[405px]"
+          className="fixed inset-x-3 bottom-24 z-[70] flex max-h-[78vh] flex-col overflow-hidden rounded-[26px] border border-border/80 bg-background/95 shadow-2xl backdrop-blur-xl md:bottom-6 md:right-6 md:left-auto md:w-[405px]"
         >
           <div className="relative overflow-hidden border-b border-white/10 bg-gradient-to-br from-primary via-primary to-emerald-800 px-4 pb-4 pt-4 text-primary-foreground">
             <div className="absolute -right-8 -top-10 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
