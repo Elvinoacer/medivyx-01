@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { ORDER_INCLUDE } from "@/lib/dto"
-import { addStatusEvent, notifyCustomer, notifyStaff } from "@/lib/notify"
+import { addStatusEvent, notifyCustomer, notifyServiceBooking, notifyStaff } from "@/lib/notify"
 import { awardPointsForOrder } from "@/lib/loyalty"
 import { paymentReceiptTemplate } from "@/lib/email/templates"
 
@@ -35,6 +35,19 @@ export async function POST(request: Request) {
           const providerReference = invoiceId || servicePayment.providerReference || `INT-${Date.now()}`
           await db.servicePayment.update({ where: { id: servicePayment.id }, data: { status: "SUCCESS", providerReference, failureReason: null } })
           await db.serviceBooking.update({ where: { id: servicePayment.bookingId }, data: { paymentStatus: "PAID" } })
+          await notifyServiceBooking({
+            userId: servicePayment.booking.userId,
+            customerName: servicePayment.booking.user.name,
+            customerEmail: servicePayment.booking.user.email,
+            reference: servicePayment.booking.reference,
+            serviceName: servicePayment.booking.service.name,
+            status: "Payment received",
+            message: "Your card payment of KSh " + servicePayment.amount.toLocaleString() + " was received successfully.",
+            start: servicePayment.booking.scheduledStart,
+            end: servicePayment.booking.scheduledEnd,
+            bookingId: servicePayment.bookingId,
+            event: "SERVICE_PAYMENT_SUCCESS",
+          })
           return NextResponse.json({ ok: true, servicePayment: { id: servicePayment.id, status: "SUCCESS", providerReference } })
         }
         if (state === "FAILED") {
