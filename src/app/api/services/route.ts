@@ -9,7 +9,11 @@ function slugify(v:string){return v.toLowerCase().trim().replace(/[^a-z0-9]+/g,"
 export async function GET(request:Request){
  const session=await getSession()
  const includeInactive=new URL(request.url).searchParams.get("includeInactive")==="true"
- const list=await db.service.findMany({where:includeInactive&&canManage(session)?{}:{active:true},include:{images:{orderBy:{sortOrder:"asc"}}},orderBy:[{featured:"desc"},{sortOrder:"asc"},{name:"asc"}]})
+ const list = await db.service.findMany({
+    where: includeInactive && canManage(session) ? {} : { active: true },
+    include: { images: { orderBy: { sortOrder: "asc" } } },
+    orderBy: [{ featured: "desc" }, { sortOrder: "asc" }, { name: "asc" }],
+  })
  return NextResponse.json(list.map(dto))
 }
 
