@@ -23,6 +23,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing invoice_id or api_ref." }, { status: 400 })
     }
 
+    // Service payment path — service payments live outside the order payment model.
+    if (apiRef && apiRef.startsWith("SPB-")) {
+      const servicePayment = await db.servicePayment.findFirst({
+        where: { OR: [{ providerReference: invoiceId }, { booking: { reference: apiRef } }] },
+        include: { booking: { include: { service: true, user: true } } },
+        orderBy: { createdAt: "desc" },
+      })
+      if (servicePayment) {
+        if (state === "COMPLETE") {
+          const providerReference = invoiceId || servicePayment.providerReference || `INT-${Date.now()}`
+          await db.servicePayment.update({ where: { id: servicePayment.id }, data: { status: "SUCCESS", providerReference, failureReason: null } })
+          await db.serviceBooking.update({ where: { id: servicePayment.bookingId }, data: { paymentStatus: "PAID" } })
+          return NextResponse.json({ ok: true, servicePayment: { id: servicePayment.id, status: "SUCCESS", providerReference } })
+        }
+        if (state === "FAILED") {
+          await db.servicePayment.update({ where: { id: servicePayment.id }, data: { status: "FAILED", failureReason: failureReason || "Transaction failed" } })
+          return NextResponse.json({ ok: true, servicePayment: { id: servicePayment.id, status: "FAILED" } })
+        }
+        return NextResponse.json({ ok: true, servicePayment: { id: servicePayment.id, status: "PROCESSING" } })
+      }
+    }
+
     // Find order and payment
     let payment = await db.payment.findFirst({
       where: {
