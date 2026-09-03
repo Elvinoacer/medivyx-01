@@ -44,6 +44,7 @@ import { ReportsSection } from "./sections/reports-section"
 import { ComplianceSection } from "./sections/compliance-section"
 import { SettingsSection } from "./sections/settings-section"
 import { ServicesSection } from "./sections/services-section"
+import { ServiceBookingsSection } from "./sections/service-bookings-section"
 
 const STAFF_ROLES: Role[] = ["ADMIN", "PHARMACIST", "STAFF", "RIDER"]
 const ALL_STAFF: Role[] = ["ADMIN", "PHARMACIST", "STAFF", "RIDER"]
@@ -78,6 +79,10 @@ const NAV: NavItem[] = [
   {
     key: "prescriptions", label: "Prescriptions", title: "Prescription review", subtitle: "Verify uploaded prescriptions before dispensing",
     icon: ClipboardList, roles: ["ADMIN", "PHARMACIST"],
+  },
+  {
+    key: "service-bookings", label: "Bookings", title: "Service bookings", subtitle: "Manage appointments, confirmations and the daily care calendar",
+    icon: CalendarDays, roles: ["ADMIN", "PHARMACIST", "STAFF"],
   },
   {
     key: "services", label: "Services", title: "Care services", subtitle: "Create, edit and publish pharmacy care services and their imagery",
@@ -257,6 +262,8 @@ export function AdminView() {
         return <DispatchSection {...sectionProps} />
       case "prescriptions":
         return <PrescriptionsSection {...sectionProps} />
+      case "service-bookings":
+        return <ServiceBookingsSection {...sectionProps} />
       case "services":
         return <ServicesSection {...sectionProps} />
       case "catalogue":
