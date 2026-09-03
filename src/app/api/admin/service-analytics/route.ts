@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { getSession } from "@/lib/session"
 
 export async function GET(request:Request){
+ const session=await getSession()
+ if(!session?.staffId||!["ADMIN","PHARMACIST","STAFF"].includes(session.role))return NextResponse.json({error:"Staff access required."},{status:403})
  const u=new URL(request.url),from=u.searchParams.get("from"),to=u.searchParams.get("to")
  const start=from?new Date(from+"T00:00:00"):new Date(new Date().getTime()-30*86400000)
  const end=to?new Date(to+"T23:59:59.999"):new Date()
