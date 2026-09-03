@@ -500,8 +500,8 @@ export function HomeView() {
       <section className="mx-auto max-w-7xl px-4 pt-10" aria-label="Delivery across Nairobi">
         <div className="img-frame group relative h-40 select-none sm:h-48">
           <img
-            src="/images/delivery-rider.png"
-            alt="Sphere Pharmacy courier on a motorbike with a medical delivery box"
+            src="/images/sphere_pharmacy_banner_url.webp"
+            alt="Sphere Pharmacy brand banner"
             width={1344}
             height={768}
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03] dark:brightness-[0.9]"
