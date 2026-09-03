@@ -289,6 +289,250 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
             />
           </div>
 
+          {/* delivery origin and distance pricing */}
+          <div className="space-y-4 rounded-xl border bg-muted/20 p-4">
+            <div className="flex items-start gap-3">
+              <MapPinned className="mt-0.5 h-4 w-4 text-primary" aria-hidden />
+              <div>
+                <p className="text-sm font-semibold">Delivery origin & pricing method</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Pin the pharmacy once. Distance pricing can then calculate delivery automatically from the customer's location.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <UseCurrentLocationButton
+                onResolved={(location) => {
+                  setDelivery((current) =>
+                    current
+                      ? {
+                          ...current,
+                          pharmacyLocation: {
+                            latitude: location.latitude,
+                            longitude: location.longitude,
+                            label: location.displayName,
+                          },
+                        }
+                      : current
+                  )
+                }}
+              />
+              {delivery.pharmacyLocation?.latitude != null && delivery.pharmacyLocation?.longitude != null ? (
+                <div className="flex items-center rounded-xl border bg-background px-3 py-2 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">Pinned:</span>
+                  <span className="ml-1.5 max-w-[420px] truncate">{delivery.pharmacyLocation.label}</span>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+              <Input
+                placeholder="Search the pharmacy location, e.g. Sphere Pharmacy Lumumba Drive"
+                value={locationSearch}
+                onChange={(e) => setLocationSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void searchLocation()
+                }}
+              />
+              <Button type="button" variant="outline" onClick={() => void searchLocation()} disabled={searchingLocation}>
+                {searchingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                Search place
+              </Button>
+            </div>
+
+            {locationResults.length > 0 ? (
+              <div className="space-y-2">
+                {locationResults.map((result) => (
+                  <button
+                    key={result.displayName + result.latitude}
+                    type="button"
+                    onClick={() => {
+                      setDelivery((current) =>
+                        current
+                          ? {
+                              ...current,
+                              pharmacyLocation: {
+                                latitude: result.latitude,
+                                longitude: result.longitude,
+                                label: result.displayName,
+                              },
+                            }
+                          : current
+                      )
+                      setLocationResults([])
+                    }}
+                    className="w-full rounded-xl border bg-background p-3 text-left hover:bg-accent"
+                  >
+                    <span className="block text-sm font-medium">{result.displayName}</span>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      {result.latitude.toFixed(5)}, {result.longitude.toFixed(5)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <RadioGroup
+              value={delivery.pricingMode ?? "zone"}
+              onValueChange={(value) =>
+                setDelivery((current) =>
+                  current ? { ...current, pricingMode: value as "zone" | "distance" } : current
+                )
+              }
+              className="grid gap-2 sm:grid-cols-2"
+            >
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border bg-background p-3">
+                <RadioGroupItem value="zone" className="mt-0.5" />
+                <span>
+                  <span className="block text-sm font-medium">Named delivery zones</span>
+                  <span className="block text-xs text-muted-foreground">Use the existing area-based fees.</span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border bg-background p-3">
+                <RadioGroupItem value="distance" className="mt-0.5" />
+                <span>
+                  <span className="block text-sm font-medium">Distance-based pricing</span>
+                  <span className="block text-xs text-muted-foreground">Calculate from the pharmacy automatically.</span>
+                </span>
+              </label>
+            </RadioGroup>
+
+            {(delivery.pricingMode ?? "zone") === "distance" ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Distance price bands</Label>
+                    <p className="text-xs text-muted-foreground">Example: 0–2 km, 2–5 km, 5–10 km.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setDelivery((current) => {
+                        if (!current) return current
+                        const bands = current.distanceBands ?? []
+                        const minKm = bands[bands.length - 1]?.maxKm ?? 0
+                        return {
+                          ...current,
+                          distanceBands: [
+                            ...bands,
+                            { id: "band-" + Date.now(), minKm, maxKm: null, fee: 200, label: "New band" },
+                          ],
+                        }
+                      })
+                    }
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add band
+                  </Button>
+                </div>
+
+                {(delivery.distanceBands ?? []).map((band, index) => (
+                  <div key={band.id} className="grid gap-2 sm:grid-cols-[1.2fr_100px_100px_120px_44px]">
+                    <Input
+                      value={band.label}
+                      onChange={(e) =>
+                        setDelivery((current) =>
+                          current
+                            ? {
+                                ...current,
+                                distanceBands: (current.distanceBands ?? []).map((item, i) =>
+                                  i === index ? { ...item, label: e.target.value } : item
+                                ),
+                              }
+                            : current
+                        )
+                      }
+                      placeholder="Up to 2 km"
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.1}
+                      value={band.minKm}
+                      onChange={(e) =>
+                        setDelivery((current) =>
+                          current
+                            ? {
+                                ...current,
+                                distanceBands: (current.distanceBands ?? []).map((item, i) =>
+                                  i === index ? { ...item, minKm: Number(e.target.value) || 0 } : item
+                                ),
+                              }
+                            : current
+                        )
+                      }
+                      aria-label={band.label + " minimum kilometres"}
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.1}
+                      value={band.maxKm ?? ""}
+                      onChange={(e) =>
+                        setDelivery((current) =>
+                          current
+                            ? {
+                                ...current,
+                                distanceBands: (current.distanceBands ?? []).map((item, i) =>
+                                  i === index
+                                    ? { ...item, maxKm: e.target.value ? Number(e.target.value) : null }
+                                    : item
+                                ),
+                              }
+                            : current
+                        )
+                      }
+                      placeholder="∞"
+                      aria-label={band.label + " maximum kilometres"}
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      value={band.fee}
+                      onChange={(e) =>
+                        setDelivery((current) =>
+                          current
+                            ? {
+                                ...current,
+                                distanceBands: (current.distanceBands ?? []).map((item, i) =>
+                                  i === index ? { ...item, fee: Math.max(0, Number(e.target.value) || 0) } : item
+                                ),
+                              }
+                            : current
+                        )
+                      }
+                      aria-label={band.label + " delivery fee in Kenyan shillings"}
+                      placeholder="KSh"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() =>
+                        setDelivery((current) =>
+                          current
+                            ? { ...current, distanceBands: (current.distanceBands ?? []).filter((_, i) => i !== index) }
+                            : current
+                        )
+                      }
+                      aria-label={"Remove " + band.label}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+
+                {(delivery.distanceBands ?? []).length === 0 ? (
+                  <p className="rounded-xl border border-dashed p-3 text-xs text-muted-foreground">
+                    Add at least one distance band before enabling distance pricing.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
           {/* zones editor */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
