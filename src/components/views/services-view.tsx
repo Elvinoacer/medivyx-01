@@ -13,6 +13,7 @@ import { ApiError, serviceBookingsApi, servicePaymentsApi, serviceReviewsApi, se
 import { waLink } from "@/lib/constants"
 import type { ServiceBookingDTO, ServiceDTO } from "@/lib/types"
 import { useAppStore } from "@/store/use-app-store"
+import { useAuthStore } from "@/store/use-auth-store"
 import { toast } from "sonner"
 
 export function ServicesView() {
@@ -34,7 +35,20 @@ export function ServicesView() {
     return () => { cancelled = true }
   }, [])
 
-  useEffect(() => { serviceBookingsApi.mine().then(setBookings).catch(() => {}) }, [])
+  useEffect(() => {
+    if (!session?.user) return
+    serviceBookingsApi.mine().then(setBookings).catch(() => {})
+  }, [session?.user?.id])
+
+  useEffect(() => {
+    const pendingServiceId = authNextParams?.serviceId
+    if (!session?.user || !pendingServiceId || !services) return
+    const service = services.find((item) => item.id === pendingServiceId)
+    if (!service) return
+    setBookingService(service)
+    clearAuthIntent()
+    replace("services", {})
+  }, [session?.user?.id, authNextParams?.serviceId, services])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
