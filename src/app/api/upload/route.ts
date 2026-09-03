@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       }
 
       // Permissions check
-      if (folder === "products" && !session?.staffId) {
+      if ((folder === "products" || folder === "services") && !session?.staffId) {
         return NextResponse.json({ error: "Only staff can upload product media." }, { status: 403 })
       }
       if ((folder === "avatars" || folder === "prescriptions") && !session?.userId && !session?.staffId) {
