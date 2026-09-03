@@ -31,6 +31,8 @@ export async function POST(request: Request) {
         area: body.area ? String(body.area).trim() : null,
         notes: body.notes ? String(body.notes).trim() : null,
         isDefault,
+        latitude: body.latitude != null && Number.isFinite(Number(body.latitude)) ? Number(body.latitude) : null,
+        longitude: body.longitude != null && Number.isFinite(Number(body.longitude)) ? Number(body.longitude) : null,
       },
     })
     return NextResponse.json(toAddressDTO(addr))
