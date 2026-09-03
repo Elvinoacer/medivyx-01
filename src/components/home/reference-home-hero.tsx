@@ -12,6 +12,8 @@ import { formatKES, isOpenNow } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
 import { Search, Phone, MessageCircle, ShoppingCart, User, MapPin, Clock, Truck, ShieldCheck, Upload, ArrowRight, Sun, Moon } from "lucide-react"
+import { ServicesShowcase } from "@/components/home/services-showcase"
+import "@/app/services-showcase.css"
 
 export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
   const view = useAppStore((s) => s.view)
@@ -65,14 +67,7 @@ export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
             <a href={waLink("Hello Sphere Pharmacy! I'd like to place an order.")} target="_blank" rel="noreferrer"><Button variant="outline" className="reference-action-button"><MessageCircle className="h-4 w-4 text-emerald-700" />WhatsApp</Button></a>
             <WishSheet />
             <Button variant="outline" size="icon" className="reference-icon-button relative" onClick={() => navigate("cart")} aria-label={`Cart with ${cartCount} items`}><ShoppingCart className="h-5 w-5" />{cartCount > 0 ? <span className="reference-badge">{cartCount}</span> : null}</Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="reference-icon-button"
-              aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-              title={dark ? "Switch to light mode" : "Switch to dark mode"}
-              onClick={() => setTheme(dark ? "light" : "dark")}
-            >
+            <Button variant="outline" size="icon" className="reference-icon-button" aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} title={dark ? "Switch to light mode" : "Switch to dark mode"} onClick={() => setTheme(dark ? "light" : "dark")}>
               {mounted ? (dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />) : <Moon className="h-5 w-5 opacity-0" />}
             </Button>
             <Button variant="outline" className="reference-action-button" onClick={() => navigate("account")}><User className="h-4 w-4" />Account</Button>
@@ -81,12 +76,7 @@ export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
         <nav className="reference-nav">
           <div className="reference-container reference-nav-inner">
             {navItems.map((item) => (
-              <button
-                key={item.view}
-                className={cn("reference-nav-button", view === item.view && "reference-nav-active")}
-                onClick={() => navigate(item.view)}
-                aria-current={view === item.view ? "page" : undefined}
-              >
+              <button key={item.view} className={cn("reference-nav-button", view === item.view && "reference-nav-active")} onClick={() => navigate(item.view)} aria-current={view === item.view ? "page" : undefined}>
                 {item.label}
               </button>
             ))}
@@ -136,6 +126,8 @@ export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
           <div><span className="reference-people-icon">♧</span><span><strong>Trusted by your community</strong><small>Local care you can count on</small></span></div>
         </div>
       </section>
+
+      {showHero ? <ServicesShowcase /> : null}
     </div>
   )
 }
