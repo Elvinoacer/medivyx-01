@@ -163,6 +163,8 @@ model Order {
   deliveryFee     Float                @default(0)
   deliveryLatitude  Float?
   deliveryLongitude Float?
+  deliveryLatitude  Float?
+  deliveryLongitude Float?
   subtotal        Float
   discountAmount  Float                @default(0)
   promotionCode   String?
