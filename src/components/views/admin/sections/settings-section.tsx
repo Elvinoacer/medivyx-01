@@ -16,11 +16,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { SectionHeader } from "@/components/shared/empty-state"
+import { UseCurrentLocationButton } from "@/components/shared/use-current-location-button"
 import { settingsApi } from "@/lib/api-client"
 import type { DeliverySettings, PharmacySettings } from "@/lib/types"
 import { toast } from "sonner"
 import { apiErrorMessage, SectionError, type SectionProps } from "../admin-shared"
-import { Save, Loader2, Info, Building2, Truck, MoonStar, KeyRound, Trash2, Plus, Bell, Mail, Send, CheckCircle2 } from "lucide-react"
+import { Save, Loader2, Info, Building2, Truck, MoonStar, KeyRound, Trash2, Plus, Bell, Mail, Send, CheckCircle2, MapPinned, Search } from "lucide-react"
 
 const DEMO_ACCOUNTS = [
   { role: "Admin", email: "admin@spherepharmacy.co.ke", password: "admin123" },
@@ -39,6 +40,33 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
   const [savingDelivery, setSavingDelivery] = useState(false)
   const [testingPush, setTestingPush] = useState(false)
   const [testingEmail, setTestingEmail] = useState(false)
+  const [locationSearch, setLocationSearch] = useState("")
+  const [locationResults, setLocationResults] = useState<{displayName:string;latitude:number;longitude:number}[]>([])
+  const [searchingLocation, setSearchingLocation] = useState(false)
+
+  async function searchLocation() {
+    if (locationSearch.trim().length < 2) return
+    setSearchingLocation(true)
+    try {
+      const response = await fetch("/api/location/search?q=" + encodeURIComponent(locationSearch.trim()))
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || "Location search failed.")
+      setLocationResults(data.results || [])
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not search for that place.")
+    } finally {
+      setSearchingLocation(false)
+    }
+  }
+
+  function setPharmacyDeliveryLocation(location:{displayName:string;latitude:number;longitude:number}) {
+    setDelivery((current) => current ? ({
+      ...current,
+      pharmacyLocation: { latitude: location.latitude, longitude: location.longitude, label: location.displayName },
+    }) : current)
+    setLocationResults([])
+    toast.success("Delivery origin updated. Save delivery settings to publish it.")
+  }
 
   async function testNotification(type: "PUSH" | "EMAIL") {
     if (type === "PUSH") setTestingPush(true)
