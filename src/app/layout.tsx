@@ -49,6 +49,30 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
+          <style>{`
+            @keyframes sphere-catalog-card-enter {
+              from {
+                opacity: 0;
+                transform: translateY(18px) scale(0.985);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+              }
+            }
+
+            section[aria-live="polite"] article {
+              animation: sphere-catalog-card-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+              will-change: opacity, transform;
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+              section[aria-live="polite"] article {
+                animation: none;
+                will-change: auto;
+              }
+            }
+          `}</style>
           {children}
           <Toaster />
         </ThemeProvider>
