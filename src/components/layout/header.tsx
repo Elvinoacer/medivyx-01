@@ -49,6 +49,7 @@ export function Header() {
   const navItems = [
     { label: "Home", icon: Home, view: "home" as const },
     { label: "Shop", icon: Pill, view: "catalog" as const },
+    { label: "Services", icon: HeartPulse, view: "services" as const },
     { label: "My orders", icon: Package, view: "orders" as const },
     { label: "Prescriptions", icon: Upload, view: "prescriptions" as const },
     { label: "Account", icon: User, view: "account" as const },
