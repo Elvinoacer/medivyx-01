@@ -217,7 +217,6 @@ export function CheckoutView() {
   const [addressMode, setAddressMode] = useState<"saved" | "new">("saved")
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
   const [addressText, setAddressText] = useState("")
-  const [deliveryCoordinates, setDeliveryCoordinates] = useState<{ latitude: number; longitude: number } | null>(null)
   useEffect(() => {
     if (!user) {
       setAddresses(null)
@@ -763,7 +762,6 @@ export function CheckoutView() {
         </ol>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
-          {/* ============ MAIN COLUMN ============ */}
           <div className="min-w-0">
             {inlineError ? (
               <Alert variant="destructive" className="mb-4" role="alert">
@@ -772,7 +770,6 @@ export function CheckoutView() {
               </Alert>
             ) : null}
 
-            {/* ---------- STEP 1: FULFILLMENT ---------- */}
             {step === 1 ? (
               <Card>
                 <CardContent className="p-5 sm:p-6">
@@ -866,7 +863,6 @@ export function CheckoutView() {
               </Card>
             ) : null}
 
-            {/* ---------- STEP 2: DETAILS ---------- */}
             {step === 2 ? (
               <Card>
                 <CardContent className="space-y-6 p-5 sm:p-6">
@@ -943,7 +939,6 @@ export function CheckoutView() {
                     </div>
                   )}
 
-                  {/* delivery address */}
                   {fulfillment === "DELIVERY" ? (
                     <div className="space-y-4">
                       <h3 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Delivery address</h3>
@@ -1003,7 +998,7 @@ export function CheckoutView() {
                                   <Label htmlFor="new-address">Address (building, street, estate) *</Label>
                                   <UseCurrentLocationButton onResolved={(location) => {
                                     setAddressText(location.displayName)
-                              setDeliveryCoordinates({ latitude: location.latitude, longitude: location.longitude })
+                                    setDeliveryCoordinates({ latitude: location.latitude, longitude: location.longitude })
                                     const matched = zones.find((candidate) => {
                                       const value = (location.area || "").toLowerCase()
                                       return value && (value.includes(candidate.name.toLowerCase()) || candidate.name.toLowerCase().includes(value))
@@ -1084,7 +1079,6 @@ export function CheckoutView() {
                     </div>
                   )}
 
-                  {/* order notes */}
                   <div className="space-y-2">
                     <Label htmlFor="order-notes">Order notes (optional)</Label>
                     <Textarea
@@ -1096,7 +1090,6 @@ export function CheckoutView() {
                     />
                   </div>
 
-                  {/* prescription upload */}
                   {hasRx ? (
                     <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-800 dark:bg-amber-950/20">
                       <div className="flex items-start gap-3">
@@ -1112,7 +1105,6 @@ export function CheckoutView() {
                         </div>
                       </div>
 
-                      {/* uploaded */}
                       {uploaded.length > 0 ? (
                         <ul className="space-y-2">
                           {uploaded.map((u) => (
@@ -1140,7 +1132,6 @@ export function CheckoutView() {
                         </p>
                       )}
 
-                      {/* staged */}
                       {staged.length > 0 ? (
                         <ul className="space-y-2">
                           {staged.map((s) => (
@@ -1222,7 +1213,6 @@ export function CheckoutView() {
               </Card>
             ) : null}
 
-            {/* ---------- STEP 3: PAYMENT ---------- */}
             {step === 3 ? (
               <Card>
                 <CardContent className="space-y-6 p-5 sm:p-6">
@@ -1235,7 +1225,6 @@ export function CheckoutView() {
                     </p>
                   </div>
 
-                  {/* method cards */}
                   <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Payment method">
                     <MethodCard
                       selected={method === "MPESA"}
@@ -1284,7 +1273,6 @@ export function CheckoutView() {
                     </Alert>
                   ) : null}
 
-                  {/* method-specific form */}
                   {method === "MPESA" ? (
                     <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
                       <div className="space-y-2">
@@ -1416,7 +1404,6 @@ export function CheckoutView() {
               </Card>
             ) : null}
 
-            {/* ---------- STEP 4: CONFIRM / SUCCESS ---------- */}
             {step === 4 && placedOrder ? (
               <Card className="overflow-hidden">
                 <CardContent className="p-0">
@@ -1440,7 +1427,6 @@ export function CheckoutView() {
                             (placedOrder.fulfillment === "PICKUP" ? "pickup." : "delivery.")}
                     </p>
 
-                    {/* reference */}
                     <div className="mt-6 flex items-center gap-2 rounded-full border bg-card px-5 py-2.5 shadow-sm">
                       <span className="font-mono text-lg font-bold tracking-wider">{placedOrder.reference}</span>
                       <button
@@ -1452,7 +1438,6 @@ export function CheckoutView() {
                       </button>
                     </div>
 
-                    {/* pickup code */}
                     {placedOrder.fulfillment === "PICKUP" && placedOrder.pickupCode ? (
                       <div className="mt-4 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/70 px-6 py-4 dark:border-emerald-700 dark:bg-emerald-950/40">
                         <p className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Pickup code</p>
@@ -1464,7 +1449,6 @@ export function CheckoutView() {
                     ) : null}
                   </div>
 
-                  {/* summary */}
                   <div className="space-y-4 border-t p-6">
                     <h3 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Order summary</h3>
                     <ul className="space-y-2.5">
@@ -1559,7 +1543,6 @@ export function CheckoutView() {
             ) : null}
           </div>
 
-          {/* ============ SUMMARY SIDEBAR ============ */}
           <aside aria-label="Order summary">
             <Card className="sticky top-36">
               <CardContent className="space-y-4 p-5">
@@ -1593,7 +1576,6 @@ export function CheckoutView() {
 
                 <Separator />
 
-                {/* promo code */}
                 {placedOrder ? (
                   placedOrder.promotionCode ? (
                     <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-sm dark:border-emerald-800 dark:bg-emerald-950/40">
@@ -1635,7 +1617,6 @@ export function CheckoutView() {
                   </div>
                 )}
 
-                {/* Sphere Points redemption (customer with a qualifying balance) */}
                 {!placedOrder && user && loyaltyBalance >= LOYALTY.minRedeem ? (
                   <div className="rounded-xl border border-teal-200 bg-teal-50/60 p-3 dark:border-teal-800 dark:bg-teal-950/30">
                     <div className="flex items-start gap-2.5">
@@ -1675,7 +1656,6 @@ export function CheckoutView() {
                   </div>
                 ) : null}
 
-                {/* muted earn hint for signed-in customers below the redemption minimum */}
                 {!placedOrder && user && loyaltyBalance < LOYALTY.minRedeem ? (
                   <p className="flex items-start gap-1.5 rounded-lg border border-dashed bg-muted/30 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
                     <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
@@ -1759,7 +1739,6 @@ export function CheckoutView() {
         </div>
       </div>
 
-      {/* ============ M-PESA PIN DIALOG ============ */}
       <Dialog open={pinDialogOpen} onOpenChange={(open) => {
         if (!open) {
           setPinDialogOpen(false)

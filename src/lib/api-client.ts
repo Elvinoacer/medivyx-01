@@ -28,6 +28,17 @@ import type {
 } from "./types"
 import type { OrderStatus, RxStatus } from "./constants"
 
+export interface UploadResponse {
+  url: string
+  key: string
+}
+
+export interface AssistantMessage {
+  role: "user" | "assistant"
+  content: string
+  escalated?: boolean
+}
+
 export class ApiError extends Error {
   status: number
   constructor(message: string, status: number) {
@@ -75,6 +86,34 @@ export const authApi = {
   logout: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
   updateProfile: (data: { name?: string; email?: string; phone?: string; avatar?: string | null; password?: string; currentPassword?: string }) =>
     req<SessionPayload>("/api/auth/profile", { method: "PATCH", body: JSON.stringify(data) }),
+}
+
+// ---------- saved addresses ----------
+
+export const addressesApi = {
+  list: () => req<AddressDTO[]>("/api/addresses"),
+  create: (data: {
+    label: string
+    text: string
+    area?: string
+    notes?: string
+    isDefault?: boolean
+    latitude?: number
+    longitude?: number
+  }) => req<AddressDTO>("/api/addresses", { method: "POST", body: JSON.stringify(data) }),
+  update: (
+    id: string,
+    data: Partial<{
+      label: string
+      text: string
+      area: string
+      notes: string
+      isDefault: boolean
+      latitude: number | null
+      longitude: number | null
+    }>
+  ) => req<AddressDTO>(`/api/addresses/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  remove: (id: string) => req<{ ok: boolean }>(`/api/addresses/${id}`, { method: "DELETE" }),
 }
 
 // ---------- catalogue ----------
@@ -169,6 +208,64 @@ export const prescriptionsApi = {
     req<{ orderId: string; reference: string }>(`/api/prescriptions/${id}/refill`, { method: "POST" }),
 }
 
+// ---------- notifications ----------
+
+export const notificationsApi = {
+  list: () => req<NotificationDTO[]>("/api/notifications"),
+  markRead: (id: string) =>
+    req<{ ok: boolean }>("/api/notifications", { method: "PATCH", body: JSON.stringify({ id }) }),
+  markAllRead: () =>
+    req<{ ok: boolean }>("/api/notifications", { method: "PATCH", body: JSON.stringify({}) }),
+  prefs: () => req<NotificationPrefsDTO>("/api/notifications/prefs"),
+  updatePrefs: (data: Partial<NotificationPrefsDTO>) =>
+    req<NotificationPrefsDTO>("/api/notifications/prefs", { method: "PUT", body: JSON.stringify(data) }),
+}
+
+// ---------- assistant ----------
+
+export const assistantApi = {
+  chat: (messages: AssistantMessage[]) =>
+    req<{ reply: string; escalated: boolean }>("/api/assistant", {
+      method: "POST",
+      body: JSON.stringify({
+        messages: messages.map(({ role, content }) => ({ role, content })),
+      }),
+    }),
+}
+
+// ---------- storage / uploads ----------
+
+export const storageApi = {
+  uploadFile: async (
+    file: File,
+    folder: "products" | "prescriptions" | "avatars" | "services" | "general"
+  ): Promise<UploadResponse> => {
+    const form = new FormData()
+    form.append("file", file)
+    form.append("folder", folder)
+    const res = await fetch("/api/upload", { method: "POST", body: form, cache: "no-store" })
+    let body: unknown = null
+    try {
+      body = await res.json()
+    } catch {
+      /* no body */
+    }
+    if (!res.ok) {
+      const msg = body && typeof body === "object" && "error" in body && typeof body.error === "string"
+        ? body.error
+        : `Upload failed (${res.status})`
+      throw new ApiError(msg, res.status)
+    }
+    return body as UploadResponse
+  },
+  uploadBase64: (data: {
+    fileData: string
+    fileName: string
+    fileType: string
+    folder?: "products" | "prescriptions" | "avatars" | "services" | "general"
+  }) => req<UploadResponse>("/api/upload", { method: "POST", body: JSON.stringify(data) }),
+}
+
 // ---------- payments ----------
 
 export const paymentsApi = {
@@ -201,8 +298,7 @@ export const paymentsApi = {
       `/api/orders/${orderId}/request-payment`,
       { method: "POST", body: JSON.stringify({ phone }) }
     ),
-  refund: (paymentId: string) =>
-    req<{ ok: boolean }>("/api/payments/refund", { method: "POST", body: JSON.stringify({ paymentId }) }),
+  refund: (paymentId: string) => req<{ ok: boolean }>("/api/payments/refund", { method: "POST", body: JSON.stringify({ paymentId }) }),
 }
 
 // ---------- admin ----------
@@ -226,7 +322,6 @@ export const adminApi = {
       method: "POST",
       body: JSON.stringify({ csv }),
     }),
-  // Review moderation queue
   reviews: (q: { status?: string } = {}) => {
     const params = new URLSearchParams()
     Object.entries(q).forEach(([k, v]) => v && params.set(k, v))
@@ -267,7 +362,7 @@ export const settingsApi = {
     fileData: string
     fileName: string
     fileType: string
-    folder?: "products" | "prescriptions" | "avatars" | "general"
+    folder?: "products" | "prescriptions" | "avatars" | "services" | "general"
   }): Promise<UploadResponse> => {
     const res = await fetch("/api/upload", {
       method: "POST",
@@ -282,7 +377,6 @@ export const settingsApi = {
   },
 }
 
-
 export const servicesApi = {
   list: (includeInactive = false) => req<ServiceDTO[]>(`/api/services${includeInactive ? "?includeInactive=true" : ""}`),
   get: (id: string) => req<ServiceDTO>(`/api/services/${id}`),
@@ -290,7 +384,6 @@ export const servicesApi = {
   update: (id: string, payload: Partial<ServiceDTO>) => req<ServiceDTO>(`/api/services/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   remove: (id: string) => req<{ ok: boolean }>(`/api/services/${id}`, { method: "DELETE" }),
 }
-
 
 export const servicesAdminApi = {
   availability: (serviceId: string) =>
@@ -320,7 +413,6 @@ export const adminServiceBookingsApi = {
   assign: (id: string, staffId: string | null) =>
     req<{ ok: boolean; assignedStaffId: string | null }>(`/api/admin/service-bookings/${id}/assign`, { method: "PATCH", body: JSON.stringify({ staffId }) }),
 }
-
 
 export const servicePaymentsApi = {
   mpesa: (bookingId: string, phone: string) =>
