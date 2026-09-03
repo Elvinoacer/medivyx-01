@@ -4,6 +4,7 @@ import { toPrescriptionDTOFull } from "@/lib/dto"
 import { addStatusEvent, audit, notifyCustomer } from "@/lib/notify"
 import { getSession, requireStaff } from "@/lib/session"
 import { RX_STATUSES, type RxStatus, type OrderStatus } from "@/lib/constants"
+import { getPresignedDownloadUrl } from "@/lib/r2"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -27,7 +28,22 @@ export async function GET(_request: Request, { params }: Params) {
   if (!isOwner && !isStaff) {
     return NextResponse.json({ error: "You do not have access to this prescription." }, { status: 403 })
   }
-  return NextResponse.json(toPrescriptionDTOFull(rx, true))
+
+  let presignedUrl = rx.fileUrl
+  if (rx.storageKey) {
+    try {
+      presignedUrl = await getPresignedDownloadUrl(rx.storageKey, 3600)
+    } catch (e) {
+      console.warn("[Prescription Presigned URL Error]", e)
+    }
+  }
+
+  const dto = toPrescriptionDTOFull(rx, true)
+  return NextResponse.json({
+    ...dto,
+    fileData: rx.fileData ?? "",
+    fileUrl: presignedUrl ?? rx.fileUrl ?? null,
+  })
 }
 
 // PATCH — pharmacist review (APPROVED / REJECTED / CLARIFICATION_REQUESTED / PARTIALLY_APPROVED)
@@ -82,6 +98,46 @@ export async function PATCH(request: Request, { params }: Params) {
         await addStatusEvent(order.id, next, actor, note.slice(0, 300))
         await notifyCustomer(rx.userId, "PRESCRIPTION", `Prescription update — order ${order.reference}`, note.slice(0, 300), "WHATSAPP")
       }
+    }
+
+    if (rx.userId) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+      const customerUser = await db.user.findUnique({ where: { id: rx.userId }, select: { name: true, email: true } })
+      const { prescriptionStatusTemplate } = await import("@/lib/email/templates")
+
+      const emailData = prescriptionStatusTemplate({
+        customerName: customerUser?.name,
+        status: status as "APPROVED" | "REJECTED" | "CLARIFICATION_REQUESTED" | "PARTIALLY_APPROVED",
+        reviewNotes: reviewNotes ?? null,
+        refillsAllowed: refillsAllowed > 0 ? refillsAllowed : undefined,
+        actionUrl: rx.orderId ? `${appUrl}/#order-${rx.orderId}` : `${appUrl}/#prescriptions`,
+      })
+
+      const noteText =
+        status === "APPROVED" ? "Your prescription has been verified and approved by our pharmacist."
+        : status === "PARTIALLY_APPROVED" ? `Partially approved: ${reviewNotes ?? ""}`
+        : status === "REJECTED" ? `Prescription could not be verified: ${reviewNotes ?? ""}`
+        : `Clarification needed: ${reviewNotes ?? ""}`
+
+      await notifyCustomer(
+        rx.userId,
+        "PRESCRIPTION",
+        `Prescription ${status.replace(/_/g, " ").toLowerCase()}`,
+        noteText,
+        "IN_APP",
+        {
+          link: rx.orderId ? `${appUrl}/#order-${rx.orderId}` : `${appUrl}/#prescriptions`,
+          metadata: { prescriptionId: rx.id, status, reviewNotes },
+          email: customerUser?.email
+            ? {
+                to: customerUser.email,
+                subject: emailData.subject,
+                html: emailData.html,
+                text: emailData.text,
+              }
+            : undefined,
+        }
+      )
     }
 
     await audit(actor, session.staffRole, `RX_${status}`, "Prescription", rx.id, `${rx.fileName}${reviewNotes ? ` — ${reviewNotes}` : ""}`)

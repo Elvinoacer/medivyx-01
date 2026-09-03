@@ -62,6 +62,7 @@ export function PremiumPopularCard({ product, rank }: PremiumPopularCardProps) {
     <article
       className={cn(
         "premium-popular-card group relative overflow-hidden rounded-[1.35rem] border border-border/70 bg-card/95 shadow-[0_16px_50px_-28px_hsl(275_55%_25%_/_0.35)] transition-all duration-500 hover:-translate-y-1 hover:border-violet-300/50 hover:shadow-[0_26px_65px_-28px_hsl(275_65%_35%_/_0.45)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_20px_55px_-28px_hsl(275_80%_65%_/_0.26)]"
+      )}
     >
       <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-violet-500/[0.08] via-fuchsia-400/[0.03] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 dark:from-violet-300/[0.12]" aria-hidden />
 

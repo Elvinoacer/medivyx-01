@@ -21,7 +21,7 @@ import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
 import { RxStatusBadge } from "@/components/shared/status-badges"
 import { useAppStore } from "@/store/use-app-store"
 import { useAuthStore } from "@/store/use-auth-store"
-import { prescriptionsApi } from "@/lib/api-client"
+import { prescriptionsApi, storageApi } from "@/lib/api-client"
 import { ROLE_LABELS } from "@/lib/constants"
 import { formatDate, formatDateTime, shortRef, timeAgo } from "@/lib/format"
 import type { PrescriptionDTO } from "@/lib/types"
@@ -39,6 +39,7 @@ import {
   ShieldCheck,
   ShieldQuestion,
   Upload,
+  Wallet,
   X,
 } from "lucide-react"
 
@@ -177,14 +178,28 @@ export function PrescriptionsView() {
     setUploading(true)
     setUploadError(null)
     try {
-      const base64 = await fileToBase64(file)
+      let fileUrl: string | undefined
+      let storageKey: string | undefined
+      let base64: string | undefined
+
+      try {
+        const r2Res = await storageApi.uploadFile(file, "prescriptions")
+        fileUrl = r2Res.url
+        storageKey = r2Res.key
+      } catch (uploadErr) {
+        console.warn("[R2 direct upload fallback]:", uploadErr)
+        base64 = await fileToBase64(file)
+      }
+
       await prescriptionsApi.upload({
         fileName: file.name,
         fileType: file.type,
         fileData: base64,
+        fileUrl,
+        storageKey,
         notes: notes.trim() || undefined,
       })
-      toast.success("Prescription uploaded — our pharmacist will review it shortly.")
+      toast.success("Prescription uploaded to cloud storage — our pharmacist will review it shortly.")
       clearFile()
       setNotes("")
       setReloadKey((k) => k + 1)
@@ -476,6 +491,7 @@ export function PrescriptionsView() {
               rx={rx}
               onView={() => setRxViewId(rx.id)}
               onRequestRefill={() => void requestRefill(rx)}
+              onPayOrder={(orderId) => navigate("order", { orderId })}
               refillBusy={refillingId === rx.id}
             />
           ))}
@@ -494,11 +510,13 @@ function PrescriptionCard({
   rx,
   onView,
   onRequestRefill,
+  onPayOrder,
   refillBusy,
 }: {
   rx: PrescriptionDTO
   onView: () => void
   onRequestRefill: () => void
+  onPayOrder: (orderId: string) => void
   refillBusy: boolean
 }) {
   const eligibleForRefill = rx.status === "APPROVED" && rx.refillsAllowed > rx.refillsUsed
@@ -552,6 +570,16 @@ function PrescriptionCard({
               <FileSearch className="h-3.5 w-3.5" aria-hidden />
               View
             </Button>
+            {rx.orderId ? (
+              <Button
+                size="sm"
+                className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => onPayOrder(rx.orderId!)}
+              >
+                <Wallet className="h-3.5 w-3.5" aria-hidden />
+                View / Pay Order
+              </Button>
+            ) : null}
             {eligibleForRefill ? (
               <Button size="sm" variant="outline" onClick={onRequestRefill} disabled={refillBusy}>
                 {refillBusy ? (
@@ -597,13 +625,19 @@ function PrescriptionFileDialog({ rx, onClose }: { rx: PrescriptionDTO; onClose:
   }, [rx.id])
 
   const isImage = detail ? detail.fileType.startsWith("image") : false
-  const imageSrc = detail?.fileData
-    ? detail.fileData.startsWith("data:")
-      ? detail.fileData
-      : `data:${detail.fileType};base64,${detail.fileData}`
-    : null
+  const imageSrc =
+    detail?.fileUrl ||
+    (detail?.fileData
+      ? detail.fileData.startsWith("data:")
+        ? detail.fileData
+        : `data:${detail.fileType};base64,${detail.fileData}`
+      : null)
 
   function download() {
+    if (detail?.fileUrl) {
+      window.open(detail.fileUrl, "_blank")
+      return
+    }
     if (!detail?.fileData) return
     let url: string | null = null
     try {

@@ -95,10 +95,49 @@ export async function POST(_request: Request, { params }: Params) {
   await addStatusEvent(order.id, "UNDER_REVIEW", "System", "Queued for pharmacist re-verification")
 
   await audit("System", null, "RX_REFILL_REQUESTED", "Prescription", rx.id, `New order ${reference}`)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+  const orderUrl = `${appUrl}/#order-${order.id}`
+
+  const customerUser = rx.userId
+    ? await db.user.findUnique({ where: { id: rx.userId }, select: { name: true, email: true } })
+    : null
+  const customerName = customerUser?.name || "Customer"
+
   await notifyCustomer(
-    rx.userId, "PRESCRIPTION", `Refill requested — order ${reference}`,
-    "We received your refill request. Our pharmacist will re-verify and confirm availability.", "WHATSAPP"
+    rx.userId,
+    "PRESCRIPTION",
+    `Refill requested — order ${reference}`,
+    "We received your refill request. Our pharmacist will re-verify and confirm availability shortly.",
+    "IN_APP",
+    {
+      link: orderUrl,
+      metadata: { orderId: order.id, prescriptionId: rx.id, reference },
+      email: customerUser?.email
+        ? {
+            to: customerUser.email,
+            subject: `Refill Requested: Order ${reference} — Sphere Pharmacy`,
+            html: `<p>Hello ${customerName},</p><p>We received your prescription refill request for order <strong>${reference}</strong>.</p><p>Our pharmacist is re-verifying the prescription and will confirm medication availability shortly.</p><p><a href="${orderUrl}">Track order progress</a></p>`,
+            text: `Refill request received for order ${reference}.\nTrack order: ${orderUrl}`,
+          }
+        : undefined,
+    }
   )
+
+  // Alert pharmacists
+  const { notifyStaff } = await import("@/lib/notify")
+  await notifyStaff({
+    roles: ["PHARMACIST", "ADMIN"],
+    event: "RX_REFILL_REQUESTED",
+    title: `Prescription Refill: ${reference}`,
+    message: `Customer ${customerName} requested a refill for prescription ${rx.fileName}. Re-verification required.`,
+    link: `${appUrl}/#admin-prescriptions`,
+    details: {
+      "Order Ref": reference,
+      Customer: customerName,
+      Prescription: rx.fileName,
+      RemainingRefills: rx.refillsAllowed - rx.refillsUsed - 1,
+    },
+  })
 
   const full = await db.order.findUnique({ where: { id: order.id }, include: ORDER_INCLUDE })
   return NextResponse.json({ orderId: order.id, reference, order: toOrderDTO(full!) })

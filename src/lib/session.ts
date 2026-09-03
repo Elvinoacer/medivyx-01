@@ -62,12 +62,13 @@ export async function destroySession(): Promise<void> {
 
 // ---------- Payload builders ----------
 
-export function toUserDTO(user: { id: string; name: string | null; phone: string | null; email: string | null; createdAt: Date; loyaltyPoints: number }): UserDTO {
+export function toUserDTO(user: { id: string; name: string | null; phone: string | null; email: string | null; avatar?: string | null; createdAt: Date; loyaltyPoints: number }): UserDTO {
   return {
     id: user.id,
     name: user.name,
     phone: user.phone,
     email: user.email,
+    avatar: user.avatar ?? null,
     createdAt: user.createdAt.toISOString(),
     loyaltyPoints: user.loyaltyPoints ?? 0,
   }
@@ -75,7 +76,7 @@ export function toUserDTO(user: { id: string; name: string | null; phone: string
 
 export function toStaffDTO(staff: {
   id: string; name: string; email: string; phone: string | null;
-  role: string; title: string | null; active: boolean; createdAt: Date;
+  role: string; title: string | null; avatar?: string | null; active: boolean; createdAt: Date;
 }): StaffDTO {
   return {
     id: staff.id,
@@ -84,6 +85,7 @@ export function toStaffDTO(staff: {
     phone: staff.phone,
     role: staff.role as Role,
     title: staff.title,
+    avatar: staff.avatar ?? null,
     active: staff.active,
     createdAt: staff.createdAt.toISOString(),
   }

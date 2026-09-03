@@ -22,12 +22,16 @@ import { PrescriptionsView } from "@/components/views/prescriptions-view"
 import { AccountView } from "@/components/views/account-view"
 import { AdminView } from "@/components/views/admin/admin-view"
 
+import { setupForegroundNotificationListener } from "@/lib/firebase/client"
+
 export default function Page() {
   const view = useAppStore((s) => s.view)
   const refresh = useAuthStore((s) => s.refresh)
 
   useEffect(() => {
     refresh()
+    const cleanup = setupForegroundNotificationListener()
+    return () => cleanup()
   }, [refresh])
 
   const home = view === "home"

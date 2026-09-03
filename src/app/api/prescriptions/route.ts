@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { toPrescriptionDTOFull } from "@/lib/dto"
 import { addStatusEvent, notifyCustomer } from "@/lib/notify"
 import { getSession, requireCustomer, requireStaff } from "@/lib/session"
+import { uploadBase64ToR2 } from "@/lib/r2"
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10MB
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/heic", "application/pdf"]
@@ -68,21 +69,82 @@ export async function POST(request: Request) {
       if (order) orderId = order.id
     }
 
+    let fileUrl: string | null = body.fileUrl ? String(body.fileUrl) : null
+    let storageKey: string | null = body.storageKey ? String(body.storageKey) : null
+
+    // If base64 provided, upload to R2
+    if (fileData) {
+      try {
+        const ext = fileName.includes(".") ? `.${fileName.split(".").pop()}` : ""
+        const cleanName = fileName.replace(/\.[^/.]+$/, "").replace(/[^a-z0-9_-]/gi, "_").slice(0, 40)
+        const userFolder = session.userId || "guest"
+        const key = `prescriptions/${userFolder}/${Date.now()}_${cleanName}${ext}`
+        const r2Res = await uploadBase64ToR2(fileData, key, fileType, {
+          userId: session.userId || "anonymous",
+          fileName,
+        })
+        fileUrl = r2Res.url
+        storageKey = r2Res.key
+      } catch (err) {
+        console.warn("[R2 Prescription Upload Warning] Falling back to database base64 storage:", err)
+      }
+    }
+
     const rx = await db.prescription.create({
-      data: { userId: session.userId, orderId, fileName, fileType, fileData, notes },
+      data: {
+        userId: session.userId,
+        orderId,
+        fileName,
+        fileType,
+        fileData,
+        fileUrl,
+        storageKey,
+        notes,
+      },
       include: { user: { select: { name: true, phone: true } }, order: { select: { reference: true } }, reviewedBy: { select: { name: true } } },
     })
 
     if (orderId) {
       await addStatusEvent(orderId, "UNDER_REVIEW", "System", "Prescription uploaded — queued for pharmacist review")
     }
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+    const customerUser = await db.user.findUnique({ where: { id: session.userId! }, select: { name: true, email: true } })
+    const customerName = customerUser?.name || "Customer"
+
     await notifyCustomer(
       session.userId,
       "PRESCRIPTION",
       "Prescription received",
       "We received your prescription. Our pharmacist is reviewing it — usually within 2 working hours.",
-      "WHATSAPP"
+      "IN_APP",
+      {
+        link: `${appUrl}/#prescriptions`,
+        metadata: { prescriptionId: rx.id, orderId },
+        email: customerUser?.email
+          ? {
+              to: customerUser.email,
+              subject: "Prescription Received — Sphere Pharmacy",
+              html: `<p>Hello ${customerName},</p><p>We have safely received your uploaded prescription (<strong>${fileName}</strong>). Our licensed pharmacist will review it shortly (usually within 2 working hours).</p><p>You will receive another update once verification is complete.</p>`,
+              text: `Hello ${customerName},\nWe received your prescription (${fileName}). Our pharmacist will review it shortly.`,
+            }
+          : undefined,
+      }
     )
+
+    // Alert pharmacists and admins
+    const { notifyStaff } = await import("@/lib/notify")
+    await notifyStaff({
+      roles: ["PHARMACIST", "ADMIN"],
+      event: "NEW_PRESCRIPTION",
+      title: "New Prescription Uploaded",
+      message: `Prescription uploaded by ${customerName} awaiting pharmacist review.`,
+      link: `${appUrl}/#admin-prescriptions`,
+      details: {
+        Customer: customerName,
+        File: fileName,
+        LinkedOrder: rx.order?.reference || "None",
+      },
+    })
     return NextResponse.json(toPrescriptionDTOFull(rx, true))
   } catch {
     return NextResponse.json({ error: "Could not upload the prescription. Please try again." }, { status: 500 })

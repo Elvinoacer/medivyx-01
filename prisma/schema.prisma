@@ -16,6 +16,7 @@ model User {
   phone         String?  @unique
   email         String?  @unique
   passwordHash  String?
+  avatar        String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -27,6 +28,7 @@ model User {
   sessions           Session[]
   reviews            Review[]
   stockAlerts        ProductAlert[]
+  pushTokens         PushToken[]
 
   // Sphere Points loyalty balance (includes legacy in-store activity)
   loyaltyPoints      Int      @default(0)
@@ -75,11 +77,14 @@ model StaffUser {
   passwordHash String
   role         String   // ADMIN | PHARMACIST | STAFF | RIDER
   title        String?  // e.g. "Superintendent Pharmacist"
+  avatar       String?
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
   sessions       Session[]
   prescriptions  Prescription[] @relation("RxReviewer")
+  notifications  Notification[]
+  pushTokens     PushToken[]
 }
 
 // ---------- Catalogue ----------
@@ -114,7 +119,8 @@ model Product {
   description          String
   usageInfo            String?
   warnings             String?
-  image                String?  // emoji or URL
+  image                String?  // emoji or primary R2 image URL
+  images               String[] @default([]) // additional gallery image URLs from R2
   active               Boolean  @default(true)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
@@ -220,7 +226,9 @@ model Prescription {
   order          Order?    @relation(fields: [orderId], references: [id])
   fileName       String
   fileType       String
-  fileData       String    // base64; never exposed publicly, authorized access only
+  fileData       String?   // base64 fallback or inline cache
+  fileUrl        String?   // Cloudflare R2 storage URL
+  storageKey     String?   // Cloudflare R2 object key (e.g. prescriptions/rx_xxx.pdf)
   notes          String?
   status         String    @default("PENDING") // PENDING | APPROVED | REJECTED | CLARIFICATION_REQUESTED | PARTIALLY_APPROVED
   reviewNotes    String?
@@ -280,24 +288,48 @@ model AuditLog {
 }
 
 model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  channel   String   // IN_APP | SMS | WHATSAPP | EMAIL
+  id        String     @id @default(cuid())
+  userId    String?
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  staffId   String?
+  staff     StaffUser? @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  channel   String     // IN_APP | SMS | WHATSAPP | EMAIL | PUSH
   event     String?
   title     String
   message   String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  metadata  String?    // JSON string e.g. { orderId, url }
+  read      Boolean    @default(false)
+  createdAt DateTime   @default(now())
+
+  @@index([userId])
+  @@index([staffId])
 }
 
 model NotificationPref {
-  id       String @id @default(cuid())
-  userId   String @unique
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id       String  @id @default(cuid())
+  userId   String  @unique
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   sms      Boolean @default(true)
   whatsapp Boolean @default(true)
-  email    Boolean @default(false)
+  email    Boolean @default(true)
+  push     Boolean @default(true)
+}
+
+model PushToken {
+  id        String     @id @default(cuid())
+  token     String     @unique
+  userId    String?
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  staffId   String?
+  staff     StaffUser? @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  role      String?    // CUSTOMER | ADMIN | PHARMACIST | STAFF | RIDER
+  platform  String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([staffId])
+  @@index([role])
 }
 
 model Setting {

@@ -18,6 +18,9 @@ export async function PATCH(request: Request) {
       if (name.length < 2) return NextResponse.json({ error: "Name must be at least 2 characters." }, { status: 400 })
       data.name = name
     }
+    if (body.avatar !== undefined) {
+      data.avatar = body.avatar ? String(body.avatar) : null
+    }
     if (body.email !== undefined) {
       const email = body.email ? String(body.email).trim().toLowerCase() : null
       if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {

@@ -39,7 +39,43 @@ export async function POST(request: Request, { params }: Params) {
 
   await audit(actor, isStaff ? session.staffRole : null, "ORDER_CANCELLED", "Order", order.reference, reason ?? undefined)
   const { title, message } = statusNotification("CANCELLED", order.reference)
-  await notifyCustomer(order.userId, "ORDER_STATUS", title, message)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+  const orderUrl = `${appUrl}/#order-${order.id}`
+
+  const customerUser = order.userId
+    ? await db.user.findUnique({ where: { id: order.userId }, select: { name: true, email: true } })
+    : null
+  const customerName = customerUser?.name || order.guestName || "Valued Customer"
+  const customerEmail = customerUser?.email
+
+  await notifyCustomer(order.userId, "ORDER_STATUS", title, message, "IN_APP", {
+    link: orderUrl,
+    metadata: { orderId: order.id, status: "CANCELLED", reference: order.reference, reason },
+    email: customerEmail
+      ? {
+          to: customerEmail,
+          subject: `Order Cancelled: ${order.reference} — Sphere Pharmacy`,
+          html: `<p>Hello ${customerName},</p><p>Your order <strong>${order.reference}</strong> has been cancelled.${reason ? ` Reason: ${reason}` : ""}</p><p>Any points or payments have been reversed. If you have questions, please contact our pharmacy desk.</p>`,
+          text: `Hello ${customerName},\nYour order ${order.reference} has been cancelled.${reason ? ` Reason: ${reason}` : ""}\nAny payments or points have been reversed.`,
+        }
+      : undefined,
+  })
+
+  // Alert Admins & Staff
+  const { notifyStaff } = await import("@/lib/notify")
+  await notifyStaff({
+    roles: ["ADMIN", "STAFF", "PHARMACIST"],
+    event: "ORDER_CANCELLED",
+    title: `Order Cancelled: ${order.reference}`,
+    message: `Order ${order.reference} was cancelled by ${actor}.${reason ? ` Reason: ${reason}` : ""}`,
+    link: `${appUrl}/#admin-orders`,
+    details: {
+      "Order Ref": order.reference,
+      CancelledBy: actor,
+      Reason: reason || "Customer request",
+      Total: `KSh ${order.total.toLocaleString()}`,
+    },
+  })
 
   const updated = await db.order.findUnique({ where: { id: order.id }, include: ORDER_INCLUDE })
   return NextResponse.json(toOrderDTO(updated!))

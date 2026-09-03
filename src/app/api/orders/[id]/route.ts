@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { ORDER_INCLUDE, toOrderDTO } from "@/lib/dto"
-import { addStatusEvent, audit, notifyCustomer, statusNotification } from "@/lib/notify"
+import { addStatusEvent, audit, notifyCustomer, notifyStaff, statusNotification } from "@/lib/notify"
 import { requireStaff } from "@/lib/session"
 import { reversePointsForOrder } from "@/lib/loyalty"
-import { ORDER_STATUSES, RIDER_ALLOWED_STATUSES, type OrderStatus } from "@/lib/constants"
+import { ORDER_STATUS_LABELS, ORDER_STATUSES, RIDER_ALLOWED_STATUSES, type OrderStatus } from "@/lib/constants"
+import { orderStatusUpdateTemplate } from "@/lib/email/templates"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -91,10 +92,57 @@ export async function PATCH(request: Request, { params }: Params) {
     await audit(actor, session.staffRole, `ORDER_STATUS_${status}`, "Order", order.reference, note ?? undefined)
 
     const { title, message } = statusNotification(status, order.reference)
-    await notifyCustomer(order.userId, "ORDER_STATUS", title, message)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+    const orderUrl = `${appUrl}/#order-${order.id}`
+
+    const customerUser = order.userId
+      ? await db.user.findUnique({ where: { id: order.userId }, select: { name: true, email: true } })
+      : null
+    const customerName = customerUser?.name || order.guestName || "Valued Customer"
+    const customerEmail = customerUser?.email
+
+    const emailTemplate = orderStatusUpdateTemplate({
+      orderReference: order.reference,
+      customerName,
+      statusLabel: ORDER_STATUS_LABELS[status] ?? status,
+      message,
+      pickupCode: status === "READY_FOR_PICKUP" ? order.pickupCode : null,
+      orderUrl,
+    })
+
+    await notifyCustomer(order.userId, "ORDER_STATUS", title, message, "IN_APP", {
+      link: orderUrl,
+      metadata: { orderId: order.id, status, reference: order.reference },
+      email: customerEmail
+        ? {
+            to: customerEmail,
+            subject: emailTemplate.subject,
+            html: emailTemplate.html,
+            text: emailTemplate.text,
+          }
+        : undefined,
+    })
+
     if (order.userId) {
       // also model the WhatsApp/SMS channel so customers see multi-channel updates
       await notifyCustomer(order.userId, "ORDER_STATUS", title, message, "WHATSAPP")
+    }
+
+    // If order was cancelled or rejected by staff, alert admin
+    if (status === "CANCELLED" || status === "REJECTED") {
+      await notifyStaff({
+        roles: ["ADMIN", "PHARMACIST"],
+        event: `ORDER_${status}`,
+        title: `Order ${order.reference} ${status.toLowerCase()}`,
+        message: `Order ${order.reference} was marked as ${status} by ${actor}.${note ? ` Reason: ${note}` : ""}`,
+        link: `${appUrl}/#admin-orders`,
+        details: {
+          "Order Ref": order.reference,
+          Status: status,
+          Actor: actor,
+          Note: note || "None",
+        },
+      })
     }
 
     const updated = await db.order.findUnique({ where: { id: order.id }, include: ORDER_INCLUDE })

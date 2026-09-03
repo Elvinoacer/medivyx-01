@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
 import { OrderStatusBadge, PaymentStatusBadge, RxFlagBadge, RxStatusBadge } from "@/components/shared/status-badges"
-import { ordersApi, adminApi } from "@/lib/api-client"
+import { ordersApi, adminApi, paymentsApi } from "@/lib/api-client"
 import type { OrderDTO, PaymentDTO, StaffDTO } from "@/lib/types"
 import {
   ACTIVE_STATUSES, FULFILLMENT_LABELS, NEXT_STATUS, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS,
@@ -190,6 +190,36 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
     } catch (err) {
       toast.error(apiErrorMessage(err))
       return null
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  async function handlePromptMpesa(order: OrderDTO) {
+    setActionBusy(true)
+    try {
+      const res = await paymentsApi.requestPayment(order.id, order.customerPhone ?? undefined)
+      toast.success(res.message || `M-Pesa STK push prompt sent to ${order.customerPhone}`)
+      let attempts = 0
+      const poll = setInterval(async () => {
+        attempts++
+        try {
+          const q = await paymentsApi.mpesaQuery(res.checkoutRequestId)
+          if (q.status === "SUCCESS") {
+            clearInterval(poll)
+            toast.success(`Payment confirmed for order ${order.reference}!`)
+            await load(search)
+            onRefresh()
+          } else if (q.status === "FAILED" || attempts > 20) {
+            clearInterval(poll)
+            if (q.status === "FAILED") toast.error("Payment was declined or timed out.")
+          }
+        } catch {
+          if (attempts > 20) clearInterval(poll)
+        }
+      }, 3000)
+    } catch (err) {
+      toast.error(apiErrorMessage(err))
     } finally {
       setActionBusy(false)
     }
@@ -474,6 +504,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
         actionBusy={actionBusy}
         onStartTransition={(order, target, viaCash) => setTransition({ order, target, viaCash })}
         onCancel={(order) => setCancelFor(order)}
+        onPromptMpesa={(order) => void handlePromptMpesa(order)}
         onNavigateSection={onNavigateSection}
         onAssignRider={async (order, staffId, riderName) => {
           await runAction(
@@ -532,6 +563,7 @@ function OrderDetailSheet({
   actionBusy,
   onStartTransition,
   onCancel,
+  onPromptMpesa,
   onNavigateSection,
   onAssignRider,
 }: {
@@ -544,6 +576,7 @@ function OrderDetailSheet({
   actionBusy: boolean
   onStartTransition: (order: OrderDTO, target: OrderStatus, viaCash?: boolean) => void
   onCancel: (order: OrderDTO) => void
+  onPromptMpesa: (order: OrderDTO) => void
   onNavigateSection: SectionProps["onNavigateSection"]
   onAssignRider: (order: OrderDTO, staffId: string, riderName?: string) => Promise<void>
 }) {
@@ -699,14 +732,25 @@ function OrderDetailSheet({
                 </ul>
               )}
               {pay && order.status === "AWAITING_PAYMENT" && canManage ? (
-                <Button
-                  size="sm"
-                  className="mt-2 gap-1.5"
-                  disabled={actionBusy}
-                  onClick={() => onStartTransition(order, "PAID", true)}
-                >
-                  <Banknote className="h-4 w-4" /> Mark paid (cash received)
-                </Button>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    disabled={actionBusy}
+                    onClick={() => onPromptMpesa(order)}
+                  >
+                    <Smartphone className="h-4 w-4" /> Send M-Pesa STK prompt
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    disabled={actionBusy}
+                    onClick={() => onStartTransition(order, "PAID", true)}
+                  >
+                    <Banknote className="h-4 w-4" /> Mark paid (cash received)
+                  </Button>
+                </div>
               ) : null}
             </section>
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,9 +11,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Check, CheckCircle2, ChevronRight, Clock, Eye, Heart, HelpCircle } from "lucide-react"
+import { enablePushNotifications, disablePushNotifications } from "@/lib/firebase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
@@ -40,7 +42,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { SectionHeader } from "@/components/shared/empty-state"
 import { useAppStore } from "@/store/use-app-store"
 import { useAuthStore } from "@/store/use-auth-store"
-import { addressesApi, authApi, catalogApi, notificationsApi, ordersApi } from "@/lib/api-client"
+import { addressesApi, authApi, catalogApi, notificationsApi, ordersApi, storageApi } from "@/lib/api-client"
 import { DELIVERY_DEFAULTS, LOYALTY, ROLE_LABELS } from "@/lib/constants"
 import { formatDate, formatKES, initials, statusLabel, timeAgo } from "@/lib/format"
 import type { AddressDTO, LoyaltySummaryDTO, NotificationDTO, NotificationPrefsDTO, StockAlertDTO } from "@/lib/types"
@@ -52,6 +54,7 @@ import {
   BellOff,
   BellRing,
   Briefcase,
+  Camera,
   CheckCheck,
   Download,
   FileText,
@@ -103,6 +106,7 @@ interface ProfileForm {
   name: string
   phone: string
   email: string
+  avatar: string | null
 }
 
 interface PasswordForm {
@@ -145,15 +149,36 @@ export function AccountView() {
 
   // ---------- profile ----------
   const [editingProfile, setEditingProfile] = useState(false)
-  const [profileForm, setProfileForm] = useState<ProfileForm>({ name: "", phone: "", email: "" })
+  const [profileForm, setProfileForm] = useState<ProfileForm>({ name: "", phone: "", email: "", avatar: null })
   const [profileError, setProfileError] = useState<string | null>(null)
   const [savingProfile, setSavingProfile] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingAvatar(true)
+    try {
+      const res = await storageApi.uploadFile(file, "avatars")
+      setProfileForm((f) => ({ ...f, avatar: res.url }))
+      await authApi.updateProfile({ avatar: res.url })
+      await refreshSession()
+      toast.success("Profile photo uploaded to Cloudflare R2!")
+    } catch (err) {
+      toast.error(errMessage(err, "Failed to upload profile photo."))
+    } finally {
+      setUploadingAvatar(false)
+      if (e.target) e.target.value = ""
+    }
+  }
 
   function startEditProfile() {
     setProfileForm({
       name: user?.name ?? "",
       phone: user?.phone ?? "",
       email: user?.email ?? "",
+      avatar: user?.avatar ?? null,
     })
     setProfileError(null)
     setEditingProfile(true)
@@ -178,7 +203,7 @@ export function AccountView() {
     setSavingProfile(true)
     setProfileError(null)
     try {
-      await authApi.updateProfile({ name, phone: phone || undefined, email: email || undefined })
+      await authApi.updateProfile({ name, phone: phone || undefined, email: email || undefined, avatar: profileForm.avatar })
       await refreshSession()
       toast.success("Profile updated")
       setEditingProfile(false)
@@ -294,10 +319,22 @@ export function AccountView() {
   async function toggleChannel(key: keyof NotificationPrefsDTO, label: string) {
     if (!prefs) return
     const prev = prefs
-    const next: NotificationPrefsDTO = { ...prefs, [key]: !prefs[key] }
+    const nextVal = !prefs[key]
+    const next: NotificationPrefsDTO = { ...prefs, [key]: nextVal }
     setPrefs(next) // optimistic
     setPrefsSaving(true)
     try {
+      if (key === "push" && nextVal) {
+        const pushRes = await enablePushNotifications()
+        if (!pushRes.success) {
+          toast.error(pushRes.error || "Could not enable push notifications on this browser.")
+          setPrefs(prev)
+          setPrefsSaving(false)
+          return
+        }
+      } else if (key === "push" && !nextVal) {
+        await disablePushNotifications()
+      }
       const saved = await notificationsApi.updatePrefs({ [key]: next[key] })
       setPrefs(saved)
       toast.success(`Preferences saved — ${label} ${saved[key] ? "on" : "off"}`)
@@ -510,6 +547,7 @@ export function AccountView() {
         <Card>
           <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
             <Avatar className="h-16 w-16">
+              {staff?.avatar ? <AvatarImage src={staff.avatar} alt={staff.name} /> : null}
               <AvatarFallback className="text-lg font-semibold">
                 {initials(staff?.name)}
               </AvatarFallback>
@@ -587,18 +625,40 @@ export function AccountView() {
           <CardContent className="pt-0">
             {editingProfile ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-14 w-14">
+                <div className="flex flex-wrap items-center gap-4">
+                  <Avatar className="h-16 w-16">
+                    {profileForm.avatar ? (
+                      <AvatarImage src={profileForm.avatar} alt={profileForm.name || "Avatar"} />
+                    ) : null}
                     <AvatarFallback className="text-base font-semibold">
                       {initials(profileForm.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">
-                      {profileForm.name || "Your name"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Member since {formatDate(user?.createdAt ?? new Date().toISOString())}
+                  <div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 text-xs"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                    >
+                      {uploadingAvatar ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Camera className="h-3.5 w-3.5" />
+                      )}
+                      {uploadingAvatar ? "Uploading to Cloudflare R2…" : "Upload photo to R2"}
+                    </Button>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarUpload}
+                    />
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Stored in Cloudflare R2 cloud storage.
                     </p>
                   </div>
                 </div>
@@ -665,6 +725,9 @@ export function AccountView() {
             ) : (
               <div className="flex flex-wrap items-center gap-4">
                 <Avatar className="h-16 w-16">
+                  {user?.avatar ? (
+                    <AvatarImage src={user.avatar} alt={user.name ?? "Avatar"} />
+                  ) : null}
                   <AvatarFallback className="text-lg font-semibold">
                     {initials(user?.name)}
                   </AvatarFallback>
@@ -905,9 +968,10 @@ export function AccountView() {
               <>
                 {(
                   [
+                    { key: "push", label: "Push Notifications", icon: BellRing, text: "Instant order alerts via Firebase Cloud Messaging" },
                     { key: "sms", label: "SMS", icon: Smartphone, text: "Order & refill updates by text" },
                     { key: "whatsapp", label: "WhatsApp", icon: MessageCircle, text: "Updates on your WhatsApp number" },
-                    { key: "email", label: "Email", icon: Mail, text: "Receipts and review responses" },
+                    { key: "email", label: "Email", icon: Mail, text: "Order confirmations and receipts via Resend" },
                   ] as const
                 ).map((ch) => (
                   <div key={ch.key} className="flex items-center justify-between gap-3">

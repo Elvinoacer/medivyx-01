@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { attachRatings, toProductDTO } from "@/lib/dto"
-import { audit, notifyCustomer } from "@/lib/notify"
+import { audit, notifyCustomer, notifyStaff } from "@/lib/notify"
 import { requireStaff } from "@/lib/session"
 import { STOCK_STATUSES } from "@/lib/constants"
 
@@ -71,17 +71,60 @@ export async function PATCH(request: Request, { params }: Params) {
     if (becameAvailable) {
       const watchers = await db.productAlert.findMany({
         where: { productId: id, notifiedAt: null },
-        include: { user: { select: { id: true } } },
+        include: { user: { select: { id: true, email: true, name: true } } },
       })
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+      const productUrl = `${appUrl}/#product-${updated.id}`
+      const { backInStockTemplate } = await import("@/lib/email/templates")
+      const emailTemplate = backInStockTemplate({
+        productName: updated.name,
+        price: updated.price,
+        productUrl,
+      })
+
       for (const w of watchers) {
         await notifyCustomer(
           w.userId,
           "STOCK_ALERT",
-          "Back in stock",
-          `${updated.name} is back in stock at Sphere Pharmacy — order it while it lasts.`
+          `${updated.name} is back in stock!`,
+          `${updated.name} is back in stock at Sphere Pharmacy (KSh ${updated.price.toLocaleString()}) — order it while it lasts.`,
+          "IN_APP",
+          {
+            link: productUrl,
+            metadata: { productId: updated.id, productName: updated.name, price: updated.price },
+            email: w.user?.email
+              ? {
+                  to: w.user.email,
+                  subject: emailTemplate.subject,
+                  html: emailTemplate.html,
+                  text: emailTemplate.text,
+                }
+              : undefined,
+          }
         )
         await db.productAlert.update({ where: { id: w.id }, data: { notifiedAt: new Date() } })
       }
+    }
+
+    // Low stock / Out of stock staff alert
+    const isLowOrOut =
+      (updated.stockStatus === "LOW_STOCK" || updated.stockStatus === "OUT_OF_STOCK" || updated.stockQty <= updated.lowStockThreshold) &&
+      (existing.stockStatus === "IN_STOCK" && existing.stockQty > existing.lowStockThreshold)
+    if (isLowOrOut) {
+      await notifyStaff({
+        roles: ["ADMIN", "PHARMACIST", "STAFF"],
+        event: "LOW_STOCK_ALERT",
+        title: `Low Stock Alert: ${updated.name}`,
+        message: `${updated.name} is running low on stock. Current quantity: ${updated.stockQty} units (threshold: ${updated.lowStockThreshold}).`,
+        link: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/#admin-catalogue`,
+        details: {
+          Product: updated.name,
+          SKU: updated.sku,
+          CurrentQty: updated.stockQty,
+          Threshold: updated.lowStockThreshold,
+          Status: updated.stockStatus,
+        },
+      })
     }
 
     if (data.price !== undefined && Number(data.price) !== existing.price) {

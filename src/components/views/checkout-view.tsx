@@ -21,7 +21,7 @@ import { useAppStore } from "@/store/use-app-store"
 import { useCartStore } from "@/store/use-cart-store"
 import { useAuthStore } from "@/store/use-auth-store"
 import {
-  ordersApi, paymentsApi, prescriptionsApi, settingsApi, addressesApi, promotionsApi,
+  ordersApi, paymentsApi, prescriptionsApi, settingsApi, addressesApi, promotionsApi, storageApi,
   type CreateOrderPayload,
 } from "@/lib/api-client"
 import type { AddressDTO, DeliverySettings, OrderDTO } from "@/lib/types"
@@ -310,10 +310,30 @@ export function CheckoutView() {
     try {
       const results: UploadedRx[] = []
       for (const s of staged) {
+        let fileUrl: string | undefined
+        let storageKey: string | undefined
+        let fileData: string | undefined = s.base64
+
+        try {
+          const r2Res = await storageApi.uploadBase64({
+            fileData: s.base64,
+            fileName: s.fileName,
+            fileType: s.fileType,
+            folder: "prescriptions",
+          })
+          fileUrl = r2Res.url
+          storageKey = r2Res.key
+          fileData = undefined
+        } catch (uploadErr) {
+          console.warn("[R2 direct upload fallback in checkout]:", uploadErr)
+        }
+
         const rx = await prescriptionsApi.upload({
           fileName: s.fileName,
           fileType: s.fileType,
-          fileData: s.base64,
+          fileData,
+          fileUrl,
+          storageKey,
           notes: s.notes.trim() || undefined,
         })
         results.push({ id: rx.id, fileName: s.fileName, notes: s.notes })
@@ -348,6 +368,13 @@ export function CheckoutView() {
   const [placedOrder, setPlacedOrder] = useState<OrderDTO | null>(null)
   const [inlineError, setInlineError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+    }
+  }, [])
 
   const celebrateRef = useRef(false)
   useEffect(() => {
@@ -510,6 +537,26 @@ export function CheckoutView() {
       setPin("")
       setPaymentPhase("awaiting_pin")
       setPinDialogOpen(true)
+
+      // Start automatic real-time status polling for phone STK prompt
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = setInterval(async () => {
+        try {
+          const res = await paymentsApi.mpesaQuery(init.checkoutRequestId)
+          if (res.status === "SUCCESS") {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+            setPinDialogOpen(false)
+            finalizeSuccess("M-Pesa payment confirmed — thank you!")
+          } else if (res.status === "FAILED") {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+            setPinDialogOpen(false)
+            setPaymentPhase("failed")
+            setFailureMessage(res.payment?.failureReason || "M-Pesa payment was declined or timed out.")
+          }
+        } catch {
+          // ignore transient polling errors
+        }
+      }, 2500)
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Couldn't start the M-Pesa payment."
       setPaymentPhase("failed")
@@ -522,6 +569,7 @@ export function CheckoutView() {
 
   async function confirmPin() {
     if (pin.length !== 4 || !placedOrder || !checkoutRequestId) return
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
     setPaying(true)
     // demo convention: 1234 / 0000 simulate a wrong PIN → FAILED, any other code approves
     const result: "SUCCESS" | "FAILED" = pin === "1234" || pin === "0000" ? "FAILED" : "SUCCESS"
@@ -564,7 +612,10 @@ export function CheckoutView() {
         cvv: card.cvv.trim(),
       })
       if (res.status === "SUCCESS") {
-        finalizeSuccess("Card payment approved — thank you!")
+        finalizeSuccess("Card payment approved via IntaSend — thank you!")
+      } else if (res.status === "REQUIRES_3DS" && res.redirectUrl) {
+        toast.info("Redirecting for 3D Secure verification...")
+        window.location.href = res.redirectUrl
       } else {
         setPaymentPhase("failed")
         setFailureMessage(res.failureReason ?? "Card declined. Please check the card details or try another method.")

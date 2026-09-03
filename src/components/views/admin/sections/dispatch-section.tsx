@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
 import { OrderStatusBadge } from "@/components/shared/status-badges"
-import { adminApi, ordersApi } from "@/lib/api-client"
+import { adminApi, ordersApi, paymentsApi } from "@/lib/api-client"
 import type { OrderDTO, StaffDTO } from "@/lib/types"
 import { PAYMENT_METHOD_LABELS, type OrderStatus } from "@/lib/constants"
 import { formatKES, shortRef, statusLabel, timeAgo } from "@/lib/format"
@@ -23,6 +23,7 @@ import { toast } from "sonner"
 import { apiErrorMessage, SectionError, telHref, waHref, type SectionProps } from "../admin-shared"
 import {
   Bike, CheckCircle2, Loader2, MapPin, MessageCircle, Navigation, Package, Phone, Truck, User,
+  Banknote, Smartphone, Wallet,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -139,6 +140,51 @@ export function DispatchSection({ refreshKey, onRefresh }: SectionProps) {
     )
   }
 
+  async function promptMpesaOnDelivery(order: OrderDTO) {
+    setBusyId(order.id)
+    try {
+      const res = await paymentsApi.requestPayment(order.id, order.customerPhone ?? undefined)
+      toast.success(res.message || `M-Pesa STK push sent to ${order.customerPhone}`)
+      // Start short polling for live payment confirmation
+      let attempts = 0
+      const poll = setInterval(async () => {
+        attempts++
+        try {
+          const q = await paymentsApi.mpesaQuery(res.checkoutRequestId)
+          if (q.status === "SUCCESS") {
+            clearInterval(poll)
+            toast.success(`Payment confirmed for ${order.reference}!`)
+            await load()
+            onRefresh()
+          } else if (q.status === "FAILED" || attempts > 20) {
+            clearInterval(poll)
+            if (q.status === "FAILED") toast.error("Customer cancelled or wrong M-Pesa PIN.")
+          }
+        } catch {
+          if (attempts > 20) clearInterval(poll)
+        }
+      }, 3000)
+    } catch (err) {
+      toast.error(apiErrorMessage(err))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function confirmCashOnDelivery(order: OrderDTO) {
+    setBusyId(order.id)
+    try {
+      await ordersApi.markPaidCash(order.id)
+      toast.success(`Cash payment confirmed for ${order.reference}.`)
+      await load()
+      onRefresh()
+    } catch (err) {
+      toast.error(apiErrorMessage(err))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   // ---------- rider board (personal) ----------
 
   if (isRider) {
@@ -222,6 +268,8 @@ export function DispatchSection({ refreshKey, onRefresh }: SectionProps) {
                 busy={busyId === order.id}
                 onStart={() => setRiderStatus(order, "OUT_FOR_DELIVERY")}
                 onComplete={() => setRiderStatus(order, "COMPLETED_DELIVERY")}
+                onPromptMpesa={() => void promptMpesaOnDelivery(order)}
+                onConfirmCash={() => void confirmCashOnDelivery(order)}
               />
             ))}
           </div>
@@ -352,17 +400,22 @@ function RiderDeliveryCard({
   busy,
   onStart,
   onComplete,
+  onPromptMpesa,
+  onConfirmCash,
 }: {
   order: OrderDTO
   busy: boolean
   onStart: () => void
   onComplete: () => void
+  onPromptMpesa?: () => void
+  onConfirmCash?: () => void
 }) {
   const wa = waHref(order.customerPhone, `Hello ${order.customerName ?? "there"}, this is Sphere Pharmacy — I'm on my way with your order ${order.reference}.`)
   const tel = telHref(order.customerPhone)
   const payable = payMethodLabel(order)
   const canStart = ["PAID", "PREPARING", "READY_FOR_PICKUP"].includes(order.status)
   const canComplete = order.status === "OUT_FOR_DELIVERY"
+  const isUnpaid = order.status !== "PAID" && !order.status.startsWith("COMPLETED")
 
   return (
     <Card className="card-lift">
@@ -419,6 +472,43 @@ function RiderDeliveryCard({
             </Button>
           ) : null}
         </div>
+
+        {isUnpaid ? (
+          <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-800/60 dark:bg-amber-950/20">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                Collect on Delivery
+              </span>
+              <span className="font-mono text-sm font-bold text-amber-900 dark:text-amber-200">
+                {formatKES(order.total)}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {onPromptMpesa ? (
+                <Button
+                  size="sm"
+                  className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={onPromptMpesa}
+                  disabled={busy}
+                >
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Smartphone className="h-3.5 w-3.5" />}
+                  Prompt M-Pesa STK
+                </Button>
+              ) : null}
+              {onConfirmCash ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={onConfirmCash}
+                  disabled={busy}
+                >
+                  <Banknote className="h-3.5 w-3.5" /> Cash Received
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-2 border-t pt-3">
           {canStart ? (

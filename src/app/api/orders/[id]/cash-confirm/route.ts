@@ -34,7 +34,44 @@ export async function POST(_request: Request, { params }: Params) {
   await addStatusEvent(order.id, "PAID", actor, "Cash payment received")
   await audit(actor, session.staffRole, "CASH_CONFIRMED", "Order", order.reference, `KSh ${order.total} received in cash`)
   const earned = await awardPointsForOrder(order.id)
-  await notifyCustomer(order.userId, "PAYMENT", `Payment received — order ${order.reference}`, `Thank you! Your cash payment was received.${earned > 0 ? ` You earned ${earned} Sphere Points.` : ""}`)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+  const orderUrl = `${appUrl}/#order-${order.id}`
+
+  const customerUser = order.userId
+    ? await db.user.findUnique({ where: { id: order.userId }, select: { name: true, email: true } })
+    : null
+  const customerName = customerUser?.name || order.guestName || "Customer"
+  const customerEmail = customerUser?.email
+
+  const { paymentReceiptTemplate } = await import("@/lib/email/templates")
+  const receiptEmail = paymentReceiptTemplate({
+    orderReference: order.reference,
+    customerName,
+    amount: order.total,
+    method: "Cash",
+    pointsEarned: earned,
+    orderUrl,
+  })
+
+  await notifyCustomer(
+    order.userId,
+    "PAYMENT",
+    `Payment received — order ${order.reference}`,
+    `Thank you! Your cash payment of KSh ${order.total.toLocaleString()} was received.${earned > 0 ? ` You earned ${earned} Sphere Points.` : ""}`,
+    "IN_APP",
+    {
+      link: orderUrl,
+      metadata: { orderId: order.id, reference: order.reference, amount: order.total, method: "Cash" },
+      email: customerEmail
+        ? {
+            to: customerEmail,
+            subject: receiptEmail.subject,
+            html: receiptEmail.html,
+            text: receiptEmail.text,
+          }
+        : undefined,
+    }
+  )
   const updated = await db.order.findUnique({ where: { id: order.id }, include: ORDER_INCLUDE })
   return NextResponse.json(toOrderDTO(updated!))
 }

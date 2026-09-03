@@ -36,6 +36,7 @@ export interface ProductDTO {
   usageInfo: string | null
   warnings: string | null
   image: string | null
+  images?: string[]
   categoryId: string | null
   categoryName?: string | null
   categorySlug?: string | null
@@ -137,6 +138,8 @@ export interface PrescriptionDTO {
   createdAt: string
   orderId: string | null
   orderReference?: string | null
+  fileUrl?: string | null
+  storageKey?: string | null
   customerName?: string | null
   customerPhone?: string | null
 }
@@ -176,6 +179,7 @@ export interface UserDTO {
   name: string | null
   phone: string | null
   email: string | null
+  avatar?: string | null
   createdAt: string
   loyaltyPoints: number
 }
@@ -215,6 +219,7 @@ export interface StaffDTO {
   phone: string | null
   role: Role
   title: string | null
+  avatar?: string | null
   active: boolean
   createdAt: string
 }
@@ -227,6 +232,8 @@ export interface NotificationDTO {
   message: string
   read: boolean
   createdAt: string
+  metadata?: string | null
+  staffId?: string | null
 }
 
 // Per-channel notification preferences (in-app is always on)
@@ -234,6 +241,12 @@ export interface NotificationPrefsDTO {
   sms: boolean
   whatsapp: boolean
   email: boolean
+  push: boolean
+}
+
+export interface PushTokenPayload {
+  token: string
+  platform?: string
 }
 
 export interface PromotionDTO {

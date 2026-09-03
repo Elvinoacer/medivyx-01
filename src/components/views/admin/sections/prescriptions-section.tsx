@@ -341,13 +341,19 @@ function ReviewDialog({
   }, [rxId])
 
   const isImage = detail ? detail.fileType.startsWith("image") : false
-  const imageSrc = detail?.fileData
-    ? detail.fileData.startsWith("data:")
-      ? detail.fileData
-      : `data:${detail.fileType};base64,${detail.fileData}`
-    : null
+  const imageSrc =
+    detail?.fileUrl ||
+    (detail?.fileData
+      ? detail.fileData.startsWith("data:")
+        ? detail.fileData
+        : `data:${detail.fileType};base64,${detail.fileData}`
+      : null)
 
   function download() {
+    if (detail?.fileUrl) {
+      window.open(detail.fileUrl, "_blank")
+      return
+    }
     if (!detail?.fileData) return
     const href = detail.fileData.startsWith("data:") ? detail.fileData : `data:${detail.fileType};base64,${detail.fileData}`
     const a = document.createElement("a")

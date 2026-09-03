@@ -6,7 +6,7 @@
 // "Active" is modelled as the opposite of the DISCONTINUED stock status (the DTO
 // has no separate active flag) — discontinued products are hidden from the storefront.
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
 import { ProductImage } from "@/components/shared/product-image"
 import { StockStatusBadge } from "@/components/shared/status-badges"
-import { adminApi, catalogApi } from "@/lib/api-client"
+import { adminApi, catalogApi, storageApi } from "@/lib/api-client"
 import type { CategoryDTO, ProductDTO } from "@/lib/types"
 import { PRODUCT_IMAGE_LIBRARY } from "@/lib/image-library"
 import { FALLBACK_PRODUCT_IMAGE, productImageSrc, sanitizeImageInput } from "@/lib/image"
@@ -513,6 +513,24 @@ function ProductEditorDialog({
 }) {
   const [form, setForm] = useState<ProductForm>(() => formFromProduct(product, categories))
   const [busy, setBusy] = useState(false)
+  const imageUploadRef = useRef<HTMLInputElement>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingImage(true)
+    try {
+      const res = await storageApi.uploadFile(file, "products")
+      set("image", res.url)
+      toast.success("Photo uploaded to Cloudflare R2!")
+    } catch (err) {
+      toast.error(apiErrorMessage(err))
+    } finally {
+      setUploadingImage(false)
+      if (e.target) e.target.value = ""
+    }
+  }
 
   useEffect(() => {
     if (mode === "create") {
@@ -657,11 +675,32 @@ function ProductEditorDialog({
                   </button>
                 ))}
               </div>
+              <div className="mt-2 flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-xs"
+                  onClick={() => imageUploadRef.current?.click()}
+                  disabled={uploadingImage}
+                >
+                  {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                  {uploadingImage ? "Uploading to Cloudflare R2…" : "Upload custom photo to R2"}
+                </Button>
+                <input
+                  ref={imageUploadRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+                <span className="text-[11px] text-muted-foreground">or select a preset above</span>
+              </div>
               <Input
                 id="p-image"
                 value={form.image}
                 onChange={(e) => set("image", e.target.value)}
-                placeholder="/images/products/generic-medicine.webp"
+                placeholder="/images/products/generic-medicine.webp or https://..."
                 className="mt-1.5 font-mono text-xs"
                 aria-label="Custom image path or URL"
               />

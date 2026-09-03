@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -226,6 +226,13 @@ export function OrderDetailView() {
   const [payError, setPayError] = useState<string | null>(null)
   const [card, setCard] = useState<CardForm>({ number: "", name: "", expiry: "", cvv: "" })
   const [cardError, setCardError] = useState<string | null>(null)
+  const pollTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+    }
+  }, [])
 
   const mpesaPhone = mpesaPhoneInput ?? (user?.phone ?? "")
 
@@ -269,6 +276,26 @@ export function OrderDetailView() {
       setCheckoutRequestId(init.checkoutRequestId)
       setPin("")
       setPinOpen(true)
+
+      // Start automatic polling for customer PIN entry
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+      pollTimerRef.current = setInterval(async () => {
+        try {
+          const res = await paymentsApi.mpesaQuery(init.checkoutRequestId)
+          if (res.status === "SUCCESS") {
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+            setPinOpen(false)
+            toast.success("M-Pesa payment confirmed — thank you!")
+            await refetchOrder()
+          } else if (res.status === "FAILED") {
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+            setPinOpen(false)
+            setPayError(res.payment?.failureReason || "M-Pesa payment was declined or timed out.")
+          }
+        } catch {
+          // ignore transient poll error
+        }
+      }, 2500)
     } catch (err) {
       const msg = errMessage(err, "Couldn't start the M-Pesa payment. Please try again.")
       setPayError(msg)
@@ -279,6 +306,7 @@ export function OrderDetailView() {
 
   async function confirmPin() {
     if (pin.length !== 4 || !order || !checkoutRequestId) return
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current)
     setPaying(true)
     setPayError(null)
     // demo convention: 1234 / 0000 simulate a wrong PIN → FAILED, any other PIN approves
@@ -318,8 +346,11 @@ export function OrderDetailView() {
         cvv: card.cvv.trim(),
       })
       if (res.status === "SUCCESS") {
-        toast.success("Card payment approved — thank you!")
+        toast.success("Card payment approved via IntaSend — thank you!")
         await refetchOrder()
+      } else if (res.status === "REQUIRES_3DS" && res.redirectUrl) {
+        toast.info("Redirecting for 3D Secure verification...")
+        window.location.href = res.redirectUrl
       } else {
         setCardError(
           res.failureReason ?? "Card declined. Check the card details or try another method."

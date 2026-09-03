@@ -18,7 +18,7 @@ type DbProduct = {
   id: string; name: string; sku: string; brand: string | null; packSize: string | null;
   price: number; compareAtPrice: number | null; stockStatus: string; stockQty: number;
   requiresPrescription: boolean; description: string; usageInfo: string | null;
-  warnings: string | null; image: string | null; categoryId: string | null;
+  warnings: string | null; image: string | null; images?: string[]; categoryId: string | null;
   categoryName?: string | null; categorySlug?: string | null;
   category?: { name: string; slug: string } | null;
   avgRating?: number | null; reviewCount?: number;
@@ -40,6 +40,7 @@ export function toProductDTO(p: DbProduct): ProductDTO {
     usageInfo: p.usageInfo,
     warnings: p.warnings,
     image: p.image,
+    images: p.images ?? [],
     categoryId: p.categoryId,
     categoryName: p.category?.name ?? p.categoryName ?? null,
     categorySlug: p.category?.slug ?? p.categorySlug ?? null,
@@ -84,6 +85,7 @@ type DbPrescription = {
   refillsAllowed: number; refillsUsed: number; validUntil: Date | null; createdAt: Date;
   orderId: string | null; order?: { reference: string } | null;
   user?: { name: string | null; phone: string | null } | null; userId: string | null;
+  fileUrl?: string | null; storageKey?: string | null;
 }
 
 export function toPrescriptionDTO(rx: DbPrescription, includeCustomer = false): PrescriptionDTO {
@@ -102,6 +104,8 @@ export function toPrescriptionDTO(rx: DbPrescription, includeCustomer = false): 
     createdAt: rx.createdAt.toISOString(),
     orderId: rx.orderId,
     orderReference: rx.order?.reference ?? null,
+    fileUrl: rx.fileUrl ?? null,
+    storageKey: rx.storageKey ?? null,
     ...(includeCustomer
       ? { customerName: rx.user?.name ?? null, customerPhone: rx.user?.phone ?? null }
       : {}),
@@ -181,11 +185,13 @@ export function toPromotionDTO(p: {
 
 export function toNotificationDTO(n: {
   id: string; channel: string; event: string | null; title: string; message: string;
-  read: boolean; createdAt: Date;
+  read: boolean; createdAt: Date; metadata?: string | null; staffId?: string | null;
 }): NotificationDTO {
   return {
     id: n.id, channel: n.channel, event: n.event, title: n.title, message: n.message,
     read: n.read, createdAt: n.createdAt.toISOString(),
+    metadata: n.metadata ?? null,
+    staffId: n.staffId ?? null,
   }
 }
 

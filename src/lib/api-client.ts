@@ -72,7 +72,7 @@ export const authApi = {
   staffLogin: (email: string, password: string) =>
     req<SessionPayload>("/api/auth/staff-login", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
-  updateProfile: (data: { name?: string; email?: string; phone?: string; password?: string; currentPassword?: string }) =>
+  updateProfile: (data: { name?: string; email?: string; phone?: string; avatar?: string | null; password?: string; currentPassword?: string }) =>
     req<SessionPayload>("/api/auth/profile", { method: "PATCH", body: JSON.stringify(data) }),
 }
 
@@ -157,7 +157,7 @@ export const ordersApi = {
 export const prescriptionsApi = {
   mine: () => req<PrescriptionDTO[]>("/api/prescriptions"),
   queue: () => req<PrescriptionDTO[]>("/api/prescriptions?scope=queue"),
-  upload: (data: { fileName: string; fileType: string; fileData: string; notes?: string; orderId?: string }) =>
+  upload: (data: { fileName: string; fileType: string; fileData?: string; fileUrl?: string; storageKey?: string; notes?: string; orderId?: string }) =>
     req<PrescriptionDTO>("/api/prescriptions", { method: "POST", body: JSON.stringify(data) }),
   get: (id: string) => req<PrescriptionDTO & { fileData: string }>(`/api/prescriptions/${id}`),
   review: (id: string, data: { status: RxStatus; reviewNotes?: string; refillsAllowed?: number; validDays?: number }) =>
@@ -170,7 +170,7 @@ export const prescriptionsApi = {
 
 export const paymentsApi = {
   mpesaInitiate: (orderId: string, phone: string) =>
-    req<{ paymentId: string; checkoutRequestId: string; message: string }>(
+    req<{ paymentId: string; checkoutRequestId: string; message: string; simulated?: boolean }>(
       "/api/payments/mpesa/initiate",
       { method: "POST", body: JSON.stringify({ orderId, phone }) }
     ),
@@ -179,10 +179,24 @@ export const paymentsApi = {
       "/api/payments/mpesa/callback",
       { method: "POST", body: JSON.stringify({ checkoutRequestId, result, pin }) }
     ),
+  mpesaQuery: (checkoutRequestId: string) =>
+    req<{ status: "SUCCESS" | "FAILED" | "PENDING"; payment?: { id: string; status: string; reference?: string; failureReason?: string }; orderStatus?: string }>(
+      `/api/payments/mpesa/query?checkoutRequestId=${encodeURIComponent(checkoutRequestId)}`
+    ),
   cardInitiate: (orderId: string, card: { number: string; name: string; expiry: string; cvv: string }) =>
-    req<{ paymentId: string; status: string; reference?: string; failureReason?: string }>(
+    req<{ paymentId: string; status: string; reference?: string; failureReason?: string; redirectUrl?: string; simulated?: boolean }>(
       "/api/payments/intasend/initiate",
       { method: "POST", body: JSON.stringify({ orderId, card }) }
+    ),
+  cardCheckoutSession: (orderId: string) =>
+    req<{ paymentId: string; status: string; checkoutUrl: string; sessionId: string }>(
+      "/api/payments/intasend/initiate",
+      { method: "POST", body: JSON.stringify({ orderId, mode: "checkout" }) }
+    ),
+  requestPayment: (orderId: string, phone?: string) =>
+    req<{ ok: boolean; paymentId: string; checkoutRequestId: string; phone: string; amount: number; message: string }>(
+      `/api/orders/${orderId}/request-payment`,
+      { method: "POST", body: JSON.stringify({ phone }) }
     ),
   refund: (paymentId: string) =>
     req<{ ok: boolean }>("/api/payments/refund", { method: "POST", body: JSON.stringify({ paymentId }) }),
@@ -275,4 +289,50 @@ export const assistantApi = {
       method: "POST",
       body: JSON.stringify({ messages }),
     }),
+}
+
+// ---------- cloud storage (Cloudflare R2) ----------
+
+export interface UploadResponse {
+  key: string
+  url: string
+  size: number
+  contentType: string
+}
+
+export const storageApi = {
+  uploadFile: async (
+    file: File,
+    folder: "products" | "prescriptions" | "avatars" | "general" = "general"
+  ): Promise<UploadResponse> => {
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("folder", folder)
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.error || `Upload failed (${res.status})`)
+    }
+    return res.json()
+  },
+  uploadBase64: async (data: {
+    fileData: string
+    fileName: string
+    fileType: string
+    folder?: "products" | "prescriptions" | "avatars" | "general"
+  }): Promise<UploadResponse> => {
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || `Upload failed (${res.status})`)
+    }
+    return res.json()
+  },
 }

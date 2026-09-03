@@ -6,6 +6,18 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**.r2.dev",
+      },
+      {
+        protocol: "https",
+        hostname: "**.cloudflarestorage.com",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

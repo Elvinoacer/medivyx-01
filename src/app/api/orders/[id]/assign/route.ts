@@ -27,7 +27,51 @@ export async function POST(request: Request, { params }: Params) {
   await db.order.update({ where: { id: order.id }, data: { riderId: rider.id, riderName: rider.name } })
   await addStatusEvent(order.id, order.status, actor, `Rider assigned: ${rider.name}`)
   await audit(actor, session.staffRole, "RIDER_ASSIGNED", "Order", order.reference, `${rider.name} → ${order.reference}`)
-  await notifyCustomer(order.userId, "ORDER_STATUS", `Rider assigned — order ${order.reference}`, `${rider.name} will deliver your order.`)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+  const orderUrl = `${appUrl}/#order-${order.id}`
+
+  const customerUser = order.userId
+    ? await db.user.findUnique({ where: { id: order.userId }, select: { name: true, email: true } })
+    : null
+  const customerEmail = customerUser?.email
+
+  await notifyCustomer(
+    order.userId,
+    "ORDER_STATUS",
+    `Rider assigned — order ${order.reference}`,
+    `${rider.name} will deliver your order.`,
+    "IN_APP",
+    {
+      link: orderUrl,
+      metadata: { orderId: order.id, reference: order.reference, riderName: rider.name },
+      email: customerEmail
+        ? {
+            to: customerEmail,
+            subject: `Rider Assigned: Order ${order.reference} — Sphere Pharmacy`,
+            html: `<p>Hello ${customerUser?.name || order.guestName || "Customer"},</p><p>Great news! Rider <strong>${rider.name}</strong> has been assigned to deliver your order <strong>${order.reference}</strong>.</p><p>Delivery address: <strong>${order.deliveryAddress ?? "Your saved address"}</strong> (${order.deliveryArea ?? ""})</p><p><a href="${orderUrl}">Track your delivery</a></p>`,
+            text: `Rider ${rider.name} has been assigned to deliver your order ${order.reference}.\nTrack order: ${orderUrl}`,
+          }
+        : undefined,
+    }
+  )
+
+  // Notify the Rider via Push + Email
+  const { notifyStaff } = await import("@/lib/notify")
+  await notifyStaff({
+    staffId: rider.id,
+    event: "NEW_DELIVERY_ASSIGNED",
+    title: `New Delivery Assigned: ${order.reference}`,
+    message: `You have been assigned order ${order.reference} for delivery to ${order.deliveryAddress ?? "address"} (${order.deliveryArea ?? ""}).`,
+    link: `${appUrl}/#admin-dispatch`,
+    details: {
+      "Order Ref": order.reference,
+      Customer: customerUser?.name || order.guestName || "Customer",
+      Phone: customerUser?.name ? (order.guestPhone ?? "Registered User") : (order.guestPhone ?? "N/A"),
+      Address: order.deliveryAddress ?? "Counter",
+      Total: `KSh ${order.total.toLocaleString()}`,
+    },
+  })
+
   const updated = await db.order.findUnique({ where: { id: order.id }, include: ORDER_INCLUDE })
   return NextResponse.json(toOrderDTO(updated!))
 }

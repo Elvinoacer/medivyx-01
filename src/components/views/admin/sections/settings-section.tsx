@@ -20,7 +20,7 @@ import { settingsApi } from "@/lib/api-client"
 import type { DeliverySettings, PharmacySettings } from "@/lib/types"
 import { toast } from "sonner"
 import { apiErrorMessage, SectionError, type SectionProps } from "../admin-shared"
-import { Save, Loader2, Info, Building2, Truck, MoonStar, KeyRound, Trash2, Plus } from "lucide-react"
+import { Save, Loader2, Info, Building2, Truck, MoonStar, KeyRound, Trash2, Plus, Bell, Mail, Send, CheckCircle2 } from "lucide-react"
 
 const DEMO_ACCOUNTS = [
   { role: "Admin", email: "admin@spherepharmacy.co.ke", password: "admin123" },
@@ -37,6 +37,31 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
   const [error, setError] = useState<string | null>(null)
   const [savingPharmacy, setSavingPharmacy] = useState(false)
   const [savingDelivery, setSavingDelivery] = useState(false)
+  const [testingPush, setTestingPush] = useState(false)
+  const [testingEmail, setTestingEmail] = useState(false)
+
+  async function testNotification(type: "PUSH" | "EMAIL") {
+    if (type === "PUSH") setTestingPush(true)
+    else setTestingEmail(true)
+    try {
+      const res = await fetch("/api/notifications/dispatch-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(`Test ${type.toLowerCase()} triggered successfully!`)
+      } else {
+        toast.error(data.error || "Failed to trigger test notification.")
+      }
+    } catch {
+      toast.error("Failed to connect to notification service.")
+    } finally {
+      if (type === "PUSH") setTestingPush(false)
+      else setTestingEmail(false)
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -296,6 +321,100 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
               {savingDelivery ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : <Save className="mr-2 h-4 w-4" aria-hidden />}
               Save delivery settings
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* notifications & messaging integrations */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <Bell className="h-4 w-4 text-primary" aria-hidden /> Push Notifications & Email Integrations
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Multi-channel notifications keep customers informed of order progress and instantly alert pharmacy staff of new orders, prescription uploads, and low-stock events.
+          </p>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Firebase Cloud Messaging panel */}
+            <div className="rounded-lg border p-4 space-y-3 bg-muted/20">
+              <div className="flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                  <Bell className="h-4 w-4" />
+                </span>
+                <div>
+                  <h4 className="text-sm font-semibold">Firebase Cloud Messaging</h4>
+                  <p className="text-xs text-muted-foreground">Web Push & Mobile Push Notifications</p>
+                </div>
+              </div>
+
+              <div className="text-xs space-y-1 text-muted-foreground">
+                <div className="flex items-center gap-1.5 text-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Customer order & delivery alerts</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Pharmacist prescription review alerts</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Rider dispatch drop-off assignments</span>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-2 text-xs"
+                onClick={() => void testNotification("PUSH")}
+                disabled={testingPush}
+              >
+                {testingPush ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                Test Push Notification
+              </Button>
+            </div>
+
+            {/* Resend Email panel */}
+            <div className="rounded-lg border p-4 space-y-3 bg-muted/20">
+              <div className="flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300">
+                  <Mail className="h-4 w-4" />
+                </span>
+                <div>
+                  <h4 className="text-sm font-semibold">Resend Email Integration</h4>
+                  <p className="text-xs text-muted-foreground">Transactional HTML Email Receipts & Alerts</p>
+                </div>
+              </div>
+
+              <div className="text-xs space-y-1 text-muted-foreground">
+                <div className="flex items-center gap-1.5 text-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Full itemized order confirmation receipts</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Payment confirmations & Sphere Points balance</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Staff alerts for new orders & low stock</span>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-2 text-xs"
+                onClick={() => void testNotification("EMAIL")}
+                disabled={testingEmail}
+              >
+                {testingEmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                Test Resend Email Dispatch
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

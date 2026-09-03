@@ -25,7 +25,9 @@ import { toast } from "sonner"
 import {
   LayoutDashboard, Package, ClipboardList, Pill, Megaphone, Users, BarChart3,
   ShieldCheck, Settings, LogOut, Lock, Store, Menu, Loader2, RefreshCw, Bike, MessageSquareText,
+  Bell, BellRing,
 } from "lucide-react"
+import { enablePushNotifications, getPushPermissionState } from "@/lib/firebase/client"
 import type { LucideIcon } from "lucide-react"
 import {
   type AdminSectionKey, type SectionProps,
@@ -133,13 +135,27 @@ export function AdminView() {
   const [navOpen, setNavOpen] = useState(false)
   const [autoLanded, setAutoLanded] = useState(false)
 
-  // Sessions hydrate asynchronously — once the role is known, land riders on the
-  // dispatch board (one-shot; user navigation always wins afterwards).
+  const [pushStatus, setPushStatus] = useState<NotificationPermission>("default")
+  const [pushLoading, setPushLoading] = useState(false)
+
   useEffect(() => {
-    if (authLoading || autoLanded || !session) return
-    setAutoLanded(true)
-    if (session.role === "RIDER") setSection("dispatch")
-  }, [authLoading, autoLanded, session])
+    setPushStatus(getPushPermissionState())
+  }, [])
+
+  async function handleTogglePush() {
+    setPushLoading(true)
+    try {
+      const res = await enablePushNotifications()
+      if (res.success) {
+        setPushStatus("granted")
+        toast.success("Staff push alerts active! You will receive live alerts for new orders and prescriptions.")
+      } else {
+        toast.error(res.error || "Could not enable push alerts.")
+      }
+    } finally {
+      setPushLoading(false)
+    }
+  }
 
   // Sonner toaster: mounted here so admin toasts render even though the root layout
   // only mounts the legacy use-toast Toaster (layout is outside this task's scope).
@@ -305,6 +321,29 @@ export function AdminView() {
             </h1>
 
             <div className="order-3 ml-auto flex flex-wrap items-center gap-1.5">
+              <Button
+                variant={pushStatus === "granted" ? "ghost" : "outline"}
+                size="sm"
+                onClick={handleTogglePush}
+                disabled={pushLoading}
+                className={cn(
+                  "gap-1.5 text-xs font-medium",
+                  pushStatus === "granted" && "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                )}
+                title={pushStatus === "granted" ? "Push alerts active on this device" : "Enable push alerts for orders and prescriptions"}
+              >
+                {pushLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : pushStatus === "granted" ? (
+                  <Bell className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                ) : (
+                  <BellRing className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
+                )}
+                <span className="hidden sm:inline">
+                  {pushStatus === "granted" ? "Push alerts active" : "Enable push alerts"}
+                </span>
+              </Button>
+
               <Button
                 variant="ghost"
                 size="icon"

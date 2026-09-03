@@ -2,11 +2,12 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { ORDER_INCLUDE, toOrderDTO } from "@/lib/dto"
 import { orderReference, pickupCode } from "@/lib/hash"
-import { addStatusEvent, notifyCustomer } from "@/lib/notify"
+import { addStatusEvent, notifyCustomer, notifyStaff } from "@/lib/notify"
 import { getSession, requireStaff } from "@/lib/session"
 import { computeDeliveryFee, getSettings } from "@/lib/settings"
 import { redemptionQuote } from "@/lib/loyalty"
 import { DISPATCH_STATUSES, LOYALTY, TERMINAL_STATUSES, type OrderStatus } from "@/lib/constants"
+import { orderConfirmationTemplate } from "@/lib/email/templates"
 
 const PHONE_RE = /^(?:\+?254|0)?(7\d{8}|1\d{8})$/
 function normalizePhone(raw: string): string | null {
@@ -271,14 +272,87 @@ export async function POST(request: Request) {
       }
     }
 
+    // 1. Notify Customer (In-app + Firebase Push + Resend Email)
+    const customerUser = userId ? await db.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }) : null
+    const customerName = customerUser?.name || guestName || "Valued Customer"
+    const customerEmail = customerUser?.email || (typeof body.customer?.email === "string" ? body.customer.email.trim() : null)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+    const orderUrl = `${appUrl}/#order-${order.id}`
+
+    const emailTemplate = orderConfirmationTemplate({
+      orderReference: reference,
+      customerName,
+      items: orderLines.map((l) => ({
+        name: l.product.name,
+        qty: l.qty,
+        price: l.product.price,
+        lineTotal: l.product.price * l.qty,
+      })),
+      subtotal,
+      deliveryFee,
+      discountAmount,
+      total: finalTotal,
+      pointsEarned: Math.floor(finalTotal / LOYALTY.earnPerKES),
+      fulfillment: order.fulfillment as "PICKUP" | "DELIVERY",
+      deliveryAddress: order.deliveryAddress,
+      deliveryArea: order.deliveryArea,
+      pickupCode: order.pickupCode,
+      orderUrl,
+    })
+
     await notifyCustomer(
       userId,
       "ORDER_STATUS",
       `Order ${reference} received`,
       reservation
         ? `We received your reservation ${reference}. We'll confirm availability shortly — pay and collect in store.`
-        : `We received your order ${reference}. You'll get updates as it progresses.`
+        : `We received your order ${reference} (KSh ${finalTotal.toLocaleString()}). You'll get updates as it progresses.`,
+      "IN_APP",
+      {
+        link: orderUrl,
+        metadata: { orderId: order.id, reference, total: finalTotal },
+        email: customerEmail
+          ? {
+              to: customerEmail,
+              subject: emailTemplate.subject,
+              html: emailTemplate.html,
+              text: emailTemplate.text,
+            }
+          : undefined,
+      }
     )
+
+    // 2. Notify Admins & Pharmacists / Staff via Push + Email
+    if (hasRx) {
+      await notifyStaff({
+        roles: ["ADMIN", "PHARMACIST"],
+        event: "NEW_PRESCRIPTION_ORDER",
+        title: `New Rx Order: ${reference}`,
+        message: `Prescription order ${reference} received from ${customerName} (KSh ${finalTotal.toLocaleString()}). Pharmacist verification needed.`,
+        link: `${appUrl}/#admin-prescriptions`,
+        details: {
+          "Order Ref": reference,
+          Customer: customerName,
+          Fulfillment: fulfillment,
+          Total: `KSh ${finalTotal.toLocaleString()}`,
+          Status: "Under Review",
+        },
+      })
+    } else {
+      await notifyStaff({
+        roles: ["ADMIN", "STAFF", "PHARMACIST"],
+        event: "NEW_ORDER",
+        title: `New Order: ${reference}`,
+        message: `New ${fulfillment.toLowerCase()} order ${reference} received for KSh ${finalTotal.toLocaleString()}.`,
+        link: `${appUrl}/#admin-orders`,
+        details: {
+          "Order Ref": reference,
+          Customer: customerName,
+          Fulfillment: fulfillment,
+          Total: `KSh ${finalTotal.toLocaleString()}`,
+        },
+      })
+    }
 
     const finalOrder = await db.order.findUnique({ where: { id: order.id }, include: ORDER_INCLUDE })
     return NextResponse.json(toOrderDTO(finalOrder!))
