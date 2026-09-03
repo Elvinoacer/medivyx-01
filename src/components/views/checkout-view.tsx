@@ -1004,14 +1004,13 @@ export function CheckoutView() {
                                     if (matched) setZone(matched.name)
                                   }} />
                                 </div>
-                                  <Textarea
-                                    id="new-address"
-                                    value={addressText}
-                                    onChange={(e) => setAddressText(e.target.value)}
-                                    placeholder="e.g. Apmt 4B, Sunrise Court, Lumumba Drive, Roysambu — near TRM"
-                                    rows={3}
-                                  />
-                                </div>
+                                <Textarea
+                                  id="new-address"
+                                  value={addressText}
+                                  onChange={(e) => setAddressText(e.target.value)}
+                                  placeholder="e.g. Apmt 4B, Sunrise Court, Lumumba Drive, Roysambu — near TRM"
+                                  rows={3}
+                                />
                                 <div className="space-y-2">
                                   <Label htmlFor="new-zone">Zone</Label>
                                   <Select value={zone || undefined} onValueChange={(v) => setZone(v)}>
@@ -1044,14 +1043,13 @@ export function CheckoutView() {
                               if (matched) setZone(matched.name)
                             }} />
                           </div>
-                            <Textarea
-                              id="guest-address"
-                              value={addressText}
-                              onChange={(e) => setAddressText(e.target.value)}
-                              placeholder="e.g. Apmt 4B, Sunrise Court, Lumumba Drive, Roysambu — near TRM"
-                              rows={3}
-                            />
-                          </div>
+                          <Textarea
+                            id="guest-address"
+                            value={addressText}
+                            onChange={(e) => setAddressText(e.target.value)}
+                            placeholder="e.g. Apmt 4B, Sunrise Court, Lumumba Drive, Roysambu — near TRM"
+                            rows={3}
+                          />
                           <p className="text-xs text-muted-foreground">
                             Delivering to <strong>{zone || "— choose zone in step 1 —"}</strong>
                           </p>
