@@ -371,3 +371,22 @@ export const adminServiceBookingsApi = {
   updateStatus: (id: string, status: string, note?: string, staffNotes?: string) =>
     req<{ ok: boolean; status: string }>("/api/admin/service-bookings", { method: "PATCH", body: JSON.stringify({ id, status, note, staffNotes }) }),
 }
+
+
+export const servicePaymentsApi = {
+  mpesa: (bookingId: string, phone: string) =>
+    req<{ paymentId: string; checkoutRequestId: string; message: string; simulated?: boolean }>(`/api/service-bookings/${bookingId}/pay/mpesa`, { method: "POST", body: JSON.stringify({ phone }) }),
+  card: (bookingId: string) =>
+    req<{ paymentId: string; checkoutUrl: string; status: string; simulated?: boolean }>(`/api/service-bookings/${bookingId}/pay/card`, { method: "POST" }),
+  status: (bookingId: string) =>
+    req<{ bookingId: string; status: string; paymentStatus: string; providerReference?: string | null }>(`/api/service-bookings/${bookingId}/payment-status`),
+  payAtPharmacy: (bookingId: string) =>
+    req<{ ok: boolean; paymentStatus: string }>(`/api/service-bookings/${bookingId}/pay-at-pharmacy`, { method: "POST" }),
+}
+
+export const serviceReviewsApi = {
+  create: (bookingId: string, rating: number, comment?: string) =>
+    req<{ ok: boolean }>(`/api/service-bookings/${bookingId}/review`, { method: "POST", body: JSON.stringify({ rating, comment }) }),
+  list: (serviceId: string) =>
+    req<{ average: number; count: number; reviews: { id: string; rating: number; comment: string | null; authorName: string; createdAt: string }[] }>(`/api/services/${serviceId}/reviews`),
+}
