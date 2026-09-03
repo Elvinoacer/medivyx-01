@@ -399,6 +399,8 @@ export function AccountView() {
       area: address.area ?? "",
       notes: address.notes ?? "",
       isDefault: address.isDefault,
+      latitude: address.latitude ?? null,
+      longitude: address.longitude ?? null,
     })
     setAddressError(null)
     setAddressDialog({ mode: "edit", address })
@@ -1337,7 +1339,7 @@ export function AccountView() {
           if (!open && !savingAddress) setAddressDialog(null)
         }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto px-4 sm:max-w-lg sm:px-6">
           <DialogHeader>
             <DialogTitle>
               {addressDialog?.mode === "edit" ? "Edit address" : "Add a new address"}
@@ -1420,11 +1422,12 @@ export function AccountView() {
               </p>
             ) : null}
           </div>
-          <DialogFooter className="flex-row gap-2 sm:justify-end">
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               onClick={() => setAddressDialog(null)}
               disabled={savingAddress}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
