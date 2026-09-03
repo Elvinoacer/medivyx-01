@@ -351,6 +351,8 @@ model Service {
   images           ServiceImage[]
   availability     ServiceAvailability[]
   bookings         ServiceBooking[]
+  assignedBookings ServiceBooking[] @relation("ServiceAssignedStaff")
+  serviceReviews   ServiceReview[]
 }
 
 model ServiceImage {
@@ -395,6 +397,8 @@ model ServiceBooking {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   statusHistory    ServiceBookingStatusHistory[]
+  assignedStaffId  String?
+  assignedStaff    StaffUser? @relation("ServiceAssignedStaff", fields: [assignedStaffId], references: [id], onDelete: SetNull)
   @@index([serviceId, scheduledStart, scheduledEnd])
   @@index([userId, scheduledStart])
   @@index([status])
@@ -409,6 +413,39 @@ model ServiceBookingStatusHistory {
   actor      String
   createdAt  DateTime       @default(now())
   @@index([bookingId, createdAt])
+}
+
+model ServicePayment {
+  id                String @id @default(cuid())
+  bookingId         String
+  booking           ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  provider          String
+  method            String?
+  status            String @default("PENDING")
+  amount            Float
+  phone             String?
+  providerReference String?
+  checkoutRequestId String?
+  failureReason     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@index([bookingId, status])
+}
+
+model ServiceReview {
+  id         String @id @default(cuid())
+  bookingId  String
+  booking    ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  staffId    String?
+  staff      StaffUser? @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  rating     Int
+  comment    String?
+  status     String @default("PUBLISHED")
+  createdAt  DateTime @default(now())
+  @@unique([bookingId, userId])
+  @@index([userId])
 }
 
 model Setting {
