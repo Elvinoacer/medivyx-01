@@ -151,6 +151,8 @@ export async function POST(request: Request) {
     let deliveryAddress: string | null = null
     let deliveryArea: string | null = null
     let deliveryNotes: string | null = null
+    let deliveryLatitude: number | null = body.deliveryLatitude != null ? Number(body.deliveryLatitude) : null
+    let deliveryLongitude: number | null = body.deliveryLongitude != null ? Number(body.deliveryLongitude) : null
     let deliveryFee = 0
 
     if (fulfillment === "DELIVERY") {
@@ -160,6 +162,8 @@ export async function POST(request: Request) {
           deliveryAddress = addr.text
           deliveryArea = addr.area
           deliveryNotes = addr.notes
+          deliveryLatitude = addr.latitude
+          deliveryLongitude = addr.longitude
         }
       }
       if (!deliveryAddress) {
@@ -174,7 +178,7 @@ export async function POST(request: Request) {
 
     const subtotal = orderLines.reduce((s, l) => s + l.product.price * l.qty, 0)
     if (fulfillment === "DELIVERY") {
-      deliveryFee = computeDeliveryFee(deliveryArea, settings.delivery, subtotal, body.deliveryLatitude != null ? Number(body.deliveryLatitude) : null, body.deliveryLongitude != null ? Number(body.deliveryLongitude) : null)
+      deliveryFee = computeDeliveryFee(deliveryArea, settings.delivery, subtotal, deliveryLatitude, deliveryLongitude)
     }
 
     // ---- promo code (validated server-side; discounts apply to the subtotal) ----
