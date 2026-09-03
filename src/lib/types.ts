@@ -390,6 +390,7 @@ export interface ServiceBookingDTO {
   staffNotes?: string | null
   price?: number | null
   paymentStatus: string
+  assignedStaffId?: string | null
   createdAt: string
   updatedAt: string
   statusHistory: { id: string; status: string; note?: string | null; actor: string; createdAt: string }[]
