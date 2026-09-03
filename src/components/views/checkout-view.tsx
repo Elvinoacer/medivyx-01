@@ -118,6 +118,7 @@ export function CheckoutView() {
   const [step, setStep] = useState<Step>(1)
   const [fulfillment, setFulfillment] = useState<"PICKUP" | "DELIVERY">("PICKUP")
   const [zone, setZone] = useState<string>("")
+  const [deliveryCoordinates, setDeliveryCoordinates] = useState<{ latitude: number; longitude: number } | null>(null)
 
   // ---------- delivery settings ----------
   const [settings, setSettings] = useState<DeliverySettings | null>(null)
