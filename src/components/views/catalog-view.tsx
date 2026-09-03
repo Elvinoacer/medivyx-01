@@ -13,6 +13,11 @@ import { Toaster } from "@/components/ui/sonner"
 import { ProductCard } from "@/components/shared/product-card"
 import { ProductImage } from "@/components/shared/product-image"
 import { EmptyState, LoadingGrid } from "@/components/shared/empty-state"
+import { LuxuryCategoryRibbon } from "@/components/catalog/luxury-category-ribbon"
+import {
+  HighPerformancePagination,
+  type PaginationMode,
+} from "@/components/catalog/high-performance-pagination"
 import { useAppStore, type CatalogFilters } from "@/store/use-app-store"
 import { catalogApi } from "@/lib/api-client"
 import type { CategoryDTO, ProductDTO, ProductsResponse } from "@/lib/types"
@@ -20,10 +25,19 @@ import { PHARMACY, waLink } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
-  Search, SlidersHorizontal, X, Loader2, RefreshCw, MessageCircle, ChevronDown,
+  Search,
+  SlidersHorizontal,
+  X,
+  RefreshCw,
+  MessageCircle,
+  ChevronDown,
+  LayoutGrid,
+  List,
+  Infinity as InfinityIcon,
+  FileText,
 } from "lucide-react"
 
-const PAGE_SIZE = 16
+const DEFAULT_PAGE_SIZE = 16
 
 const SORT_OPTIONS: { value: CatalogFilters["sort"]; label: string }[] = [
   { value: "popular", label: "Most popular" },
@@ -59,6 +73,16 @@ export function CatalogView() {
   const [reloadNonce, setReloadNonce] = useState(0)
   const effectiveSearch = override ?? filters.search
 
+  // View presentation mode: "grid" vs "list"
+  const [layoutMode, setLayoutMode] = useState<"grid" | "list">("grid")
+
+  // Pagination mode: "infinite" vs "pages"
+  const [paginationMode, setPaginationMode] = useState<PaginationMode>("infinite")
+
+  // Page state for numbered pagination
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE)
+
   // ---------- categories ----------
   const [categories, setCategories] = useState<CategoryDTO[] | null>(null)
   const [categoriesError, setCategoriesError] = useState<string | null>(null)
@@ -84,16 +108,22 @@ export function CatalogView() {
     const t = setTimeout(() => {
       setCatalogFilters({ search: override })
       setOverride(null)
+      setCurrentPage(1) // reset page on new search
     }, 350)
     return () => clearTimeout(t)
-  }, [override, filters.search])
+  }, [override, filters.search, setCatalogFilters])
 
-  // ---------- products (first page; refetch whenever filters change) ----------
+  // ---------- products loading ----------
   const [items, setItems] = useState<ProductDTO[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [moreLoading, setMoreLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filters.category, filters.rx, filters.availability, filters.sort, filters.search])
 
   useEffect(() => {
     let cancelled = false
@@ -107,8 +137,8 @@ export function CatalogView() {
           rx: filters.rx === "any" ? undefined : filters.rx,
           availability: filters.availability === "any" ? undefined : filters.availability,
           sort: filters.sort,
-          page: 1,
-          pageSize: PAGE_SIZE,
+          page: currentPage,
+          pageSize,
         })
         if (cancelled) return
         setTotal(res.total)
@@ -125,13 +155,14 @@ export function CatalogView() {
     return () => {
       cancelled = true
     }
-  }, [filters, reloadNonce])
+  }, [filters, reloadNonce, currentPage, pageSize])
 
+  // Load more for Infinite Scroll mode
   async function loadMore() {
     if (moreLoading || loading || items.length >= total) return
     setMoreLoading(true)
     try {
-      const nextPage = Math.floor(items.length / PAGE_SIZE) + 1
+      const nextPage = Math.floor(items.length / pageSize) + 1
       const res: ProductsResponse = await catalogApi.products({
         search: filters.search || undefined,
         category: filters.category || undefined,
@@ -139,7 +170,7 @@ export function CatalogView() {
         availability: filters.availability === "any" ? undefined : filters.availability,
         sort: filters.sort,
         page: nextPage,
-        pageSize: PAGE_SIZE,
+        pageSize,
       })
       setItems((prev) => {
         const seen = new Set(prev.map((p) => p.id))
@@ -153,21 +184,34 @@ export function CatalogView() {
     }
   }
 
+  function handlePageChange(newPage: number) {
+    setCurrentPage(newPage)
+    window.scrollTo({ top: 120, behavior: "smooth" })
+  }
+
+  function handlePageSizeChange(newSize: number) {
+    setPageSize(newSize)
+    setCurrentPage(1)
+    window.scrollTo({ top: 120, behavior: "smooth" })
+  }
+
   const activeCategory = categories?.find((c) => c.id === filters.category) ?? null
   const hasActiveFilters =
     !!filters.search || !!filters.category || filters.rx !== "any" || filters.availability !== "any"
   const loadingFirstPage = loading
-  const canLoadMore = items.length < total && !error
+  const hasMore = items.length < total && !error
 
   function clearAll() {
     resetCatalogFilters()
     setOverride(null)
     setSheetOpen(false)
+    setCurrentPage(1)
   }
 
   function pickCategory(id: string | null) {
     setCatalogFilters({ category: id ?? "" })
     setSheetOpen(false)
+    setCurrentPage(1)
   }
 
   // ---------- filter panel (shared by sidebar & mobile sheet) ----------
@@ -296,17 +340,38 @@ export function CatalogView() {
   )
 
   return (
-    <div className="pb-10">
+    <div className="pb-12">
       <Toaster position="bottom-left" richColors closeButton />
 
-      {/* page heading */}
-      <div className="mx-auto max-w-7xl px-4 pb-4 pt-6">
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-          {activeCategory ? activeCategory.name : "All products"}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {activeCategory?.description ?? "Medicines, vitamins, devices and everyday health essentials from Sphere Pharmacy."}
-        </p>
+      {/* page heading banner */}
+      <div className="mx-auto max-w-7xl px-4 pb-2 pt-6 sm:pt-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-primary">
+                Sphere Dispensary
+              </span>
+              <span className="text-xs text-muted-foreground">Lumumba Drive, Roysambu</span>
+            </div>
+            <h1 className="text-3xl font-black tracking-tight sm:text-4xl text-foreground">
+              {activeCategory ? activeCategory.name : "Pharmaceutical & Wellness Catalog"}
+            </h1>
+            <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
+              {activeCategory?.description ??
+                "Browse clinical medicines, vitamins, diagnostic devices and health essentials with live stock status."}
+            </p>
+          </div>
+        </div>
+
+        {/* Luxury Category Ribbon for 1-click filtering */}
+        <div className="mt-5 border-t border-b border-border/40 py-1">
+          <LuxuryCategoryRibbon
+            categories={categories}
+            activeCategoryId={filters.category}
+            totalProductCount={total}
+            onSelectCategory={pickCategory}
+          />
+        </div>
       </div>
 
       {/* mobile sticky search + filter bar */}
@@ -334,7 +399,7 @@ export function CatalogView() {
           </div>
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="h-10 shrink-0 gap-1.5 rounded-full px-4">
+              <Button variant="outline" className="h-10 shrink-0 gap-1.5 rounded-full px-4 text-xs font-semibold">
                 <SlidersHorizontal className="h-4 w-4" aria-hidden /> Filters
                 {hasActiveFilters ? <Badge className="ml-0.5 h-5 min-w-5 rounded-full px-1 text-[11px] font-bold">!</Badge> : null}
               </Button>
@@ -357,8 +422,8 @@ export function CatalogView() {
           <Input
             value={effectiveSearch}
             onChange={(e) => setOverride(e.target.value)}
-            placeholder="Search medicines, brands, vitamins…"
-            className="h-11 rounded-full bg-muted/50 pl-10 pr-9"
+            placeholder="Search medicines, active ingredients, brands, vitamins…"
+            className="h-11 rounded-full bg-muted/50 pl-10 pr-9 text-sm"
             aria-label="Search products"
             enterKeyHint="search"
           />
@@ -374,50 +439,118 @@ export function CatalogView() {
         </div>
       </div>
 
-      <div className="mx-auto flex max-w-7xl gap-6 px-4">
+      <div className="mx-auto flex max-w-7xl gap-6 px-4 pt-2">
         {/* sidebar (desktop) */}
-        <aside className="hidden w-60 shrink-0 lg:block" aria-label="Product filters">
-          <Card className="sticky top-36">
+        <aside className="hidden w-64 shrink-0 lg:block" aria-label="Product filters">
+          <Card className="sticky top-36 rounded-2xl border-border/70 shadow-sm">
             <CardContent className="p-5">{filterPanel}</CardContent>
           </Card>
         </aside>
 
-        {/* results */}
+        {/* results section */}
         <section className="min-w-0 flex-1" aria-live="polite">
-          {/* results meta + chips */}
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            {loadingFirstPage ? (
-              <Skeleton className="h-6 w-28" />
-            ) : (
-              <p className="text-sm text-muted-foreground" role="status">
-                <span className="font-bold text-foreground">{total}</span> product{total === 1 ? "" : "s"}
-              </p>
-            )}
-            {filters.search ? (
-              <FilterChip label={`“${filters.search}”`} onRemove={() => { setCatalogFilters({ search: "" }); setOverride(null) }} />
-            ) : null}
-            {activeCategory ? <FilterChip label={activeCategory.name} onRemove={() => pickCategory(null)} /> : null}
-            {filters.rx !== "any" ? (
-              <FilterChip label={filters.rx === "yes" ? "Prescription only" : "OTC only"} onRemove={() => setCatalogFilters({ rx: "any" })} />
-            ) : null}
-            {filters.availability !== "any" ? (
-              <FilterChip
-                label={AVAILABILITY_OPTIONS.find((o) => o.value === filters.availability)?.label ?? filters.availability}
-                onRemove={() => setCatalogFilters({ availability: "any" })}
-              />
-            ) : null}
+          {/* Results controls header bar: Chips + View Switcher + Pagination Mode */}
+          <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-border/50 bg-card/60 p-3 backdrop-blur-sm">
+            {/* active filter chips */}
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+              {loadingFirstPage ? (
+                <Skeleton className="h-6 w-28" />
+              ) : (
+                <p className="text-xs font-semibold text-muted-foreground pr-1" role="status">
+                  <span className="font-bold text-foreground">{total}</span> product{total === 1 ? "" : "s"}
+                </p>
+              )}
+              {filters.search ? (
+                <FilterChip label={`“${filters.search}”`} onRemove={() => { setCatalogFilters({ search: "" }); setOverride(null) }} />
+              ) : null}
+              {activeCategory ? <FilterChip label={activeCategory.name} onRemove={() => pickCategory(null)} /> : null}
+              {filters.rx !== "any" ? (
+                <FilterChip label={filters.rx === "yes" ? "Prescription (Rx)" : "OTC Only"} onRemove={() => setCatalogFilters({ rx: "any" })} />
+              ) : null}
+              {filters.availability !== "any" ? (
+                <FilterChip
+                  label={AVAILABILITY_OPTIONS.find((o) => o.value === filters.availability)?.label ?? filters.availability}
+                  onRemove={() => setCatalogFilters({ availability: "any" })}
+                />
+              ) : null}
+            </div>
+
+            {/* Layout Mode & Pagination Mode Switchers */}
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              {/* Pagination mode: Auto Scroll vs Pages */}
+              <div className="flex items-center rounded-xl border border-border/70 bg-muted/60 p-0.5 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setPaginationMode("infinite")}
+                  className={cn(
+                    "flex items-center gap-1 rounded-lg px-2.5 py-1 transition-all",
+                    paginationMode === "infinite"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title="Seamless auto-scrolling feed"
+                >
+                  <InfinityIcon className="h-3.5 w-3.5" />
+                  <span className="hidden md:inline">Infinite</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaginationMode("pages")}
+                  className={cn(
+                    "flex items-center gap-1 rounded-lg px-2.5 py-1 transition-all",
+                    paginationMode === "pages"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title="Numbered page navigation"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span className="hidden md:inline">Pages</span>
+                </button>
+              </div>
+
+              {/* Layout mode: Grid vs List */}
+              <div className="flex items-center rounded-xl border border-border/70 bg-muted/60 p-0.5 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setLayoutMode("grid")}
+                  className={cn(
+                    "rounded-lg p-1.5 transition-all",
+                    layoutMode === "grid"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  aria-label="Grid view"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLayoutMode("list")}
+                  className={cn(
+                    "rounded-lg p-1.5 transition-all",
+                    layoutMode === "list"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  aria-label="List view"
+                >
+                  <List className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* grid */}
+          {/* Grid / List Results */}
           {error && items.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed bg-muted/30 px-6 py-12 text-center">
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed bg-muted/30 px-6 py-12 text-center">
               <p className="text-sm text-muted-foreground">{error}</p>
               <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setReloadNonce((n) => n + 1)}>
                 <RefreshCw className="h-4 w-4" /> Retry
               </Button>
             </div>
           ) : loadingFirstPage ? (
-            <LoadingGrid count={10} />
+            <LoadingGrid count={12} />
           ) : items.length === 0 ? (
             <EmptyState
               icon={Search}
@@ -427,35 +560,54 @@ export function CatalogView() {
             />
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-                {items.map((p) => (
-                  <ProductCard key={p.id} product={p} />
-                ))}
-              </div>
-
-              {/* load more */}
-              {canLoadMore ? (
-                <div className="mt-8 flex justify-center">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="gap-2 rounded-full px-8"
-                    onClick={() => void loadMore()}
-                    disabled={moreLoading || loading}
-                  >
-                    {moreLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ChevronDown className="h-4 w-4" aria-hidden />}
-                    {moreLoading ? "Loading…" : `Load more (${total - items.length} left)`}
-                  </Button>
+              {/* Product Cards: Grid Layout */}
+              {layoutMode === "grid" ? (
+                <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 xl:grid-cols-4">
+                  {items.map((p, idx) => {
+                    const isTopPriority = filters.sort === "popular" && currentPage === 1 && idx < 3
+                    return (
+                      <ProductCard
+                        key={p.id}
+                        product={p}
+                        priorityRank={isTopPriority ? idx + 1 : undefined}
+                      />
+                    )
+                  })}
                 </div>
               ) : (
-                <p className="mt-8 text-center text-xs text-muted-foreground">
-                  You&apos;ve seen all {total} product{total === 1 ? "" : "s"}
-                </p>
+                /* Product Cards: Apothecary List Layout */
+                <div className="space-y-3">
+                  {items.map((p, idx) => {
+                    const isTopPriority = filters.sort === "popular" && currentPage === 1 && idx < 3
+                    return (
+                      <ProductCard
+                        key={p.id}
+                        product={p}
+                        layout="compact-row"
+                        priorityRank={isTopPriority ? idx + 1 : undefined}
+                      />
+                    )
+                  })}
+                </div>
               )}
+
+              {/* High Performance Pagination & Infinite Scroll */}
+              <HighPerformancePagination
+                mode={paginationMode}
+                currentPage={currentPage}
+                pageSize={pageSize}
+                totalItems={total}
+                loadedCount={items.length}
+                hasMore={hasMore}
+                isLoadingMore={moreLoading}
+                onLoadMore={loadMore}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+              />
             </>
           )}
 
-          {/* WhatsApp fallback */}
+          {/* WhatsApp fallback when empty */}
           {items.length === 0 && !loadingFirstPage ? (
             <div className="mt-4 flex justify-center">
               <a
@@ -477,10 +629,10 @@ export function CatalogView() {
 
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-1 rounded-full border bg-muted/60 py-1 pl-3 pr-1.5 text-xs font-medium">
+    <span className="inline-flex max-w-full items-center gap-1 rounded-full border bg-muted/70 py-1 pl-3 pr-1.5 text-xs font-semibold text-foreground">
       <span className="truncate">{label}</span>
-      <button onClick={onRemove} className="rounded-full p-0.5 hover:bg-background" aria-label={`Remove filter ${label}`}>
-        <X className="h-3 w-3" aria-hidden />
+      <button onClick={onRemove} className="rounded-full p-0.5 hover:bg-background text-muted-foreground hover:text-foreground" aria-label={`Remove filter ${label}`}>
+        <X className="h-3 w-3" />
       </button>
     </span>
   )

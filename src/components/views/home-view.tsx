@@ -11,6 +11,8 @@ import { Toaster } from "@/components/ui/sonner"
 import { ProductCard } from "@/components/shared/product-card"
 import { ProductImage } from "@/components/shared/product-image"
 import { SectionHeader, LoadingGrid } from "@/components/shared/empty-state"
+import { LuxuryCategoriesShowcase } from "@/components/home/luxury-categories-showcase"
+import { PriorityProductsSection } from "@/components/home/priority-products-section"
 import { LogoMark } from "@/components/shared/logo"
 import { useAppStore } from "@/store/use-app-store"
 import { useRecentStore } from "@/store/use-wish-store"
@@ -335,13 +337,13 @@ export function HomeView() {
       </section>
 
       {/* ============ CATEGORIES ============ */}
-      <section className="mx-auto max-w-7xl px-4 py-10" aria-labelledby="categories-heading">
+      <section className="mx-auto max-w-7xl px-4 py-12" aria-labelledby="categories-heading">
         <SectionHeader
-          title="Shop by category"
-          subtitle="Everything from everyday essentials to prescription medicines"
+          title="Departments & Care Aisles"
+          subtitle="Curated collections from certified pharmaceuticals to daily nutritional vitality"
           action={
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={browseAll}>
-              View all <ArrowRight className="h-4 w-4" />
+            <Button variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={browseAll}>
+              View all aisles <ArrowRight className="h-4 w-4" />
             </Button>
           }
         />
@@ -349,49 +351,12 @@ export function HomeView() {
           Product categories
         </h2>
 
-        {categories.loading ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Card key={i} className="overflow-hidden p-0">
-                <CardContent className="p-0">
-                  <Skeleton className="aspect-square w-full rounded-none" />
-                  <div className="space-y-2 p-3">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : categories.error || !categories.data ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed bg-muted/30 px-6 py-8 text-center">
-            <p className="text-sm text-muted-foreground">Couldn&apos;t load categories. Check your connection and try again.</p>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={categories.reload}>
-              <RefreshCw className="h-4 w-4" /> Retry
-            </Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
-            {categories.data.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => shopCategory(c)}
-                className="card-lift group flex flex-col items-center gap-1.5 overflow-hidden rounded-xl border bg-card text-center focus-visible:outline-2 focus-visible:outline-primary"
-                aria-label={`Shop ${c.name}, ${c.productCount} products`}
-              >
-                <ProductImage
-                  src={c.icon}
-                  alt=""
-                  className="aspect-square w-full"
-                  imgClassName="transition-transform duration-300 group-hover:scale-105"
-                  fallback="/images/cat-fallback.webp"
-                />
-                <span className="line-clamp-2 min-h-[2.2rem] px-1.5 pt-1 text-xs font-semibold leading-tight sm:text-sm">{c.name}</span>
-                <span className="pb-3 text-[11px] text-muted-foreground">{c.productCount} items</span>
-              </button>
-            ))}
-          </div>
-        )}
+        <LuxuryCategoriesShowcase
+          categories={categories.data}
+          loading={categories.loading}
+          error={categories.error}
+          onRetry={categories.reload}
+        />
       </section>
 
       {/* ============ PROMOTIONS ============ */}
@@ -457,14 +422,14 @@ export function HomeView() {
         </section>
       )}
 
-      {/* ============ POPULAR PRODUCTS ============ */}
-      <section className="mx-auto max-w-7xl px-4 py-10" aria-labelledby="popular-heading">
+      {/* ============ CURATED PRIORITY PRODUCTS ============ */}
+      <section className="mx-auto max-w-7xl px-4 py-12" aria-labelledby="popular-heading">
         <SectionHeader
-          title="Popular right now"
-          subtitle="What Roysambu keeps coming back for"
+          title="Priority & Popular Care"
+          subtitle="Most trusted treatments, community staples, and pharmacist-verified formulations"
           action={
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={browseAll}>
-              All products <ArrowRight className="h-4 w-4" />
+            <Button variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={browseAll}>
+              Full pharmacy catalog <ArrowRight className="h-4 w-4" />
             </Button>
           }
         />
@@ -472,33 +437,12 @@ export function HomeView() {
           Popular products
         </h2>
 
-        {popular.loading ? (
-          <LoadingGrid count={10} />
-        ) : popular.error || !popular.data || popular.data.items.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed bg-muted/30 px-6 py-10 text-center">
-            <p className="text-sm text-muted-foreground">
-              {popular.error ? "Couldn't load products right now." : "No products to show yet."}
-            </p>
-            <div className="flex gap-2">
-              {popular.error ? (
-                <Button variant="outline" size="sm" className="gap-1.5" onClick={popular.reload}>
-                  <RefreshCw className="h-4 w-4" /> Retry
-                </Button>
-              ) : null}
-              <a href={waLink("Hi, I'd like to ask about available products.")} target="_blank" rel="noopener noreferrer">
-                <Button variant="secondary" size="sm" className="gap-1.5 bg-emerald-700 text-white hover:bg-emerald-800">
-                  <MessageCircle className="h-4 w-4" /> Ask on WhatsApp
-                </Button>
-              </a>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {popular.data.items.map((p: ProductDTO) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        )}
+        <PriorityProductsSection
+          data={popular.data}
+          loading={popular.loading}
+          error={popular.error}
+          onRetry={popular.reload}
+        />
       </section>
 
       {/* ============ RECENTLY VIEWED ============ */}
