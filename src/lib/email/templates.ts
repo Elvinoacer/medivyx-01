@@ -418,3 +418,45 @@ export function adminNotificationTemplate(opts: {
   const text = `Staff Alert: ${title}\n\n${message}\n${actionUrl ? `Dashboard: ${actionUrl}` : ""}`
   return { subject: `[Sphere Staff] ${title}`, html, text }
 }
+
+
+export function serviceBookingTemplate(opts: {
+  customerName?: string | null
+  reference: string
+  serviceName: string
+  status: string
+  message: string
+  start: Date
+  end: Date
+  bookingUrl: string
+}): { subject: string; html: string; text: string } {
+  const { customerName, reference, serviceName, status, message, start, end, bookingUrl } = opts
+  const greeting = customerName ? `Hello ${customerName},` : "Hello,"
+  const when = start.toLocaleString("en-KE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "Africa/Nairobi",
+  })
+  const endTime = end.toLocaleTimeString("en-KE", { hour: "numeric", minute: "2-digit", timeZone: "Africa/Nairobi" })
+  const html = baseLayout(
+    `Service Booking ${reference} — ${status}`,
+    `
+      <h2 style="margin:0 0 12px;color:${BRAND.color};font-size:22px;font-weight:700;">Care appointment update</h2>
+      <p style="margin:0 0 16px;font-size:15px;">${greeting}</p>
+      <div style="background:#f0fdfa;border-left:4px solid ${BRAND.color};padding:16px 20px;border-radius:0 8px 8px 0;margin-bottom:20px;">
+        <p style="margin:0 0 6px;font-size:12px;text-transform:uppercase;font-weight:700;color:${BRAND.color};letter-spacing:.05em;">${status}</p>
+        <p style="margin:0;font-size:15px;font-weight:600;color:#134e4a;">${serviceName}</p>
+        <p style="margin:6px 0 0;font-size:14px;color:#475569;">${when} – ${endTime}</p>
+      </div>
+      <p style="margin:0 0 18px;font-size:14px;color:#475569;">${message}</p>
+      <p style="margin:0;font-size:13px;color:${BRAND.muted};">Booking reference: <strong>${reference}</strong></p>
+    `,
+    { text: "View Care Services", url: bookingUrl }
+  )
+  const text = `Service booking ${reference} — ${status}\n\n${greeting}\n${serviceName}\n${when} – ${endTime}\n\n${message}\n\n${bookingUrl}`
+  return { subject: `Service Booking ${reference}: ${status} — ${BRAND.name}`, html, text }
+}
