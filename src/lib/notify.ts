@@ -321,12 +321,12 @@ export async function notifyServiceBooking(opts: {
     end: opts.end,
     bookingUrl,
   })
-  await notifyCustomer(opts.userId, "SERVICE_BOOKING", template.subject, opts.message, "IN_APP", {
+  await notifyCustomer(opts.userId, opts.event || "SERVICE_BOOKING", template.subject, opts.message, "IN_APP", {
     link: bookingUrl,
     metadata: {
       bookingId: opts.bookingId,
       reference: opts.reference,
-      serviceId: opts.serviceName,
+      serviceName: opts.serviceName,
       status: opts.status,
     },
     email: opts.customerEmail ? {
