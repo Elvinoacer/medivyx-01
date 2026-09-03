@@ -5,14 +5,13 @@ import { CalendarDays, Check, Clock3, Loader2, RefreshCw, X } from "lucide-react
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { adminServiceBookingsApi, serviceStaffApi } from "@/lib/api-client"
 import type { ServiceBookingDTO, ServiceBookingStatus, StaffDTO } from "@/lib/types"
 import { type SectionProps, SectionError } from "../admin-shared"
 import { toast } from "sonner"
 
-const STATUSES: ServiceBookingStatus[] = ["PENDING","CONFIRMED","ARRIVED","IN_PROGRESS","COMPLETED","CANCELLED","NO_SHOW","REJECTED","RESCHEDULED"]
 const statusClass = (s:string) => s==="CONFIRMED"||s==="COMPLETED" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300" : s==="CANCELLED"||s==="REJECTED" ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
 
 export function ServiceBookingsSection({refreshKey}:SectionProps){
