@@ -20,7 +20,7 @@ type FormState={name:string;shortDescription:string;description:string;category:
 const EMPTY:FormState={name:"",shortDescription:"",description:"",category:"",durationMinutes:"15",price:"",priceLabel:"",heroImage:"",gallery:[],featured:false,active:true}
 
 export function ServicesSection({refreshKey,onRefresh}:SectionProps){
- const [services,setServices]=useState<ServiceDTO[]|null>(null),[error,setError]=useState<string|null>(null),[editing,setEditing]=useState<ServiceDTO|"new"|null>(null),[form,setForm]=useState<FormState>(EMPTY),[saving,setSaving]=useState(false),[uploading,setUploading]=useState(false)
+ const [services,setServices]=useState<ServiceDTO[]|null>(null),[error,setError]=useState<string|null>(null),[editing,setEditing]=useState<ServiceDTO|"new"|null>(null),[form,setForm]=useState<FormState>(EMPTY),[saving,setSaving]=useState(false),[uploading,setUploading]=useState(false),[availabilityService,setAvailabilityService]=useState<ServiceDTO|null>(null),[availability,setAvailability]=useState<Record<number,{startTime:string;endTime:string;enabled:boolean}>>({}),[availabilitySaving,setAvailabilitySaving]=useState(false)
  const fileRef=useRef<HTMLInputElement>(null)
  const load=async()=>{try{setServices(await servicesApi.list(true));setError(null)}catch(err){setError(err instanceof Error?err.message:"Could not load services.")}}
  useEffect(()=>{void load()},[refreshKey])
