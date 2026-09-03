@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
 import { Search, Phone, MessageCircle, ShoppingCart, User, MapPin, Clock, Truck, ShieldCheck, Upload, ArrowRight, Sun, Moon } from "lucide-react"
 import { ServicesShowcase } from "@/components/home/services-showcase"
-import "@/app/services-showcase.css"
 
 export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
   const view = useAppStore((s) => s.view)
