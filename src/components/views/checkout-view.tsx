@@ -1033,8 +1033,17 @@ export function CheckoutView() {
                         )
                       ) : (
                         <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <Label htmlFor="guest-address">Address (building, street, estate) *</Label>
+                            <UseCurrentLocationButton onResolved={(location) => {
+                              setAddressText(location.displayName)
+                              const matched = zones.find((candidate) => {
+                                const value = (location.area || "").toLowerCase()
+                                return value && (value.includes(candidate.name.toLowerCase()) || candidate.name.toLowerCase().includes(value))
+                              })
+                              if (matched) setZone(matched.name)
+                            }} />
+                          </div>
                             <Textarea
                               id="guest-address"
                               value={addressText}
