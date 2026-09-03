@@ -149,7 +149,7 @@ export function CheckoutView() {
     let cancelled = false
     setFeeInfo(null)
     settingsApi
-      .deliveryFee(zone)
+      .deliveryFee(zone, subtotal, deliveryCoordinates?.latitude, deliveryCoordinates?.longitude)
       .then((f) => {
         if (!cancelled) setFeeInfo(f)
       })
@@ -216,6 +216,7 @@ export function CheckoutView() {
   const [addressMode, setAddressMode] = useState<"saved" | "new">("saved")
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
   const [addressText, setAddressText] = useState("")
+  const [deliveryCoordinates, setDeliveryCoordinates] = useState<{ latitude: number; longitude: number } | null>(null)
   useEffect(() => {
     if (!user) {
       setAddresses(null)
@@ -450,6 +451,7 @@ export function CheckoutView() {
       ...(uploaded.length > 0 ? { prescriptionIds: uploaded.map((u) => u.id) } : {}),
       ...(promo ? { promotionCode: promo.code } : {}),
       ...(redeemPoints && pointsEligible ? { redeemPoints: true } : {}),
+      ...(deliveryCoordinates ? { deliveryLatitude: deliveryCoordinates.latitude, deliveryLongitude: deliveryCoordinates.longitude } : {}),
     }
   }
 
@@ -464,6 +466,7 @@ export function CheckoutView() {
           text: addressText.trim(),
           area: zone || undefined,
           notes: deliveryNotes.trim() || undefined,
+          ...(deliveryCoordinates ? { latitude: deliveryCoordinates.latitude, longitude: deliveryCoordinates.longitude } : {}),
         })
         addressId = created.id
         setSelectedAddressId(created.id)
@@ -997,6 +1000,7 @@ export function CheckoutView() {
                                   <Label htmlFor="new-address">Address (building, street, estate) *</Label>
                                   <UseCurrentLocationButton onResolved={(location) => {
                                     setAddressText(location.displayName)
+                              setDeliveryCoordinates({ latitude: location.latitude, longitude: location.longitude })
                                     const matched = zones.find((candidate) => {
                                       const value = (location.area || "").toLowerCase()
                                       return value && (value.includes(candidate.name.toLowerCase()) || candidate.name.toLowerCase().includes(value))
