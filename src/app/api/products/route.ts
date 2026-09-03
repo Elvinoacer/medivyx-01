@@ -18,12 +18,27 @@ export async function GET(request: Request) {
 
   const where: Record<string, unknown> = { active: true }
   if (search) {
-    where.OR = [
-      { name: { contains: search } },
-      { brand: { contains: search } },
-      { sku: { contains: search } },
-      { description: { contains: search } },
-    ]
+    // PostgreSQL's default text comparison can be case-sensitive depending on
+    // collation. Always search case-insensitively and split multi-word queries
+    // so "PANADOL extra", "Panadol EXTRA" and "panadol extra" behave alike.
+    const searchTerms = search
+      .toLocaleLowerCase()
+      .split(/\s+/)
+      .map((term) => term.replace(/[^\p{L}\p{N}]+/gu, "").trim())
+      .filter(Boolean)
+
+    where.AND = searchTerms.map((term) => ({
+      OR: [
+        { name: { contains: term, mode: "insensitive" } },
+        { brand: { contains: term, mode: "insensitive" } },
+        { sku: { contains: term, mode: "insensitive" } },
+        { description: { contains: term, mode: "insensitive" } },
+        { packSize: { contains: term, mode: "insensitive" } },
+        { usageInfo: { contains: term, mode: "insensitive" } },
+        { warnings: { contains: term, mode: "insensitive" } },
+        { category: { name: { contains: term, mode: "insensitive" } } },
+      ],
+    }))
   }
   if (category) {
     // accept either category id or slug
