@@ -36,11 +36,11 @@ export function CartView() {
   const loggedIn = !!session?.user
 
   function handleCheckout() {
-    if (!loggedIn && rxLines.length > 0) {
-      setNotice(
-        "Prescription items need an account so our pharmacist can review and link your prescription. Log in or create one — it takes a minute."
-      )
-      openAuth("login", "checkout", "Log in to continue — prescription items require an account.")
+    if (!loggedIn) {
+      setNotice("Sign in first so your cart stays exactly where you left it. After signing in, you’ll return straight to checkout.")
+      openAuth("login", "checkout", rxLines.length > 0
+        ? "Sign in to continue — your cart is saved and you’ll return straight to prescription checkout."
+        : "Sign in to continue — your cart is saved and you’ll return straight to checkout.")
       return
     }
     setNotice(null)
