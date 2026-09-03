@@ -17,36 +17,37 @@
   transform: translate3d(0, 0, 0);
 }
 
-/* Light mode: gentle warm botanical watercolor ambient drift without harsh glare */
+/* Light mode: soft botanical/aurora motion that adds depth without competing
+   with text, product cards, imagery, or the warm neutral surface. */
 .ambient-page-shell::before {
   background:
-    radial-gradient(44% 34% at 16% 16%, hsl(155 40% 48% / 0.05), transparent 68%),
-    radial-gradient(40% 32% at 84% 22%, hsl(165 35% 50% / 0.04), transparent 70%),
-    radial-gradient(42% 34% at 52% 88%, hsl(145 35% 48% / 0.035), transparent 72%),
-    radial-gradient(28% 24% at 70% 62%, hsl(175 30% 50% / 0.025), transparent 74%);
-  filter: blur(48px);
-  animation: ambient-drift-one 22s ease-in-out infinite alternate;
+    radial-gradient(46% 34% at 12% 14%, hsl(154 52% 54% / 0.095), transparent 68%),
+    radial-gradient(38% 30% at 88% 18%, hsl(172 48% 58% / 0.075), transparent 70%),
+    radial-gradient(44% 36% at 58% 88%, hsl(142 48% 58% / 0.065), transparent 72%),
+    radial-gradient(28% 24% at 76% 58%, hsl(188 38% 62% / 0.045), transparent 74%);
+  filter: blur(54px);
+  animation: ambient-drift-one 24s ease-in-out infinite alternate;
 }
 
 .ambient-page-shell::after {
   background: conic-gradient(
     from 220deg at 50% 50%,
     transparent 0deg,
-    hsl(155 40% 48% / 0.03) 50deg,
+    hsl(154 48% 52% / 0.035) 50deg,
     transparent 118deg,
-    hsl(165 35% 50% / 0.025) 190deg,
+    hsl(178 44% 56% / 0.03) 190deg,
     transparent 258deg,
-    hsl(145 35% 48% / 0.02) 320deg,
+    hsl(139 46% 54% / 0.025) 320deg,
     transparent 360deg
   );
   mix-blend-mode: multiply;
-  opacity: 0.4;
-  filter: blur(32px);
-  animation: ambient-drift-two 34s linear infinite;
+  opacity: 0.6;
+  filter: blur(36px);
+  animation: ambient-drift-two 38s linear infinite;
 }
 
+/* Keep overlay components in control of their own positioning. */
 .ambient-page-shell > * {
-  position: relative;
   z-index: 1;
 }
 
@@ -62,9 +63,9 @@
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(720px 340px at 8% 10%, hsl(155 40% 48% / 0.03), transparent 72%),
-    radial-gradient(680px 330px at 92% 36%, hsl(165 35% 50% / 0.025), transparent 72%),
-    radial-gradient(720px 360px at 50% 92%, hsl(145 35% 48% / 0.02), transparent 74%);
+    radial-gradient(720px 340px at 8% 10%, hsl(155 42% 52% / 0.028), transparent 72%),
+    radial-gradient(680px 330px at 92% 36%, hsl(170 38% 54% / 0.022), transparent 72%),
+    radial-gradient(720px 360px at 50% 92%, hsl(145 40% 52% / 0.018), transparent 74%);
 }
 
 .ambient-page-shell #main-content > * {
@@ -96,7 +97,7 @@
   }
 }
 
-/* Dark mode overrides */
+/* Dark mode keeps the richer, deeper version of the same ambient motion. */
 .dark .ambient-page-shell::before {
   background:
     radial-gradient(44% 34% at 16% 16%, hsl(160 78% 48% / 0.18), transparent 68%),
@@ -132,11 +133,11 @@
 
 @media (max-width: 800px) {
   .ambient-page-shell::before {
-    filter: blur(52px);
-    animation-duration: 25s;
+    filter: blur(58px);
+    animation-duration: 27s;
   }
   .ambient-page-shell::after {
-    filter: blur(36px);
-    animation-duration: 33s;
+    filter: blur(40px);
+    animation-duration: 36s;
   }
 }
