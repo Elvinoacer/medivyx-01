@@ -12,6 +12,7 @@ import "./reference-home-dark.css"
 import "./ambient-background.css"
 import "./services-showcase.css"
 import { HomeView } from "@/components/views/home-view"
+import { ServicesView } from "@/components/views/services-view"
 import { CatalogView } from "@/components/views/catalog-view"
 import { ProductView } from "@/components/views/product-view"
 import { CartView } from "@/components/views/cart-view"
@@ -45,6 +46,7 @@ export default function Page() {
         {home ? <div className="reference-home-rest"><HomeView /></div> : null}
         {view === "catalog" ? <CatalogView /> : null}
         {view === "product" ? <ProductView /> : null}
+        {view === "services" ? <ServicesView /> : null}
         {view === "cart" ? <CartView /> : null}
         {view === "checkout" ? <CheckoutView /> : null}
         {view === "auth" ? <AuthView /> : null}
