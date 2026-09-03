@@ -25,7 +25,7 @@ import { toast } from "sonner"
 import {
   LayoutDashboard, Package, ClipboardList, Pill, Megaphone, Users, BarChart3,
   ShieldCheck, Settings, LogOut, Lock, Store, Menu, Loader2, RefreshCw, Bike, MessageSquareText,
-  Bell, BellRing,
+  Bell, BellRing, BriefcaseMedical,
 } from "lucide-react"
 import { enablePushNotifications, getPushPermissionState } from "@/lib/firebase/client"
 import type { LucideIcon } from "lucide-react"
@@ -43,6 +43,7 @@ import { StaffSection } from "./sections/staff-section"
 import { ReportsSection } from "./sections/reports-section"
 import { ComplianceSection } from "./sections/compliance-section"
 import { SettingsSection } from "./sections/settings-section"
+import { ServicesSection } from "./sections/services-section"
 
 const STAFF_ROLES: Role[] = ["ADMIN", "PHARMACIST", "STAFF", "RIDER"]
 const ALL_STAFF: Role[] = ["ADMIN", "PHARMACIST", "STAFF", "RIDER"]
@@ -77,6 +78,10 @@ const NAV: NavItem[] = [
   {
     key: "prescriptions", label: "Prescriptions", title: "Prescription review", subtitle: "Verify uploaded prescriptions before dispensing",
     icon: ClipboardList, roles: ["ADMIN", "PHARMACIST"],
+  },
+  {
+    key: "services", label: "Services", title: "Care services", subtitle: "Create, edit and publish pharmacy care services and their imagery",
+    icon: BriefcaseMedical, roles: ["ADMIN", "PHARMACIST", "STAFF"],
   },
   {
     key: "catalogue", label: "Catalogue", title: "Catalogue", subtitle: "Manage products, pricing, stock levels and CSV imports",
@@ -252,6 +257,8 @@ export function AdminView() {
         return <DispatchSection {...sectionProps} />
       case "prescriptions":
         return <PrescriptionsSection {...sectionProps} />
+      case "services":
+        return <ServicesSection {...sectionProps} />
       case "catalogue":
         return <CatalogueSection {...sectionProps} />
       case "reviews":
