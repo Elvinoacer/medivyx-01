@@ -262,7 +262,7 @@ export const settingsApi = {
         encodeURIComponent(area) +
         "&subtotal=" + encodeURIComponent(String(subtotal)) +
         (latitude != null && longitude != null ? "&lat=" + latitude + "&lon=" + longitude : "")
-    ),,
+    ),
   uploadBase64: async (data: {
     fileData: string
     fileName: string
