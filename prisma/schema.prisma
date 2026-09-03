@@ -85,6 +85,8 @@ model StaffUser {
   prescriptions  Prescription[] @relation("RxReviewer")
   notifications  Notification[]
   pushTokens     PushToken[]
+  assignedBookings ServiceBooking[] @relation("ServiceAssignedStaff")
+  serviceReviews   ServiceReview[]
 }
 
 // ---------- Catalogue ----------
@@ -351,8 +353,6 @@ model Service {
   images           ServiceImage[]
   availability     ServiceAvailability[]
   bookings         ServiceBooking[]
-  assignedBookings ServiceBooking[] @relation("ServiceAssignedStaff")
-  serviceReviews   ServiceReview[]
 }
 
 model ServiceImage {
@@ -397,6 +397,8 @@ model ServiceBooking {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   statusHistory    ServiceBookingStatusHistory[]
+  payments         ServicePayment[]
+  reviews          ServiceReview[]
   assignedStaffId  String?
   assignedStaff    StaffUser? @relation("ServiceAssignedStaff", fields: [assignedStaffId], references: [id], onDelete: SetNull)
   @@index([serviceId, scheduledStart, scheduledEnd])
