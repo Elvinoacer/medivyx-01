@@ -45,8 +45,10 @@
   animation: ambient-drift-two 34s linear infinite;
 }
 
+/* Do not change child positioning here. Overlay components such as the AI
+   assistant, sheets/dialogs and mobile navigation rely on their own fixed
+   positioning and z-index stacking contexts. */
 .ambient-page-shell > * {
-  position: relative;
   z-index: 1;
 }
 
