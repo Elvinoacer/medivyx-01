@@ -1,0 +1,48 @@
+"use client"
+
+import { useEffect, useRef, useState } from "react"
+import { Archive, Camera, Check, Edit3, ImagePlus, Loader2, Plus, Star, Upload, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { servicesApi, storageApi } from "@/lib/api-client"
+import type { ServiceDTO } from "@/lib/types"
+import { SectionError, type SectionProps } from "../admin-shared"
+import { toast } from "sonner"
+
+type FormState={name:string;shortDescription:string;description:string;category:string;durationMinutes:string;price:string;priceLabel:string;heroImage:string;featured:boolean;active:boolean}
+const EMPTY:FormState={name:"",shortDescription:"",description:"",category:"",durationMinutes:"15",price:"",priceLabel:"",heroImage:"",featured:false,active:true}
+
+export function ServicesSection({refreshKey,onRefresh}:SectionProps){
+ const [services,setServices]=useState<ServiceDTO[]|null>(null),[error,setError]=useState<string|null>(null),[editing,setEditing]=useState<ServiceDTO|"new"|null>(null),[form,setForm]=useState<FormState>(EMPTY),[saving,setSaving]=useState(false),[uploading,setUploading]=useState(false)
+ const fileRef=useRef<HTMLInputElement>(null)
+ const load=async()=>{try{setServices(await servicesApi.list(true));setError(null)}catch(err){setError(err instanceof Error?err.message:"Could not load services.")}}
+ useEffect(()=>{void load()},[refreshKey])
+ const openNew=()=>{setForm(EMPTY);setEditing("new")}
+ const openEdit=(s:ServiceDTO)=>{setForm({name:s.name,shortDescription:s.shortDescription||"",description:s.description||"",category:s.category||"",durationMinutes:String(s.durationMinutes),price:s.price==null?"":String(s.price),priceLabel:s.priceLabel||"",heroImage:s.heroImage||"",featured:s.featured,active:s.active});setEditing(s)}
+ async function uploadHero(file:File){setUploading(true);try{const r=await storageApi.uploadFile(file,"services");setForm(f=>({...f,heroImage:r.url}));toast.success("Service image uploaded.")}catch(err){toast.error(err instanceof Error?err.message:"Upload failed.")}finally{setUploading(false);if(fileRef.current)fileRef.current.value=""}}
+ async function save(){if(!form.name.trim())return toast.error("Service name is required.");setSaving(true);try{const payload={...form,durationMinutes:Number(form.durationMinutes)||15,price:form.price===""?null:Number(form.price)};if(editing==="new")await servicesApi.create(payload);else if(editing)await servicesApi.update(editing.id,payload);toast.success(editing==="new"?"Service created.":"Service updated.");setEditing(null);await load();onRefresh()}catch(err){toast.error(err instanceof Error?err.message:"Could not save service.")}finally{setSaving(false)}}
+ async function archiveService(s:ServiceDTO){if(!window.confirm("Archive "+s.name+"? It will disappear from the storefront but remain in admin."))return;try{await servicesApi.remove(s.id);toast.success("Service archived.");await load();onRefresh()}catch(err){toast.error(err instanceof Error?err.message:"Could not archive service.")}}
+ return <div className="space-y-5">
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="text-xl font-bold">Care services</h2><p className="mt-1 text-sm text-muted-foreground">Create, edit and publish pharmacy care services and their imagery.</p></div><Button onClick={openNew}><Plus className="h-4 w-4"/> New service</Button></div>
+  {error?<SectionError message={error} onRetry={()=>void load()}/>:services===null?<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{Array.from({length:6}).map((_,i)=><Card key={i} className="h-72 animate-pulse bg-muted/40"/>)}</div>:services.length===0?<Card><CardContent className="p-10 text-center"><p className="font-semibold">No services yet.</p><p className="mt-1 text-sm text-muted-foreground">Create the first care service.</p><Button className="mt-4" onClick={openNew}>Create service</Button></CardContent></Card>:<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{services.map(s=><Card key={s.id} className="overflow-hidden"><div className="relative aspect-[16/9] bg-muted">{s.heroImage?<img src={s.heroImage} alt="" className="h-full w-full object-cover"/>:<div className="flex h-full items-center justify-center text-muted-foreground"><ImagePlus className="h-10 w-10"/></div>}<div className="absolute right-3 top-3 flex gap-1.5">{s.featured?<Badge className="bg-amber-500 text-white"><Star className="mr-1 h-3 w-3 fill-current"/> Featured</Badge>:null}<Badge variant={s.active?"secondary":"outline"}>{s.active?"Live":"Archived"}</Badge></div></div><CardContent className="p-4"><div className="flex items-start justify-between gap-3"><div><h3 className="font-bold">{s.name}</h3><p className="mt-1 text-xs text-muted-foreground">{s.category||"Pharmacy care"} · {s.durationMinutes} min</p></div><p className="text-sm font-bold">{s.priceLabel||(s.price!=null?"KSh "+s.price.toLocaleString():"Contact")}</p></div><p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{s.shortDescription||s.description||"No description yet."}</p><div className="mt-4 flex gap-2"><Button size="sm" variant="outline" onClick={()=>openEdit(s)}><Edit3 className="h-3.5 w-3.5"/> Edit</Button>{s.active?<Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={()=>void archiveService(s)}><Archive className="h-3.5 w-3.5"/> Archive</Button>:null}</div></CardContent></Card>)}</div>}
+  <Dialog open={editing!==null} onOpenChange={open=>!open&&setEditing(null)}><DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>{editing==="new"?"Create a care service":"Edit care service"}</DialogTitle><DialogDescription>These fields drive the customer-facing service catalogue.</DialogDescription></DialogHeader>
+   <div className="grid gap-4 sm:grid-cols-2">
+    <div className="space-y-2 sm:col-span-2"><Label>Service name</Label><Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
+    <div className="space-y-2"><Label>Category</Label><Input value={form.category} onChange={e=>setForm({...form,category:e.target.value})}/></div><div className="space-y-2"><Label>Duration (minutes)</Label><Input type="number" min={1} value={form.durationMinutes} onChange={e=>setForm({...form,durationMinutes:e.target.value})}/></div>
+    <div className="space-y-2"><Label>Price</Label><Input type="number" min={0} value={form.price} onChange={e=>setForm({...form,price:e.target.value})}/></div><div className="space-y-2"><Label>Display price</Label><Input value={form.priceLabel} onChange={e=>setForm({...form,priceLabel:e.target.value})}/></div>
+    <div className="space-y-2 sm:col-span-2"><Label>Short description</Label><Input value={form.shortDescription} onChange={e=>setForm({...form,shortDescription:e.target.value})}/></div>
+    <div className="space-y-2 sm:col-span-2"><Label>Full description</Label><Textarea rows={5} value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></div>
+    <div className="space-y-3 sm:col-span-2"><Label>Hero image</Label><div className="rounded-2xl border border-dashed p-3">{form.heroImage?<div className="relative overflow-hidden rounded-xl"><img src={form.heroImage} alt="Service preview" className="aspect-[16/9] w-full object-cover"/><Button type="button" size="icon" variant="destructive" className="absolute right-2 top-2 h-8 w-8" onClick={()=>setForm({...form,heroImage:""})}><X className="h-4 w-4"/></Button></div>:<button type="button" onClick={()=>fileRef.current?.click()} className="flex w-full flex-col items-center justify-center gap-2 rounded-xl px-4 py-10 text-center hover:bg-muted/40"><Camera className="h-8 w-8 text-muted-foreground"/><span className="text-sm font-medium">Upload a service photo</span><span className="text-xs text-muted-foreground">JPG, PNG, WebP or HEIC</span></button>}{form.heroImage?<div className="mt-2 text-center"><Button type="button" size="sm" variant="outline" onClick={()=>fileRef.current?.click()} disabled={uploading}><Upload className="h-3.5 w-3.5"/> Replace image</Button></div>:null}<input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)void uploadHero(f)}}/></div></div>
+    <div className="flex items-center justify-between rounded-xl border p-3 sm:col-span-2"><div><p className="text-sm font-semibold">Show on storefront</p><p className="text-xs text-muted-foreground">Disable without deleting.</p></div><Switch checked={form.active} onCheckedChange={v=>setForm({...form,active:v})}/></div>
+    <div className="flex items-center justify-between rounded-xl border p-3 sm:col-span-2"><div><p className="text-sm font-semibold">Feature service</p><p className="text-xs text-muted-foreground">Marks it as a homepage/marketing priority.</p></div><Switch checked={form.featured} onCheckedChange={v=>setForm({...form,featured:v})}/></div>
+   </div>
+   <DialogFooter><Button variant="outline" onClick={()=>setEditing(null)} disabled={saving}>Cancel</Button><Button onClick={()=>void save()} disabled={saving||uploading}>{saving?<Loader2 className="h-4 w-4 animate-spin"/>:<Check className="h-4 w-4"/>}{saving?"Saving…":"Save service"}</Button></DialogFooter>
+  </DialogContent></Dialog>
+ </div>
+}
