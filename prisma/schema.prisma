@@ -349,6 +349,8 @@ model Service {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   images           ServiceImage[]
+  availability     ServiceAvailability[]
+  bookings         ServiceBooking[]
 }
 
 model ServiceImage {
@@ -361,6 +363,52 @@ model ServiceImage {
   sortOrder  Int      @default(0)
   createdAt  DateTime @default(now())
   @@index([serviceId])
+}
+
+model ServiceAvailability {
+  id            String   @id @default(cuid())
+  serviceId     String
+  service       Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  dayOfWeek     Int
+  startTime     String
+  endTime       String
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([serviceId, dayOfWeek, enabled])
+}
+
+model ServiceBooking {
+  id               String   @id @default(cuid())
+  reference        String   @unique
+  serviceId        String
+  service          Service  @relation(fields: [serviceId], references: [id])
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduledStart   DateTime
+  scheduledEnd     DateTime
+  status           String   @default("PENDING")
+  customerNotes    String?
+  staffNotes       String?
+  price            Float?
+  paymentStatus    String   @default("UNPAID")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  statusHistory    ServiceBookingStatusHistory[]
+  @@index([serviceId, scheduledStart, scheduledEnd])
+  @@index([userId, scheduledStart])
+  @@index([status])
+}
+
+model ServiceBookingStatusHistory {
+  id         String         @id @default(cuid())
+  bookingId  String
+  booking    ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  status     String
+  note       String?
+  actor      String
+  createdAt  DateTime       @default(now())
+  @@index([bookingId, createdAt])
 }
 
 model Setting {
