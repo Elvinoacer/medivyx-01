@@ -29,6 +29,8 @@ model User {
   reviews            Review[]
   stockAlerts        ProductAlert[]
   pushTokens         PushToken[]
+  serviceBookings    ServiceBooking[]
+  serviceReviews     ServiceReview[]
 
   // Sphere Points loyalty balance (includes legacy in-store activity)
   loyaltyPoints      Int      @default(0)
