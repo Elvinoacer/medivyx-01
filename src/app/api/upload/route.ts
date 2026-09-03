@@ -3,7 +3,7 @@ import { getSession } from "@/lib/session"
 import { uploadToR2, uploadBase64ToR2, getPresignedUploadUrl } from "@/lib/r2"
 import { v4 as uuidv4 } from "uuid"
 
-const ALLOWED_FOLDERS = ["products", "prescriptions", "avatars", "general"] as const
+const ALLOWED_FOLDERS = ["products", "prescriptions", "avatars", "services", "general"] as const
 type Folder = (typeof ALLOWED_FOLDERS)[number]
 
 const ALLOWED_MIME_TYPES = new Set([
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       const folder: Folder = ALLOWED_FOLDERS.includes(body.folder) ? body.folder : "general"
 
       // Security check for protected folders
-      if (folder === "products" && !session?.staffId) {
+      if ((folder === "products" || folder === "services") && !session?.staffId) {
         return NextResponse.json({ error: "Only staff can upload product media." }, { status: 403 })
       }
       if ((folder === "avatars" || folder === "prescriptions") && !session?.userId && !session?.staffId) {
