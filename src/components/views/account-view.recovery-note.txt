@@ -1,0 +1,1 @@
+Temporary recovery note: account-view restored by a tree-level revert commit after the address-modal patch accidentally removed reloadPrefs. This file is not intended to remain in the repository.
