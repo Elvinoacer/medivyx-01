@@ -12,6 +12,7 @@ import type {
   LoyaltySummaryDTO,
   NotificationDTO,
   NotificationPrefsDTO,
+  ServiceDTO,
   OrderDTO,
   PharmacySettings,
   ProductDTO,
@@ -303,7 +304,7 @@ export interface UploadResponse {
 export const storageApi = {
   uploadFile: async (
     file: File,
-    folder: "products" | "prescriptions" | "avatars" | "general" = "general"
+    folder: "products" | "prescriptions" | "avatars" | "services" | "general" = "general"
   ): Promise<UploadResponse> => {
     const formData = new FormData()
     formData.append("file", file)
@@ -335,4 +336,13 @@ export const storageApi = {
     }
     return res.json()
   },
+}
+
+
+export const servicesApi = {
+  list: (includeInactive = false) => req<ServiceDTO[]>(`/api/services${includeInactive ? "?includeInactive=true" : ""}`),
+  get: (id: string) => req<ServiceDTO>(`/api/services/${id}`),
+  create: (payload: Partial<ServiceDTO>) => req<ServiceDTO>("/api/services", { method: "POST", body: JSON.stringify(payload) }),
+  update: (id: string, payload: Partial<ServiceDTO>) => req<ServiceDTO>(`/api/services/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  remove: (id: string) => req<{ ok: boolean }>(`/api/services/${id}`, { method: "DELETE" }),
 }
