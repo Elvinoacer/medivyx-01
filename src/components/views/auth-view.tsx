@@ -45,6 +45,8 @@ export function AuthView() {
   const authNextParams = useAppStore((s) => s.authNextParams)
   const authMessage = useAppStore((s) => s.authMessage)
   const navigate = useAppStore((s) => s.navigate)
+  const replace = useAppStore((s) => s.replace)
+  const clearAuthIntent = useAppStore((s) => s.clearAuthIntent)
   const setSession = useAuthStore((s) => s.setSession)
   const refresh = useAuthStore((s) => s.refresh)
 
@@ -90,7 +92,8 @@ export function AuthView() {
       navigate("admin")
     } else {
       toast.success(`Welcome back, ${session.user?.name ?? "friend"}!`)
-      navigate(authNext ?? "account", authNextParams ?? undefined)
+      replace(authNext ?? "account", authNextParams ?? undefined)
+      clearAuthIntent()
     }
   }
 
@@ -130,7 +133,8 @@ export function AuthView() {
       toast.success("Account created — karibu Sphere Pharmacy!")
       setSession(session)
       void refresh()
-      navigate(authNext ?? "account", authNextParams ?? undefined)
+      replace(authNext ?? "account", authNextParams ?? undefined)
+      clearAuthIntent()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed — please try again.")
     } finally {
