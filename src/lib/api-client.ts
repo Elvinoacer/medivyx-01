@@ -365,6 +365,8 @@ export const serviceBookingsApi = {
     req<import("./types").ServiceBookingDTO>("/api/service-bookings", { method: "POST", body: JSON.stringify(payload) }),
 }
 
+export const serviceStaffApi = { list: () => req<import("./types").StaffDTO[]>("/api/admin/service-staff") }
+
 export const adminServiceBookingsApi = {
   list: (date?: string) =>
     req<import("./types").ServiceBookingDTO[]>(`/api/admin/service-bookings${date ? `?date=${encodeURIComponent(date)}` : ""}`),
