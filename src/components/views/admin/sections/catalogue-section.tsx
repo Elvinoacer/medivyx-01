@@ -23,7 +23,7 @@ import { ProductImage } from "@/components/shared/product-image"
 import { StockStatusBadge } from "@/components/shared/status-badges"
 import { adminApi, catalogApi, storageApi } from "@/lib/api-client"
 import type { CategoryDTO, ProductDTO } from "@/lib/types"
-import { PRODUCT_IMAGE_LIBRARY } from "@/lib/image-library"
+import { PRODUCT_IMAGE_LIBRARY, type LibraryImage } from "@/lib/image-library"
 import { FALLBACK_PRODUCT_IMAGE, productImageSrc, sanitizeImageInput } from "@/lib/image"
 import { STOCK_LABELS, STOCK_STATUSES, type StockStatus } from "@/lib/constants"
 import { formatKES } from "@/lib/format"
@@ -31,12 +31,13 @@ import { useAuthStore } from "@/store/use-auth-store"
 import { toast } from "sonner"
 import { apiErrorMessage, downloadCsv, useDebounced, type SectionProps } from "../admin-shared"
 import {
-  Search, Pill, Loader2, Plus, Minus, Upload, Download, FileUp, Trash2, Pencil, Package, Dices,
+  Search, Pill, Loader2, Plus, Minus, Upload, Download, FileUp, Trash2, Pencil, Package, Dices, Images, ImagePlus, Check,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // Real product photos shipped in public/images/products — the editor picks from these.
 const IMAGE_LIBRARY = PRODUCT_IMAGE_LIBRARY
+const LIBRARY_PATHS = new Set(IMAGE_LIBRARY.map((image) => image.path))
 
 const CSV_COLUMNS = [
   "name", "sku", "category", "brand", "packSize", "price", "compareAtPrice",
@@ -114,6 +115,15 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
   const lowCount = products.filter((p) => p.stockStatus === "LOW_STOCK").length
   const outCount = products.filter((p) => p.stockStatus === "OUT_OF_STOCK").length
   const discontinuedCount = products.filter((p) => p.stockStatus === "DISCONTINUED").length
+  const reusableProductImages = useMemo<LibraryImage[]>(() => {
+    const seen = new Set<string>()
+    return products.flatMap((product) => {
+      const path = product.image?.trim()
+      if (!path || LIBRARY_PATHS.has(path) || seen.has(path)) return []
+      seen.add(path)
+      return [{ path, label: `${product.name} (uploaded)` }]
+    })
+  }, [products])
 
   async function patchProduct(id: string, data: Partial<ProductDTO>, successMsg?: string) {
     setStockBusyId(id)
@@ -384,6 +394,7 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
           mode={editor.mode}
           product={editor.product}
           categories={categories}
+          reusableImages={reusableProductImages}
           onClose={() => setEditor(null)}
           onSaved={(saved) => {
             setEditor(null)
@@ -502,12 +513,14 @@ function ProductEditorDialog({
   mode,
   product,
   categories,
+  reusableImages,
   onClose,
   onSaved,
 }: {
   mode: "create" | "edit"
   product?: ProductDTO
   categories: CategoryDTO[]
+  reusableImages: LibraryImage[]
   onClose: () => void
   onSaved: (saved: ProductDTO) => void
 }) {
@@ -516,15 +529,28 @@ function ProductEditorDialog({
   const [saveError, setSaveError] = useState<string | null>(null)
   const imageUploadRef = useRef<HTMLInputElement>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [galleryOpen, setGalleryOpen] = useState(false)
+  const [uploadedImages, setUploadedImages] = useState<LibraryImage[]>([])
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!file.type.startsWith("image/")) {
+      setSaveError("Choose an image file for the product photo.")
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setSaveError("Product photos must be 10 MB or smaller.")
+      return
+    }
     setUploadingImage(true)
+    setSaveError(null)
     try {
       const res = await storageApi.uploadFile(file, "products")
+      if (!res.url) throw new Error("The uploaded photo URL was not returned.")
       set("image", res.url)
-      toast.success("Photo uploaded to Cloudflare R2!")
+      setUploadedImages((images) => [{ path: res.url, label: `${file.name} (new upload)` }, ...images.filter((image) => image.path !== res.url)])
+      toast.success("Photo uploaded and added to the reusable gallery.")
     } catch (err) {
       toast.error(apiErrorMessage(err))
     } finally {
@@ -689,27 +715,21 @@ function ProductEditorDialog({
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Product photo</Label>
               <p className="text-xs text-muted-foreground">
-                Pick from the library of real product photos (or paste any image path/URL).
+                Use the shared gallery, upload a new photo, or paste an image URL.
               </p>
-              <div className="grid max-h-40 grid-cols-5 gap-1.5 overflow-y-auto pr-0.5 xs:grid-cols-6 sm:flex sm:max-h-none sm:flex-wrap sm:overflow-visible" role="group" aria-label="Product photo library">
-                {IMAGE_LIBRARY.map((img) => (
-                  <button
-                    key={img.path}
-                    type="button"
-                    onClick={() => set("image", img.path)}
-                    aria-pressed={productImageSrc(form.image) === img.path}
-                    aria-label={`Use photo: ${img.label}`}
-                    title={img.label}
-                    className={cn(
-                      "aspect-square h-auto w-full overflow-hidden rounded-lg border transition-colors sm:h-12 sm:w-12",
-                      productImageSrc(form.image) === img.path ? "border-primary ring-2 ring-primary/30" : "hover:bg-accent/60"
-                    )}
-                  >
-                    <ProductImage src={img.path} alt="" className="h-full w-full" />
-                  </button>
-                ))}
+              <div className="flex items-center gap-3 rounded-xl border bg-muted/20 p-3">
+                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border bg-background">
+                  <ProductImage src={form.image} alt="Selected product photo" className="h-full w-full" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">Selected photo</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Gallery photos can be reused across medicines.</p>
+                  <Button type="button" size="sm" variant="outline" className="mt-2 gap-1.5" onClick={() => setGalleryOpen(true)}>
+                    <Images className="h-3.5 w-3.5" aria-hidden /> Browse gallery
+                  </Button>
+                </div>
               </div>
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
                   size="sm"
@@ -718,8 +738,8 @@ function ProductEditorDialog({
                   onClick={() => imageUploadRef.current?.click()}
                   disabled={uploadingImage}
                 >
-                  {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                  {uploadingImage ? "Uploading to Cloudflare R2…" : "Upload custom photo to R2"}
+                  {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                  {uploadingImage ? "Uploading photo…" : "Upload new photo"}
                 </Button>
                 <input
                   ref={imageUploadRef}
@@ -728,7 +748,7 @@ function ProductEditorDialog({
                   className="hidden"
                   onChange={handleImageUpload}
                 />
-                <span className="text-[11px] text-muted-foreground">or select a preset above</span>
+                <span className="text-[11px] text-muted-foreground">New uploads are reusable after saving this medicine.</span>
               </div>
               <Input
                 id="p-image"
@@ -768,6 +788,113 @@ function ProductEditorDialog({
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
             {mode === "create" ? "Add product" : "Save changes"}
           </Button>
+        </DialogFooter>
+        {galleryOpen ? (
+          <ProductImageGalleryDialog
+            images={[...uploadedImages, ...reusableImages, ...IMAGE_LIBRARY]}
+            selected={productImageSrc(form.image)}
+            onSelect={(path) => { set("image", path); setGalleryOpen(false); setSaveError(null) }}
+            onClose={() => setGalleryOpen(false)}
+          />
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ProductImageGalleryDialog({
+  images,
+  selected,
+  onSelect,
+  onClose,
+}: {
+  images: LibraryImage[]
+  selected: string
+  onSelect: (path: string) => void
+  onClose: () => void
+}) {
+  const [search, setSearch] = useState("")
+  const [visibleCount, setVisibleCount] = useState(24)
+  const uniqueImages = useMemo(() => {
+    const seen = new Set<string>()
+    return images.filter((image) => {
+      if (seen.has(image.path)) return false
+      seen.add(image.path)
+      return image.label.toLowerCase().includes(search.trim().toLowerCase())
+    })
+  }, [images, search])
+  const visibleImages = uniqueImages.slice(0, visibleCount)
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="flex h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:h-[min(88dvh,46rem)]">
+        <DialogHeader className="shrink-0 border-b p-4 pr-12">
+          <DialogTitle className="flex items-center gap-2">
+            <Images className="h-5 w-5 text-primary" aria-hidden /> Product photo gallery
+          </DialogTitle>
+          <DialogDescription>
+            Choose a curated photo or reuse a photo previously uploaded for another medicine.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="shrink-0 border-b p-3 sm:p-4">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              value={search}
+              onChange={(event) => { setSearch(event.target.value); setVisibleCount(24) }}
+              placeholder="Search photos, e.g. tablets, syrup, first aid…"
+              className="pl-9"
+              aria-label="Search product photo gallery"
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="scroll-slim min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4">
+          {visibleImages.length ? (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6" aria-label="Available product photos">
+              {visibleImages.map((image) => {
+                const isSelected = selected === image.path
+                return (
+                  <button
+                    key={image.path}
+                    type="button"
+                    onClick={() => onSelect(image.path)}
+                    aria-label={`Use photo: ${image.label}`}
+                    aria-pressed={isSelected}
+                    className={cn(
+                      "group relative overflow-hidden rounded-xl border bg-muted/20 p-1.5 text-left transition hover:border-primary/60 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      isSelected && "border-primary ring-2 ring-primary/30"
+                    )}
+                  >
+                    <span className="block aspect-square overflow-hidden rounded-lg bg-background">
+                      <ProductImage src={image.path} alt="" className="h-full w-full" />
+                    </span>
+                    <span className="mt-1.5 block truncate px-0.5 text-[11px] font-medium" title={image.label}>{image.label}</span>
+                    {isSelected ? (
+                      <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow" aria-hidden>
+                        <Check className="h-3.5 w-3.5" />
+                      </span>
+                    ) : null}
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="py-16 text-center">
+              <Images className="mx-auto h-10 w-10 text-muted-foreground" aria-hidden />
+              <p className="mt-3 text-sm font-medium">No photos match “{search}”</p>
+              <Button type="button" variant="link" size="sm" onClick={() => setSearch("")}>Clear search</Button>
+            </div>
+          )}
+          {visibleCount < uniqueImages.length ? (
+            <Button type="button" variant="outline" className="mt-4 w-full" onClick={() => setVisibleCount((count) => count + 24)}>
+              Show more photos ({uniqueImages.length - visibleCount} remaining)
+            </Button>
+          ) : null}
+        </div>
+        <DialogFooter className="shrink-0 border-t bg-muted/30 p-3 sm:p-4">
+          <p className="mr-auto self-center text-xs text-muted-foreground">Showing {Math.min(visibleCount, uniqueImages.length)} of {uniqueImages.length} photos</p>
+          <Button type="button" variant="outline" onClick={onClose}>Close gallery</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

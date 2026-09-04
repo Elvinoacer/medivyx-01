@@ -43,3 +43,11 @@ test("admin product selects render above dialogs and forms remain scrollable", (
   assert.match(catalogue, /overflow-y-auto overscroll-contain/)
   assert.match(catalogue, /Choose a category\./)
 })
+
+test("product image library is lazy and progressively rendered", () => {
+  const catalogue = read("src/components/views/admin/sections/catalogue-section.tsx")
+  assert.match(catalogue, /Browse gallery/)
+  assert.match(catalogue, /useState\(24\)/)
+  assert.match(catalogue, /visibleImages\.map/)
+  assert.match(catalogue, /added to the reusable gallery/)
+})
