@@ -146,9 +146,8 @@ main[data-view]:not([data-view="home"]) .experience-view {
 
 .mobile-primary-nav-safe-area { display: none; }
 
-/* Account hub remains visible below the persistent storefront header. */
+/* The account hub remains in normal document flow below the storefront header. */
 .customer-hub {
-  top: 7.125rem;
   border-block: 1px solid color-mix(in oklab, var(--border) 68%, transparent);
   box-shadow: 0 14px 34px -30px rgb(3 50 35 / 44%);
 }
@@ -366,7 +365,7 @@ main[data-view]:not([data-view="home"]) .experience-view {
   width: 100%;
 }
 
-/* Admin: persistent command bar, readable dense data, responsive tools. */
+/* Admin: readable dense data and responsive tools. */
 main[data-view="admin"] {
   background: color-mix(in oklab, var(--background) 96%, var(--primary) 4%);
 }
@@ -386,8 +385,7 @@ main[data-view="admin"] + footer { display: none; }
 }
 
 .admin-topbar {
-  position: sticky;
-  top: 7.125rem;
+  position: relative;
   z-index: 25;
   background: color-mix(in oklab, var(--background) 91%, transparent);
   box-shadow: 0 16px 30px -30px rgb(3 45 31 / 65%);
@@ -417,9 +415,6 @@ main[data-view="admin"] + footer { display: none; }
 }
 
 @media (max-width: 920px) {
-  .customer-hub,
-  .admin-topbar { top: 4.5rem; }
-
   .app-page-admin { min-height: calc(100vh - 4.5rem); }
 }
 
@@ -481,7 +476,6 @@ main[data-view="admin"] + footer { display: none; }
   }
 
   .customer-hub {
-    top: 4.25rem;
     z-index: 31;
     padding-block: .35rem;
     border-top: 0;
@@ -894,7 +888,6 @@ main[data-view="admin"] + footer { display: none; }
   }
 
   .admin-topbar {
-    top: 4.25rem;
     align-items: center;
     padding: .5rem .65rem;
   }

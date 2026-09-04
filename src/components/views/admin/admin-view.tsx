@@ -286,7 +286,7 @@ export function AdminView() {
     <div className="app-page app-page-admin w-full">
       <div className="mx-auto flex w-full max-w-7xl items-stretch">
         {/* ---------- desktop sidebar ---------- */}
-        <aside className="admin-sidebar sticky top-32 hidden h-fit w-64 shrink-0 flex-col self-start border-r bg-muted/30 md:flex">
+        <aside className="admin-sidebar hidden h-fit w-64 shrink-0 flex-col self-start border-r bg-muted/30 md:flex">
           <SidebarNav
             items={visibleNav}
             section={section}

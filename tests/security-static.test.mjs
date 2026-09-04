@@ -59,3 +59,28 @@ test("catalogue category labels hide image paths and products support useful sor
   assert.match(catalogue, /Date: newest first/)
   assert.match(catalogue, /Stock: highest first/)
 })
+
+test("browser push obtains and stores a real Firebase registration token", () => {
+  const client = read("src/lib/firebase/client.ts")
+  assert.match(client, /getToken\(messaging/)
+  assert.match(client, /serviceWorkerRegistration: registration/)
+  assert.match(client, /NEXT_PUBLIC_FIREBASE_VAPID_KEY/)
+  assert.doesNotMatch(client, /return false\s*\n}/)
+  assert.doesNotMatch(client, /dev_fcm_/)
+
+  const worker = read("public/firebase-messaging-sw.js")
+  assert.match(worker, /PUSH_NOTIFICATION/)
+  assert.match(worker, /showNotification/)
+})
+
+test("authenticated navigation stays in document flow while scrolling", () => {
+  const admin = read("src/components/views/admin/admin-view.tsx")
+  assert.doesNotMatch(admin, /admin-sidebar sticky/)
+
+  const experience = read("src/app/app-experience.css")
+  assert.match(experience, /\.admin-topbar\s*\{[^}]*position: relative;/)
+  assert.doesNotMatch(experience, /\.admin-topbar\s*\{[^}]*position: sticky;/)
+
+  const globals = read("src/app/globals.css")
+  assert.match(globals, /\.customer-hub\s*\{[^}]*position: relative;/)
+})

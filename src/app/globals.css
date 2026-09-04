@@ -366,8 +366,7 @@
 .premium-empty { background: linear-gradient(145deg, color-mix(in oklab, var(--card) 94%, var(--primary) 6%), var(--card)); }
 
 .customer-hub {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 32;
   border-bottom: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
   background: color-mix(in oklab, var(--background) 88%, transparent);
@@ -395,7 +394,7 @@
 @keyframes experience-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 @media (max-width: 767px) {
-  .customer-hub { top: 0; overflow-x: auto; scrollbar-width: none; }
+  .customer-hub { overflow-x: auto; scrollbar-width: none; }
   .customer-hub::-webkit-scrollbar { display: none; }
   .customer-hub-inner { width: max-content; min-width: 100%; min-height: 3.8rem; padding: 0 .85rem; gap: .45rem; }
   .customer-hub-identity { display: none; }

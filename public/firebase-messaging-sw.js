@@ -9,7 +9,9 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim())
 })
 
-// Handle background push messages
+// Handle background push messages. If the app is visible, hand the payload to
+// the page so it can render the in-app toast instead of showing a duplicate
+// system notification.
 self.addEventListener("push", (event) => {
   if (!event.data) return
 
@@ -48,7 +50,22 @@ self.addEventListener("push", (event) => {
     renotify: true,
   }
 
-  event.waitUntil(self.registration.showNotification(title, options))
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      const visibleClients = clientList.filter((client) => client.visibilityState === "visible")
+      if (visibleClients.length) {
+        visibleClients.forEach((client) => {
+          client.postMessage({
+            type: "PUSH_NOTIFICATION",
+            payload: { title, body, url: targetUrl, ...data },
+          })
+        })
+        return
+      }
+
+      return self.registration.showNotification(title, options)
+    })
+  )
 })
 
 // Handle notification click: navigate or focus existing window
