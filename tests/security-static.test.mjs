@@ -107,3 +107,12 @@ test("promotion editor remains usable on short and mobile viewports", () => {
   assert.match(promotions, /pb-\[max\(\.75rem,env\(safe-area-inset-bottom\)\)\]/)
   assert.match(promotions, /w-full sm:w-auto/)
 })
+
+test("order detail drawer exposes all content on mobile", () => {
+  const orders = read("src/components/views/admin/sections/orders-section.tsx")
+  assert.match(orders, /flex h-dvh w-full max-w-none/)
+  assert.match(orders, /min-h-0 flex-1 overflow-y-auto overscroll-contain/)
+  assert.match(orders, /max-h-\[40dvh\] shrink-0/)
+  assert.match(orders, /safe-area-inset-bottom/)
+  assert.match(orders, /break-all text-sm font-medium/)
+})

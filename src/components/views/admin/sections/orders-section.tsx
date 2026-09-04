@@ -615,10 +615,10 @@ function OrderDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-xl">
-        <SheetHeader className="space-y-1 border-b p-4">
+      <SheetContent side="right" className="flex h-dvh w-full max-w-none flex-col gap-0 overflow-hidden p-0 sm:w-[min(42rem,calc(100vw-2rem))] sm:max-w-none">
+        <SheetHeader className="shrink-0 space-y-1 border-b p-3 pr-12 text-left sm:p-4 sm:pr-12">
           <SheetTitle className="flex flex-wrap items-center gap-2 text-base">
-            <span className="font-bold">{order.reference}</span>
+            <span className="min-w-0 break-all font-bold">{order.reference}</span>
             <OrderStatusBadge status={order.status} />
           </SheetTitle>
           <SheetDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -631,22 +631,22 @@ function OrderDetailSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <ScrollArea className="scroll-slim flex-1">
-          <div className="space-y-5 p-4">
+        <div className="scroll-slim min-h-0 flex-1 overflow-y-auto overscroll-contain" tabIndex={0} aria-label={`Order ${order.reference} details`}>
+          <div className="space-y-5 p-3 sm:p-4">
             {/* customer + contact */}
             <section aria-labelledby="od-customer">
               <h3 id="od-customer" className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer</h3>
               <div className="rounded-lg border p-3">
-                <p className="text-sm font-semibold">{order.customerName ?? "Guest customer"}</p>
-                <p className="text-xs text-muted-foreground">{order.customerPhone ?? "No phone on file"}</p>
-                <div className="mt-2.5 flex flex-wrap gap-2">
+                <p className="break-words text-sm font-semibold">{order.customerName ?? "Guest customer"}</p>
+                <p className="break-all text-xs text-muted-foreground">{order.customerPhone ?? "No phone on file"}</p>
+                <div className="mt-2.5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   {tel ? (
-                    <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                    <Button size="sm" variant="outline" className="w-full gap-1.5 sm:w-auto" asChild>
                       <a href={tel}><Phone className="h-3.5 w-3.5" /> Call</a>
                     </Button>
                   ) : null}
                   {wa ? (
-                    <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700" asChild>
+                    <Button size="sm" className="w-full gap-1.5 bg-emerald-600 hover:bg-emerald-700 sm:w-auto" asChild>
                       <a href={wa} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</a>
                     </Button>
                   ) : null}
@@ -661,16 +661,16 @@ function OrderDetailSheet({
               </h3>
               <ul className="divide-y rounded-lg border">
                 {order.items.map((item) => (
-                  <li key={item.id} className="flex items-center justify-between gap-3 p-3">
+                  <li key={item.id} className="flex items-start justify-between gap-3 p-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
+                      <p className="break-words text-sm font-medium">
                         {item.name}
                         <span className="ml-1 text-xs text-muted-foreground">× {item.qty}</span>
                       </p>
                       <p className="text-xs text-muted-foreground">{formatKES(item.price)} each</p>
                       {item.requiresPrescription ? <RxFlagBadge className="mt-1.5" compact /> : null}
                     </div>
-                    <p className="text-sm font-semibold tabular-nums">{formatKES(item.lineTotal)}</p>
+                    <p className="shrink-0 text-sm font-semibold tabular-nums">{formatKES(item.lineTotal)}</p>
                   </li>
                 ))}
               </ul>
@@ -718,8 +718,8 @@ function OrderDetailSheet({
                             {p.method ? (PAYMENT_METHOD_LABELS[p.method] ?? p.method) : p.provider}
                           </span>
                           <PaymentStatusBadge status={p.status} />
-                          <span className="ml-auto text-sm font-semibold tabular-nums">{formatKES(p.amount)}</span>
-                          <p className="w-full text-xs text-muted-foreground">
+                          <span className="ml-auto shrink-0 text-sm font-semibold tabular-nums">{formatKES(p.amount)}</span>
+                          <p className="w-full break-words text-xs text-muted-foreground">
                             {formatDateTime(p.createdAt)}
                             {p.providerReference ? ` · Ref ${p.providerReference}` : ""}
                             {p.phone ? ` · ${p.phone}` : ""}
@@ -759,9 +759,9 @@ function OrderDetailSheet({
               <section aria-labelledby="od-delivery">
                 <h3 id="od-delivery" className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Delivery details</h3>
                 <div className="space-y-2 rounded-lg border p-3 text-sm">
-                  <p className="flex items-start gap-2">
+                  <p className="flex min-w-0 items-start gap-2">
                     <Truck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                    <span>{order.deliveryAddress ?? "No address recorded"}</span>
+                    <span className="min-w-0 break-words">{order.deliveryAddress ?? "No address recorded"}</span>
                   </p>
                   {order.deliveryNotes ? (
                     <p className="text-xs text-muted-foreground">Notes: {order.deliveryNotes}</p>
@@ -799,7 +799,7 @@ function OrderDetailSheet({
                   {order.prescriptions.map((rx) => (
                     <li key={rx.id} className="flex flex-wrap items-center gap-2 rounded-lg border p-3">
                       <ClipboardList className="h-4 w-4 text-muted-foreground" aria-hidden />
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{rx.fileName}</span>
+                      <span className="min-w-0 flex-1 break-all text-sm font-medium">{rx.fileName}</span>
                       <RxStatusBadge status={rx.status} />
                       {role === "ADMIN" || role === "PHARMACIST" ? (
                         <Button size="sm" variant="outline" onClick={() => onNavigateSection("prescriptions")}>
@@ -887,13 +887,13 @@ function OrderDetailSheet({
               </ol>
             </section>
           </div>
-        </ScrollArea>
+        </div>
 
         {/* workflow actions footer */}
-        <div className="space-y-2 border-t bg-muted/30 p-4">
+        <div className="scroll-slim max-h-[40dvh] shrink-0 space-y-2 overflow-y-auto border-t bg-background p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] sm:bg-muted/30 sm:p-4">
           {canManage || role === "RIDER" ? (
             <>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
                 {nexts.map((target, idx) => (
                   <Button
                     key={target}
@@ -901,13 +901,14 @@ function OrderDetailSheet({
                     variant={idx === 0 && target !== "REJECTED" ? "default" : "outline"}
                     disabled={actionBusy}
                     onClick={() => onStartTransition(order, target)}
+                    className="w-full sm:w-auto"
                   >
                     {TRANSITION_LABELS[target] ?? statusLabel(target)}
                   </Button>
                 ))}
               </div>
               {canManage && ACTIVE_STATUSES.includes(order.status) ? (
-                <Button size="sm" variant="ghost" className="gap-1.5 text-rose-600 hover:text-rose-700" disabled={actionBusy} onClick={() => onCancel(order)}>
+                <Button size="sm" variant="ghost" className="w-full gap-1.5 text-rose-600 hover:text-rose-700 sm:w-auto" disabled={actionBusy} onClick={() => onCancel(order)}>
                   <Ban className="h-4 w-4" /> Cancel order
                 </Button>
               ) : null}
