@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { attachRatings, toProductDTO } from "@/lib/dto"
 import { audit } from "@/lib/notify"
-import { requireStaff } from "@/lib/session"
+import { getSession, requireStaff } from "@/lib/session"
 import { STOCK_STATUSES, type StockStatus } from "@/lib/constants"
 import { managedImage } from "@/lib/security/service"
 import { randomBytes } from "crypto"
@@ -14,12 +14,21 @@ export async function GET(request: Request) {
   const category = url.searchParams.get("category")?.trim() ?? ""
   const rx = url.searchParams.get("rx") ?? "any"
   const availability = url.searchParams.get("availability") ?? "any"
+  const stockStatus = url.searchParams.get("stockStatus") ?? ""
   const sort = url.searchParams.get("sort") ?? "popular"
+  const adminView = url.searchParams.get("admin") === "yes"
   const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10) || 1)
   const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get("pageSize") ?? "12", 10) || 12))
   const ids = [...new Set((url.searchParams.get("ids") || "").split(",").filter(Boolean))].slice(0, 50)
 
-  const where: Record<string, unknown> = { active: true }
+  if (adminView) {
+    const session = await getSession()
+    if (!session?.staffId || !["ADMIN", "PHARMACIST", "STAFF"].includes(session.staffRole ?? "")) {
+      return NextResponse.json({ error: "Staff access required." }, { status: 403 })
+    }
+  }
+
+  const where: Record<string, unknown> = adminView ? {} : { active: true }
   if (ids.length) where.id = { in: ids }
   if (search) {
     // PostgreSQL's default text comparison can be case-sensitive depending on
@@ -55,12 +64,17 @@ export async function GET(request: Request) {
   if (availability === "in") where.stockStatus = "IN_STOCK"
   if (availability === "low") where.stockStatus = "LOW_STOCK"
   if (availability === "out") where.stockStatus = { in: ["OUT_OF_STOCK"] }
+  if (adminView && STOCK_STATUSES.includes(stockStatus as StockStatus)) where.stockStatus = stockStatus
 
   let orderBy: Record<string, string> = { createdAt: "desc" }
   if (sort === "price-asc") orderBy = { price: "asc" }
   if (sort === "price-desc") orderBy = { price: "desc" }
   if (sort === "name") orderBy = { name: "asc" }
+  if (sort === "name-desc") orderBy = { name: "desc" }
   if (sort === "newest") orderBy = { createdAt: "desc" }
+  if (sort === "oldest") orderBy = { createdAt: "asc" }
+  if (sort === "stock-asc") orderBy = { stockQty: "asc" }
+  if (sort === "stock-desc") orderBy = { stockQty: "desc" }
   if (sort === "popular") {
     const [total, ranked] = await Promise.all([
       db.product.count({ where }),

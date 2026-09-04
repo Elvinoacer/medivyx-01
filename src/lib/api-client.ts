@@ -141,7 +141,9 @@ export interface ProductQuery {
   category?: string
   rx?: "yes" | "no"
   availability?: "in" | "low" | "out" | "any"
-  sort?: "popular" | "price-asc" | "price-desc" | "name" | "newest"
+  stockStatus?: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | "DISCONTINUED"
+  sort?: "popular" | "price-asc" | "price-desc" | "name" | "name-desc" | "newest" | "oldest" | "stock-asc" | "stock-desc"
+  admin?: "yes"
   page?: number
   pageSize?: number
 }

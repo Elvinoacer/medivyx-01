@@ -51,7 +51,17 @@ const CSV_TEMPLATE_ROWS: string[][] = [
 ]
 
 const LOW_STOCK_THRESHOLD = 10
+const ADMIN_PAGE_SIZE = 25
 type CatalogueSort = "NEWEST" | "OLDEST" | "NAME_ASC" | "NAME_DESC" | "STOCK_DESC" | "STOCK_ASC"
+
+const API_SORT: Record<CatalogueSort, "newest" | "oldest" | "name" | "name-desc" | "stock-desc" | "stock-asc"> = {
+  NEWEST: "newest",
+  OLDEST: "oldest",
+  NAME_ASC: "name",
+  NAME_DESC: "name-desc",
+  STOCK_DESC: "stock-desc",
+  STOCK_ASC: "stock-asc",
+}
 
 function stockStatusForQty(qty: number): StockStatus {
   if (qty <= 0) return "OUT_OF_STOCK"
@@ -73,30 +83,52 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
   const [categoryFilter, setCategoryFilter] = useState("ALL")
   const [stockFilter, setStockFilter] = useState("ANY")
   const [sortBy, setSortBy] = useState<CatalogueSort>("NAME_ASC")
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
 
   const [editor, setEditor] = useState<{ mode: "create" | "edit"; product?: ProductDTO } | null>(null)
   const [csvOpen, setCsvOpen] = useState(false)
   const [deleteFor, setDeleteFor] = useState<ProductDTO | null>(null)
   const [stockBusyId, setStockBusyId] = useState<string | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
+  const loadRequestRef = useRef(0)
 
-  const load = useCallback(async (searchTerm: string) => {
+  const load = useCallback(async (searchTerm: string, requestedPage: number) => {
+    const requestId = ++loadRequestRef.current
     setLoading(true)
     setError(null)
     try {
-      const res = await catalogApi.products(searchTerm ? { search: searchTerm, pageSize: 200 } : { pageSize: 200 })
-      setProducts(res.items)
+      const res = await catalogApi.products({
+        admin: "yes",
+        search: searchTerm || undefined,
+        category: categoryFilter === "ALL" ? undefined : categoryFilter,
+        stockStatus: stockFilter === "ANY" ? undefined : stockFilter as StockStatus,
+        sort: API_SORT[sortBy],
+        page: requestedPage,
+        pageSize: ADMIN_PAGE_SIZE,
+      })
+      if (requestId === loadRequestRef.current) {
+        setProducts(res.items)
+        setTotal(res.total)
+      }
     } catch (err) {
-      setError(apiErrorMessage(err))
-      setProducts([])
+      if (requestId === loadRequestRef.current) {
+        setError(apiErrorMessage(err))
+        setProducts([])
+        setTotal(0)
+      }
     } finally {
-      setLoading(false)
+      if (requestId === loadRequestRef.current) setLoading(false)
     }
-  }, [])
+  }, [categoryFilter, stockFilter, sortBy])
 
   useEffect(() => {
-    void load(search)
-  }, [load, search, refreshKey])
+    void load(search, page)
+  }, [load, search, page, refreshKey])
+
+  useEffect(() => {
+    setPage(1)
+  }, [search, categoryFilter, stockFilter, sortBy])
 
   useEffect(() => {
     catalogApi
@@ -105,23 +137,9 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
       .catch(() => setCategories([]))
   }, [refreshKey])
 
-  const visible = useMemo(() => {
-    const filtered = products
-        .filter((p) => (categoryFilter === "ALL" ? true : p.categoryId === categoryFilter))
-        .filter((p) => (stockFilter === "ANY" ? true : p.stockStatus === stockFilter))
-    return filtered.sort((a, b) => {
-      if (sortBy === "NEWEST") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() || a.name.localeCompare(b.name)
-      if (sortBy === "OLDEST") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() || a.name.localeCompare(b.name)
-      if (sortBy === "NAME_DESC") return b.name.localeCompare(a.name)
-      if (sortBy === "STOCK_DESC") return b.stockQty - a.stockQty || a.name.localeCompare(b.name)
-      if (sortBy === "STOCK_ASC") return a.stockQty - b.stockQty || a.name.localeCompare(b.name)
-      return a.name.localeCompare(b.name)
-    })
-  }, [products, categoryFilter, stockFilter, sortBy])
+  const visible = products
+  const totalPages = Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE))
 
-  const lowCount = products.filter((p) => p.stockStatus === "LOW_STOCK").length
-  const outCount = products.filter((p) => p.stockStatus === "OUT_OF_STOCK").length
-  const discontinuedCount = products.filter((p) => p.stockStatus === "DISCONTINUED").length
   const reusableProductImages = useMemo<LibraryImage[]>(() => {
     const seen = new Set<string>()
     return products.flatMap((product) => {
@@ -188,7 +206,7 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
         <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300" role="alert">
           <p className="font-semibold">Couldn&apos;t load the catalogue</p>
           <p className="mt-0.5">{error}</p>
-          <Button size="sm" variant="outline" className="mt-2" onClick={() => void load(search)}>Retry</Button>
+          <Button size="sm" variant="outline" className="mt-2" onClick={() => void load(search, page)}>Retry</Button>
         </div>
       ) : null}
 
@@ -227,9 +245,6 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
               {STOCK_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
                   {STOCK_LABELS[s]}
-                  {s === "LOW_STOCK" && lowCount > 0 ? ` (${lowCount})` : ""}
-                  {s === "OUT_OF_STOCK" && outCount > 0 ? ` (${outCount})` : ""}
-                  {s === "DISCONTINUED" && discontinuedCount > 0 ? ` (${discontinuedCount})` : ""}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -401,11 +416,21 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
               </TableBody>
             </Table>
           </ScrollArea>
-          <p className="border-t px-4 py-2.5 text-xs text-muted-foreground">
-            Showing {visible.length} of {products.length} products
-            {lowCount + outCount > 0 ? ` · ${lowCount} low stock, ${outCount} out of stock` : ""}
-            {" · “Live” off = discontinued (hidden from storefront)"}
-          </p>
+          <div className="flex flex-col gap-2 border-t px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              Showing {total === 0 ? 0 : (page - 1) * ADMIN_PAGE_SIZE + 1}–{Math.min(page * ADMIN_PAGE_SIZE, total)} of {total} products
+              {" · “Live” off = discontinued (hidden from storefront)"}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+                Previous
+              </Button>
+              <span className="min-w-20 text-center font-medium text-foreground">Page {page} of {totalPages}</span>
+              <Button variant="outline" size="sm" disabled={page >= totalPages || loading} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
+                Next
+              </Button>
+            </div>
+          </div>
         </Card>
       )}
 
@@ -434,7 +459,8 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
         <CsvImportDialog
           onClose={() => setCsvOpen(false)}
           onImported={() => {
-            void load(search)
+            setPage(1)
+            void load(search, 1)
             onRefresh()
           }}
         />

@@ -85,3 +85,16 @@ test("authenticated navigation sticks flush to the viewport top", () => {
   const globals = read("src/app/globals.css")
   assert.match(globals, /\.customer-hub\s*\{[^}]*position: sticky;[^}]*top: 0;/)
 })
+
+test("medicine listings use server-side pagination", () => {
+  const catalogue = read("src/components/views/admin/sections/catalogue-section.tsx")
+  assert.match(catalogue, /ADMIN_PAGE_SIZE = 25/)
+  assert.match(catalogue, /Page \{page\} of \{totalPages\}/)
+  assert.match(catalogue, /admin: "yes"/)
+  assert.doesNotMatch(catalogue, /pageSize: 200/)
+
+  const route = read("src/app/api/products/route.ts")
+  assert.match(route, /skip: \(page - 1\) \* pageSize/)
+  assert.match(route, /adminView/)
+  assert.match(route, /Staff access required/)
+})
