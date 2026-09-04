@@ -21,7 +21,9 @@ import { settingsApi } from "@/lib/api-client"
 import type { DeliverySettings, PharmacySettings } from "@/lib/types"
 import { toast } from "sonner"
 import { apiErrorMessage, SectionError, type SectionProps } from "../admin-shared"
-import { Save, Loader2, Info, Building2, Truck, MoonStar, KeyRound, Trash2, Plus, Bell, Mail, Send, CheckCircle2, MapPinned, Search } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { enablePushNotifications, getPushPermissionState } from "@/lib/firebase/client"
+import { Save, Loader2, Info, Building2, Truck, MoonStar, KeyRound, Trash2, Plus, Bell, Mail, Send, CheckCircle2, MapPinned, Search, ShieldCheck } from "lucide-react"
 
 const DEMO_ACCOUNTS = [
   { role: "Admin", email: "admin@spherepharmacy.co.ke", password: "admin123" },
@@ -40,6 +42,12 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
   const [savingDelivery, setSavingDelivery] = useState(false)
   const [testingPush, setTestingPush] = useState(false)
   const [testingEmail, setTestingEmail] = useState(false)
+  const [enablingPush, setEnablingPush] = useState(false)
+  const [pushStatus, setPushStatus] = useState<NotificationPermission>("default")
+  const [diagnostics, setDiagnostics] = useState<{
+    email?: { configured: boolean; fromEmail: string; recipient: string | null }
+    push?: { configured: boolean; projectId: string | null; adminDeviceCount: number; totalDeviceCount: number }
+  } | null>(null)
   const [locationSearch, setLocationSearch] = useState("")
   const [locationResults, setLocationResults] = useState<{displayName:string;latitude:number;longitude:number}[]>([])
   const [searchingLocation, setSearchingLocation] = useState(false)
@@ -68,10 +76,51 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
     toast.success("Delivery origin updated. Save delivery settings to publish it.")
   }
 
+  const loadDiagnostics = useCallback(async () => {
+    try {
+      const res = await fetch("/api/notifications/dispatch-test")
+      if (res.ok) {
+        const data = await res.json()
+        setDiagnostics(data)
+      }
+    } catch {
+      // Non-blocking diagnostics check
+    }
+  }, [])
+
+  async function handleEnablePush() {
+    setEnablingPush(true)
+    try {
+      const res = await enablePushNotifications()
+      if (res.success) {
+        setPushStatus("granted")
+        toast.success("Push notifications enabled on this device! Ready to receive live alerts.")
+        void loadDiagnostics()
+      } else {
+        toast.error(res.error || "Could not enable push alerts on this browser.")
+      }
+    } finally {
+      setEnablingPush(false)
+    }
+  }
+
   async function testNotification(type: "PUSH" | "EMAIL") {
     if (type === "PUSH") setTestingPush(true)
     else setTestingEmail(true)
     try {
+      if (type === "PUSH") {
+        const currentPerm = getPushPermissionState()
+        if (currentPerm !== "granted") {
+          const reg = await enablePushNotifications()
+          if (!reg.success) {
+            toast.error(reg.error || "Please allow push notification permissions in your browser to test delivery.")
+            return
+          }
+          setPushStatus("granted")
+          void loadDiagnostics()
+        }
+      }
+
       const res = await fetch("/api/notifications/dispatch-test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,6 +129,7 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
       const data = await res.json()
       if (res.ok && data.ok) {
         toast.success(data.message || `Test ${type.toLowerCase()} delivered successfully.`)
+        if (type === "PUSH") void loadDiagnostics()
       } else {
         toast.error(data.message || data.error || "The notification provider rejected the test.")
       }
@@ -108,8 +158,12 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
   }, [])
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      setPushStatus(getPushPermissionState())
+    }
     void load()
-  }, [load, refreshKey])
+    void loadDiagnostics()
+  }, [load, loadDiagnostics, refreshKey])
 
   async function savePharmacy() {
     if (!pharmacy) return
@@ -620,6 +674,9 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
                   <h4 className="text-sm font-semibold">Firebase Cloud Messaging</h4>
                   <p className="text-xs text-muted-foreground">Web Push & Mobile Push Notifications</p>
                 </div>
+                <Badge variant="outline" className="ml-auto bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
+                  FCM v1 Connected
+                </Badge>
               </div>
 
               <div className="text-xs space-y-1 text-muted-foreground">
@@ -636,6 +693,31 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
                   <span>Rider dispatch drop-off assignments</span>
                 </div>
               </div>
+
+              {pushStatus === "granted" ? (
+                <div className="flex items-center justify-between gap-2 rounded-md border border-emerald-200/70 bg-emerald-50/40 px-2.5 py-1.5 text-xs text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:text-emerald-300">
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck className="h-3.5 w-3.5 shrink-0" /> Push alerts active on this device
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {diagnostics?.push?.adminDeviceCount ?? 1} registered
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200/70 bg-amber-50/50 px-2.5 py-1.5 text-xs text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-300">
+                  <span>Push alerts not yet enabled on this browser</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[11px] px-2 border-amber-300 bg-background hover:bg-amber-100/50"
+                    onClick={() => void handleEnablePush()}
+                    disabled={enablingPush}
+                  >
+                    {enablingPush ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                    Enable
+                  </Button>
+                </div>
+              )}
 
               <Button
                 variant="outline"
@@ -659,6 +741,9 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
                   <h4 className="text-sm font-semibold">Resend Email Integration</h4>
                   <p className="text-xs text-muted-foreground">Transactional HTML Email Receipts & Alerts</p>
                 </div>
+                <Badge variant="outline" className="ml-auto bg-teal-50 text-teal-700 border-teal-200 text-[10px] dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800">
+                  REST v1 Active
+                </Badge>
               </div>
 
               <div className="text-xs space-y-1 text-muted-foreground">
@@ -674,6 +759,13 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                   <span>Staff alerts for new orders & low stock</span>
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 rounded-md border border-teal-200/70 bg-teal-50/40 px-2.5 py-1.5 text-xs text-teal-900 dark:border-teal-800/40 dark:bg-teal-950/20 dark:text-teal-300">
+                <span className="font-mono text-[11px] truncate">{diagnostics?.email?.fromEmail || "support@gtss.software"}</span>
+                <span className="shrink-0 text-[11px] text-muted-foreground truncate max-w-[140px]" title={diagnostics?.email?.recipient || "admin@spherepharmacy.co.ke"}>
+                  To: {diagnostics?.email?.recipient || "admin@spherepharmacy.co.ke"}
+                </span>
               </div>
 
               <Button

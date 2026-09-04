@@ -5,6 +5,7 @@ import { sendPushNotification } from "@/lib/firebase/admin"
 import { db } from "@/lib/db"
 import { audit } from "@/lib/notify"
 import { enforceRateLimit, escapeHtml, rejectOversizedRequest } from "@/lib/security/request"
+import { adminNotificationTemplate } from "@/lib/email/templates"
 
 export async function POST(request: Request) {
   const session = await getSession()
@@ -24,14 +25,31 @@ export async function POST(request: Request) {
     if (!admin?.email) {
       results.email = { success: false, error: "Your administrator account has no email address." }
     } else {
-      results.email = await sendEmail({ to: admin.email, subject: `[Test] ${title}`, html: `<h2>${escapeHtml(title)}</h2><p>${escapeHtml(message)}</p>`, text: `${title}\n\n${message}` })
+      const template = adminNotificationTemplate({
+        title,
+        message,
+        details: {
+          "Service": "Resend Email Integration",
+          "Recipient": admin.email,
+          "Sender": process.env.RESEND_FROM_EMAIL || "Sphere Pharmacy <support@gtss.software>",
+          "Timestamp": new Date().toLocaleString(),
+        },
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/admin?section=settings`,
+        actionLabel: "Open Admin Dashboard",
+      })
+      results.email = await sendEmail({
+        to: admin.email,
+        subject: `[Test] ${title}`,
+        html: template.html,
+        text: template.text,
+      })
     }
   }
   if (type === "PUSH" || type === "BOTH") {
     const records = await db.pushToken.findMany({ where: { staffId: session.staffId }, select: { token: true } })
     results.push = records.length
-      ? await sendPushNotification({ tokens: records.map((item) => item.token), title, body: message, link: "/admin", data: { event: "TEST_NOTIFICATION" } })
-      : { success: false, sentCount: 0, failedCount: 0, error: "No push-enabled device is registered for your administrator account." }
+      ? await sendPushNotification({ tokens: records.map((item) => item.token), title, body: message, link: "/admin?section=settings", data: { event: "TEST_NOTIFICATION" } })
+      : { success: false, sentCount: 0, failedCount: 0, error: "No push-enabled device is registered for your administrator account. Please enable push notifications on this device first." }
   }
   await audit(session.staffName || "Admin", "ADMIN", "NOTIFICATION_TEST", "Notification", session.staffId, type)
 
@@ -50,4 +68,42 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ ok, message: responseMessage, results }, { status: ok ? 200 : 422 })
+}
+
+export async function GET() {
+  const session = await getSession()
+  if (!session?.staffId || session.staffRole !== "ADMIN") {
+    return NextResponse.json({ error: "Administrator access required." }, { status: 403 })
+  }
+
+  const admin = await db.staffUser.findUnique({
+    where: { id: session.staffId },
+    select: { email: true, name: true },
+  })
+  const adminDeviceCount = await db.pushToken.count({
+    where: { staffId: session.staffId },
+  })
+  const totalDeviceCount = await db.pushToken.count()
+
+  const hasResend = Boolean(process.env.RESEND_API_KEY?.trim())
+  const fromEmail = process.env.RESEND_FROM_EMAIL?.trim() || "Sphere Pharmacy <onboarding@resend.dev>"
+  const hasFirebase = Boolean(
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY ||
+      (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY)
+  )
+  const firebaseProjectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || null
+
+  return NextResponse.json({
+    email: {
+      configured: hasResend,
+      fromEmail,
+      recipient: admin?.email || null,
+    },
+    push: {
+      configured: hasFirebase,
+      projectId: firebaseProjectId,
+      adminDeviceCount,
+      totalDeviceCount,
+    },
+  })
 }
