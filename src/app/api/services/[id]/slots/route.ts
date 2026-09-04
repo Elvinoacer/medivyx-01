@@ -26,6 +26,8 @@ export async function GET(request:Request,ctx:{params:Promise<{id:string}>}){
   const service=await db.service.findUnique({where:{id},include:{availability:{where:{enabled:true},orderBy:{startTime:"asc"}}}})
   if(!service||!service.active)return NextResponse.json({error:"Service not found."},{status:404})
   const rules=service.availability.filter(r=>r.dayOfWeek===date.getUTCDay())
+  const dayStart=nairobiDate(date,0),dayEnd=nairobiDate(date,24*60)
+  const bookings=await db.serviceBooking.findMany({where:{serviceId:id,status:{notIn:["CANCELLED","REJECTED","NO_SHOW"]},scheduledStart:{lt:dayEnd},scheduledEnd:{gt:dayStart}},select:{scheduledStart:true,scheduledEnd:true}})
   const slots:{start:string;end:string;label:string}[]=[]
   for(const rule of rules){
     const startMinutes=localMinutes(rule.startTime),endMinutes=localMinutes(rule.endTime)
@@ -33,7 +35,7 @@ export async function GET(request:Request,ctx:{params:Promise<{id:string}>}){
     for(let minutes=startMinutes;minutes+service.durationMinutes<=endMinutes;minutes+=service.durationMinutes){
       const start=nairobiDate(date,minutes),end=nairobiDate(date,minutes+service.durationMinutes)
       if(start<=new Date())continue
-      const overlap=await db.serviceBooking.findFirst({where:{serviceId:id,status:{notIn:["CANCELLED","REJECTED","NO_SHOW"]},scheduledStart:{lt:end},scheduledEnd:{gt:start}}})
+      const overlap=bookings.some((booking)=>booking.scheduledStart<end&&booking.scheduledEnd>start)
       if(!overlap)slots.push({start:start.toISOString(),end:end.toISOString(),label:start.toLocaleTimeString("en-KE",{hour:"numeric",minute:"2-digit",hour12:true,timeZone:"Africa/Nairobi"})})
     }
   }

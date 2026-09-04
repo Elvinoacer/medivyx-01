@@ -4,7 +4,9 @@ import { attachRatings, toProductDTO } from "@/lib/dto"
 import { audit } from "@/lib/notify"
 import { requireStaff } from "@/lib/session"
 import { STOCK_STATUSES, type StockStatus } from "@/lib/constants"
-import { sanitizeImageInput } from "@/lib/image"
+import { managedImage } from "@/lib/security/service"
+import { randomBytes } from "crypto"
+import { rejectOversizedRequest } from "@/lib/security/request"
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -15,8 +17,10 @@ export async function GET(request: Request) {
   const sort = url.searchParams.get("sort") ?? "popular"
   const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10) || 1)
   const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get("pageSize") ?? "12", 10) || 12))
+  const ids = [...new Set((url.searchParams.get("ids") || "").split(",").filter(Boolean))].slice(0, 50)
 
   const where: Record<string, unknown> = { active: true }
+  if (ids.length) where.id = { in: ids }
   if (search) {
     // PostgreSQL's default text comparison can be case-sensitive depending on
     // collation. Always search case-insensitively and split multi-word queries
@@ -58,22 +62,23 @@ export async function GET(request: Request) {
   if (sort === "name") orderBy = { name: "asc" }
   if (sort === "newest") orderBy = { createdAt: "desc" }
   if (sort === "popular") {
-    // products appearing most in order items, then newest
-    const items = await db.orderItem.groupBy({ by: ["productId"], _count: { productId: true } })
-    const popular = items.sort((a, b) => b._count.productId - a._count.productId).map((i) => i.productId)
-    const products = await db.product.findMany({ where, include: { category: true } })
-    products.sort((a, b) => {
-      const ai = popular.indexOf(a.id)
-      const bi = popular.indexOf(b.id)
-      if (ai === -1 && bi === -1) return b.createdAt.getTime() - a.createdAt.getTime()
-      if (ai === -1) return 1
-      if (bi === -1) return -1
-      return ai - bi
-    })
-    const total = products.length
+    const [total, ranked] = await Promise.all([
+      db.product.count({ where }),
+      db.orderItem.groupBy({ by: ["productId"], where: { productId: { not: null } }, _sum: { qty: true }, orderBy: { _sum: { qty: "desc" } }, take: 500 }),
+    ])
+    const score = new Map(ranked.map((row, index) => [row.productId, index]))
+    const popularIds = ranked.map((row) => row.productId).filter((id): id is string => Boolean(id))
+    const rankedProducts = popularIds.length ? await db.product.findMany({ where: { AND: [where, { id: { in: popularIds } }] }, include: { category: true } }) : []
+    rankedProducts.sort((a, b) => (score.get(a.id) ?? 501) - (score.get(b.id) ?? 501))
+    const offset = (page - 1) * pageSize
+    let products = rankedProducts.slice(offset, offset + pageSize)
+    if (products.length < pageSize) {
+      const fallbackSkip = Math.max(0, offset - rankedProducts.length)
+      const fallback = await db.product.findMany({ where: { AND: [where, { id: { notIn: popularIds } }] }, include: { category: true }, orderBy: { createdAt: "desc" }, skip: fallbackSkip, take: pageSize - products.length })
+      products = [...products, ...fallback]
+    }
     const withRatings = await attachRatings(products)
-    const items2 = withRatings.slice((page - 1) * pageSize, page * pageSize).map(toProductDTO)
-    return NextResponse.json({ items: items2, total, page, pageSize })
+    return NextResponse.json({ items: withRatings.map(toProductDTO), total, page, pageSize }, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } })
   }
 
   const [total, products] = await Promise.all([
@@ -93,15 +98,20 @@ function deriveStockStatus(qty: number, threshold: number): StockStatus {
 export async function POST(request: Request) {
   const { session, error } = await requireStaff(["ADMIN", "PHARMACIST"])
   if (error) return error
+  const oversized = rejectOversizedRequest(request, 32_768)
+  if (oversized) return oversized
   try {
     const body = await request.json()
     const name = String(body.name ?? "").trim()
     const price = Number(body.price)
-    if (name.length < 2) return NextResponse.json({ error: "Product name is required." }, { status: 400 })
-    if (!Number.isFinite(price) || price < 0) return NextResponse.json({ error: "Enter a valid price." }, { status: 400 })
+    if (name.length < 2 || name.length > 160) return NextResponse.json({ error: "Product name must be 2–160 characters." }, { status: 400 })
+    if (!Number.isFinite(price) || price < 0 || price > 10_000_000) return NextResponse.json({ error: "Enter a valid price." }, { status: 400 })
 
-    const stockQty = Math.max(0, Math.trunc(Number(body.stockQty ?? 0)) || 0)
-    const lowStockThreshold = Math.max(0, Math.trunc(Number(body.lowStockThreshold ?? 5)) || 5)
+    const rawStockQty = Number(body.stockQty ?? 0)
+    const rawThreshold = Number(body.lowStockThreshold ?? 5)
+    if (!Number.isSafeInteger(rawStockQty) || rawStockQty < 0 || !Number.isSafeInteger(rawThreshold) || rawThreshold < 0) return NextResponse.json({ error: "Stock values must be non-negative whole numbers." }, { status: 400 })
+    const stockQty = rawStockQty
+    const lowStockThreshold = rawThreshold
     const stockStatus = STOCK_STATUSES.includes(body.stockStatus)
       ? body.stockStatus
       : deriveStockStatus(stockQty, lowStockThreshold)
@@ -112,10 +122,16 @@ export async function POST(request: Request) {
       if (!cat) categoryId = null
     }
 
-    const sku = String(body.sku ?? "").trim() || `SPH-${Math.random().toString(36).slice(2, 6).toUpperCase()}${Date.now().toString(36).slice(-3).toUpperCase()}`
+    const sku = String(body.sku ?? "").trim().toUpperCase() || `SPH-${randomBytes(5).toString("hex").toUpperCase()}`
+    if (!/^[A-Z0-9._-]{3,64}$/.test(sku)) return NextResponse.json({ error: "SKU format is invalid." }, { status: 400 })
     const clash = await db.product.findUnique({ where: { sku } })
     if (clash) return NextResponse.json({ error: `SKU ${sku} already exists.` }, { status: 409 })
 
+    const compareAtPrice = body.compareAtPrice != null && body.compareAtPrice !== "" ? Number(body.compareAtPrice) : null
+    if (compareAtPrice != null && (!Number.isFinite(compareAtPrice) || compareAtPrice <= price)) return NextResponse.json({ error: "Compare-at price must be greater than the sale price." }, { status: 400 })
+    if (body.requiresPrescription !== undefined && typeof body.requiresPrescription !== "boolean" || body.active !== undefined && typeof body.active !== "boolean") return NextResponse.json({ error: "Product flags must be true or false." }, { status: 400 })
+    const image = body.image ? managedImage(body.image) : null
+    if (body.image && !image) return NextResponse.json({ error: "Product image must be an owned upload or site image." }, { status: 400 })
     const product = await db.product.create({
       data: {
         name,
@@ -124,15 +140,15 @@ export async function POST(request: Request) {
         brand: body.brand ? String(body.brand).trim() : null,
         packSize: body.packSize ? String(body.packSize).trim() : null,
         price,
-        compareAtPrice: body.compareAtPrice != null && body.compareAtPrice !== "" ? Number(body.compareAtPrice) : null,
+        compareAtPrice,
         stockStatus,
         stockQty,
         lowStockThreshold,
-        requiresPrescription: Boolean(body.requiresPrescription),
-        description: String(body.description ?? "").trim() || "",
+        requiresPrescription: body.requiresPrescription === true,
+        description: String(body.description ?? "").trim().slice(0, 5_000),
         usageInfo: body.usageInfo ? String(body.usageInfo).trim() : null,
         warnings: body.warnings ? String(body.warnings).trim() : null,
-        image: sanitizeImageInput(body.image ? String(body.image) : undefined),
+        image,
         active: body.active !== false,
       },
       include: { category: true },

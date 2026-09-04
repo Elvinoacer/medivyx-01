@@ -67,13 +67,8 @@ export function PremiumPopularCard({ product, rank }: PremiumPopularCardProps) {
     >
       <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-violet-500/[0.08] via-fuchsia-400/[0.03] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 dark:from-violet-300/[0.12]" aria-hidden />
 
-      <button
-        type="button"
-        onClick={() => navigate("product", { productId: product.id })}
-        className="block w-full text-left"
-        aria-label={`View ${product.name}`}
-      >
-        <div className="relative aspect-[1.08/1] overflow-hidden bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 dark:from-violet-950/40 dark:via-slate-950/20 dark:to-fuchsia-950/30">
+      <div className="relative aspect-[1.08/1] overflow-hidden bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 dark:from-violet-950/40 dark:via-slate-950/20 dark:to-fuchsia-950/30">
+          <button type="button" onClick={() => navigate("product", { productId: product.id })} className="absolute inset-0 z-[2]" aria-label={`View ${product.name}`} />
           <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full border border-white/70 bg-white/75 px-2.5 py-1 text-[10px] font-bold tracking-[0.14em] text-violet-800 uppercase shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-slate-950/65 dark:text-violet-200">
             <Sparkles className="h-3 w-3" /> {rank === 1 ? "Most loved" : rank <= 3 ? "Popular" : "Trending"}
           </div>
@@ -98,7 +93,7 @@ export function PremiumPopularCard({ product, rank }: PremiumPopularCardProps) {
             aria-label={wishHas ? `Remove ${product.name} from saved items` : `Save ${product.name} for later`}
             aria-pressed={wishHas}
             className={cn(
-              "absolute bottom-3 right-3 z-10 flex h-10 w-10 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-105 active:scale-95",
+              "absolute bottom-3 right-3 z-20 flex h-10 w-10 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-105 active:scale-95",
               wishHas
                 ? "border-rose-200 bg-rose-50/95 text-rose-600 dark:border-rose-900 dark:bg-rose-950/85 dark:text-rose-300"
                 : "border-white/80 bg-white/82 text-slate-600 dark:border-white/10 dark:bg-slate-950/70 dark:text-slate-200"
@@ -112,8 +107,7 @@ export function PremiumPopularCard({ product, rank }: PremiumPopularCardProps) {
               <ShieldCheck className="h-3 w-3" /> Rx review
             </span>
           ) : null}
-        </div>
-      </button>
+      </div>
 
       <div className="relative space-y-3 p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">

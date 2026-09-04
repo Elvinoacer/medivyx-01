@@ -9,7 +9,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "@/components/ui/sheet"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Toaster } from "@/components/ui/sonner"
 import { ProductCard } from "@/components/shared/product-card"
 import { ProductImage } from "@/components/shared/product-image"
 import { EmptyState, LoadingGrid } from "@/components/shared/empty-state"
@@ -341,7 +340,6 @@ export function CatalogView() {
 
   return (
     <div className="app-page app-page-catalog pb-12">
-      <Toaster position="bottom-left" richColors closeButton />
 
       {/* page heading banner */}
       <div className="mx-auto max-w-7xl px-4 pb-2 pt-6 sm:pt-8">
@@ -610,15 +608,15 @@ export function CatalogView() {
           {/* WhatsApp fallback when empty */}
           {items.length === 0 && !loadingFirstPage ? (
             <div className="mt-4 flex justify-center">
-              <a
+              <Button asChild variant="secondary" className="gap-1.5 bg-emerald-700 text-white hover:bg-emerald-800">
+                <a
                 href={waLink(`Hi ${PHARMACY.name}, I'm looking for a product I can't find on your website.`)}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Button variant="secondary" className="gap-1.5 bg-emerald-700 text-white hover:bg-emerald-800">
                   <MessageCircle className="h-4 w-4" /> Ask on WhatsApp
-                </Button>
-              </a>
+                </a>
+              </Button>
             </div>
           ) : null}
         </section>

@@ -4,6 +4,8 @@ import { attachRatings, toProductDTO } from "@/lib/dto"
 import { audit, notifyCustomer, notifyStaff } from "@/lib/notify"
 import { requireStaff } from "@/lib/session"
 import { STOCK_STATUSES } from "@/lib/constants"
+import { managedImage } from "@/lib/security/service"
+import { rejectOversizedRequest } from "@/lib/security/request"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -20,6 +22,8 @@ export async function GET(_request: Request, { params }: Params) {
 export async function PATCH(request: Request, { params }: Params) {
   const { session, error } = await requireStaff(["ADMIN", "PHARMACIST"])
   if (error) return error
+  const oversized = rejectOversizedRequest(request, 32_768)
+  if (oversized) return oversized
   const { id } = await params
   const existing = await db.product.findUnique({ where: { id } })
   if (!existing) return NextResponse.json({ error: "Product not found." }, { status: 404 })
@@ -27,14 +31,14 @@ export async function PATCH(request: Request, { params }: Params) {
     const body = await request.json()
     const data: Record<string, unknown> = {}
 
-    if (body.name !== undefined) data.name = String(body.name).trim()
+    if (body.name !== undefined) { const value=String(body.name).trim(); if(value.length<2||value.length>160)return NextResponse.json({error:"Product name must be 2–160 characters."},{status:400}); data.name=value }
     if (body.brand !== undefined) data.brand = body.brand ? String(body.brand).trim() : null
     if (body.packSize !== undefined) data.packSize = body.packSize ? String(body.packSize).trim() : null
-    if (body.description !== undefined) data.description = String(body.description ?? "").trim()
+    if (body.description !== undefined) data.description = String(body.description ?? "").trim().slice(0,5000)
     if (body.usageInfo !== undefined) data.usageInfo = body.usageInfo ? String(body.usageInfo).trim() : null
     if (body.warnings !== undefined) data.warnings = body.warnings ? String(body.warnings).trim() : null
-    if (body.image !== undefined) data.image = body.image ? String(body.image).trim() : null
-    if (body.requiresPrescription !== undefined) data.requiresPrescription = Boolean(body.requiresPrescription)
+    if (body.image !== undefined) { const image=body.image?managedImage(body.image):null;if(body.image&&!image)return NextResponse.json({error:"Product image must be an owned upload or site image."},{status:400});data.image=image }
+    if (body.requiresPrescription !== undefined) { if(typeof body.requiresPrescription!=="boolean")return NextResponse.json({error:"Prescription flag must be true or false."},{status:400});data.requiresPrescription=body.requiresPrescription }
     if (body.categoryId !== undefined) {
       const cat = body.categoryId ? await db.category.findUnique({ where: { id: body.categoryId } }) : null
       data.categoryId = cat?.id ?? null
@@ -45,10 +49,15 @@ export async function PATCH(request: Request, { params }: Params) {
       data.price = price
     }
     if (body.compareAtPrice !== undefined) {
-      data.compareAtPrice = body.compareAtPrice != null && body.compareAtPrice !== "" ? Number(body.compareAtPrice) : null
+      const compare=body.compareAtPrice != null && body.compareAtPrice !== "" ? Number(body.compareAtPrice) : null
+      const effectivePrice=Number(data.price??existing.price)
+      if(compare!=null&&(!Number.isFinite(compare)||compare<=effectivePrice))return NextResponse.json({error:"Compare-at price must be greater than the sale price."},{status:400})
+      data.compareAtPrice=compare
     }
+    if (body.price !== undefined && body.compareAtPrice === undefined && existing.compareAtPrice != null && Number(existing.compareAtPrice) <= Number(data.price)) return NextResponse.json({ error: "Compare-at price must remain greater than the sale price." }, { status: 400 })
     if (body.stockQty !== undefined) {
-      const qty = Math.max(0, Math.trunc(Number(body.stockQty) || 0))
+      const qty = Number(body.stockQty)
+      if (!Number.isSafeInteger(qty) || qty < 0) return NextResponse.json({ error: "Stock quantity must be a non-negative whole number." }, { status: 400 })
       data.stockQty = qty
       if (!body.stockStatus) {
         data.stockStatus = qty <= 0 ? "OUT_OF_STOCK" : qty <= existing.lowStockThreshold ? "LOW_STOCK" : "IN_STOCK"
@@ -60,7 +69,7 @@ export async function PATCH(request: Request, { params }: Params) {
       if (body.stockStatus === "DISCONTINUED") data.active = false
       if (body.stockStatus !== "DISCONTINUED" && body.active === undefined && !existing.active) data.active = true
     }
-    if (body.active !== undefined) data.active = Boolean(body.active)
+    if (body.active !== undefined) { if(typeof body.active!=="boolean")return NextResponse.json({error:"Active must be true or false."},{status:400});data.active=body.active }
 
     const updated = await db.product.update({ where: { id }, data, include: { category: true } })
 
@@ -74,11 +83,11 @@ export async function PATCH(request: Request, { params }: Params) {
         include: { user: { select: { id: true, email: true, name: true } } },
       })
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
-      const productUrl = `${appUrl}/#product-${updated.id}`
+      const productUrl = `${appUrl}/products/${updated.id}`
       const { backInStockTemplate } = await import("@/lib/email/templates")
       const emailTemplate = backInStockTemplate({
         productName: updated.name,
-        price: updated.price,
+        price: Number(updated.price),
         productUrl,
       })
 
@@ -87,11 +96,11 @@ export async function PATCH(request: Request, { params }: Params) {
           w.userId,
           "STOCK_ALERT",
           `${updated.name} is back in stock!`,
-          `${updated.name} is back in stock at Sphere Pharmacy (KSh ${updated.price.toLocaleString()}) — order it while it lasts.`,
+          `${updated.name} is back in stock at Sphere Pharmacy (KSh ${Number(updated.price).toLocaleString()}) — order it while it lasts.`,
           "IN_APP",
           {
             link: productUrl,
-            metadata: { productId: updated.id, productName: updated.name, price: updated.price },
+            metadata: { productId: updated.id, productName: updated.name, price: Number(updated.price) },
             email: w.user?.email
               ? {
                   to: w.user.email,
@@ -116,7 +125,7 @@ export async function PATCH(request: Request, { params }: Params) {
         event: "LOW_STOCK_ALERT",
         title: `Low Stock Alert: ${updated.name}`,
         message: `${updated.name} is running low on stock. Current quantity: ${updated.stockQty} units (threshold: ${updated.lowStockThreshold}).`,
-        link: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/#admin-catalogue`,
+        link: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/admin?section=catalogue`,
         details: {
           Product: updated.name,
           SKU: updated.sku,
@@ -127,7 +136,7 @@ export async function PATCH(request: Request, { params }: Params) {
       })
     }
 
-    if (data.price !== undefined && Number(data.price) !== existing.price) {
+    if (data.price !== undefined && Number(data.price) !== Number(existing.price)) {
       await audit(
         session.staffName ?? "Staff", session.staffRole, "PRICE_UPDATE", "Product", existing.sku,
         `Price changed from KSh ${existing.price} to KSh ${data.price} (${existing.name})`

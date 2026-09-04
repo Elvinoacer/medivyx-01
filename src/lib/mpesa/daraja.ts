@@ -1,9 +1,7 @@
 /**
  * Safaricom Daraja M-Pesa STK Push (Lipa Na M-Pesa Online) Integration.
  *
- * Supports both Live Safaricom Daraja APIs and Sandbox environments.
- * When Daraja credentials are not set in .env, gracefully runs high-fidelity
- * development simulation so testing proceeds smoothly without crashing.
+ * Supports live and Safaricom sandbox environments. Missing credentials fail closed.
  */
 
 interface DarajaTokenCache {
@@ -21,12 +19,14 @@ function getBaseUrl(): string {
 }
 
 export function isDarajaConfigured(): boolean {
-  return Boolean(
+  const configured = Boolean(
     process.env.MPESA_CONSUMER_KEY &&
     process.env.MPESA_CONSUMER_SECRET &&
     process.env.MPESA_PASSKEY &&
-    process.env.MPESA_SHORTCODE
+    process.env.MPESA_SHORTCODE &&
+    process.env.MPESA_CALLBACK_TOKEN && process.env.MPESA_CALLBACK_TOKEN.length >= 24
   )
+  return configured && (process.env.NODE_ENV !== "production" || process.env.MPESA_ENVIRONMENT === "production")
 }
 
 /** Format phone to Daraja standard: 2547XXXXXXXX or 2541XXXXXXXX */
@@ -74,8 +74,7 @@ export async function getDarajaAccessToken(): Promise<string> {
   })
 
   if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`Daraja OAuth authentication failed (${response.status}): ${errorText}`)
+    throw new Error(`Daraja OAuth authentication failed (${response.status})`)
   }
 
   const data = (await response.json()) as { access_token: string; expires_in: string }
@@ -113,16 +112,7 @@ export async function initiateStkPush(params: StkPushParams): Promise<StkPushRes
   const formattedPhone = formatDarajaPhone(phone)
 
   if (!isDarajaConfigured()) {
-    // Development fallback: simulated checkoutRequestId
-    const mockCheckoutId = `ws_CO_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`.toUpperCase()
-    console.info(`[Daraja M-Pesa Simulated] STK Push sent to ${formattedPhone} for KSh ${amount} (Order: ${reference}) CheckoutRequestId: ${mockCheckoutId}`)
-    return {
-      merchantRequestId: `MR_${Date.now()}`,
-      checkoutRequestId: mockCheckoutId,
-      customerMessage: `STK Push sent to ${formattedPhone}. Enter your M-Pesa PIN on your phone to authorise KSh ${amount}.`,
-      responseCode: "0",
-      simulated: true,
-    }
+    throw new Error("M-Pesa is not configured")
   }
 
   const token = await getDarajaAccessToken()
@@ -132,7 +122,9 @@ export async function initiateStkPush(params: StkPushParams): Promise<StkPushRes
   const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64")
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
-  const defaultCallback = `${appUrl}/api/payments/mpesa/callback`
+  const callbackToken = process.env.MPESA_CALLBACK_TOKEN
+  if (!callbackToken || callbackToken.length < 24) throw new Error("MPESA_CALLBACK_TOKEN must contain at least 24 characters")
+  const defaultCallback = `${appUrl}/api/payments/mpesa/callback?token=${encodeURIComponent(callbackToken)}`
   const callbackUrl = params.callbackUrl || process.env.MPESA_CALLBACK_URL || defaultCallback
 
   const payload = {
@@ -186,12 +178,7 @@ export interface StkQueryResponse {
  */
 export async function queryStkPush(checkoutRequestId: string): Promise<StkQueryResponse> {
   if (!isDarajaConfigured()) {
-    // In dev mode without Daraja credentials
-    return {
-      resultCode: "0",
-      resultDesc: "Simulated completion in demo environment",
-      status: "PENDING",
-    }
+    throw new Error("M-Pesa is not configured")
   }
 
   const token = await getDarajaAccessToken()

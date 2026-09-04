@@ -1,7 +1,7 @@
 "use client"
 
 // Overview — KPI cards, 14-day orders/revenue chart, top products, Rx vs OTC,
-// status breakdown and recent audit activity. Demo-mode note included.
+// status breakdown and recent audit activity.
 
 import { useCallback, useEffect, useState } from "react"
 import {
@@ -17,7 +17,7 @@ import { ACTIVE_STATUSES, ORDER_STATUS_LABELS } from "@/lib/constants"
 import { formatKES, timeAgo } from "@/lib/format"
 import { apiErrorMessage, KpiCard, KpiSkeletonGrid, SectionError, type SectionProps } from "../admin-shared"
 import {
-  Package, Banknote, Clock, ClipboardList, Wallet, AlertTriangle, Users, Info, FileText, BarChart3,
+  Package, Banknote, Clock, ClipboardList, Wallet, AlertTriangle, Users, FileText, BarChart3,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -86,15 +86,6 @@ export function OverviewSection({ refreshKey, onNavigateSection }: SectionProps)
         title="Today at Sphere Pharmacy"
         subtitle="Live snapshot of the order queue, revenue and inventory health."
       />
-
-      {/* demo note */}
-      <div className="flex items-center gap-2.5 rounded-lg border border-amber-300/70 border-l-4 bg-amber-50/70 px-3 py-2.5 text-xs font-medium text-amber-800 dark:border-amber-700/70 dark:border-l-amber-500 dark:bg-amber-950/30 dark:text-amber-300">
-        <Info className="h-4 w-4 shrink-0" aria-hidden />
-        <p>
-          Demo mode — payments are simulated, and WhatsApp/SMS notifications are logged in-app instead of sent.
-          <span className="ml-1 font-normal text-amber-700/80 dark:text-amber-400/80">Live code, no money moves.</span>
-        </p>
-      </div>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">

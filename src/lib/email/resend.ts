@@ -34,19 +34,8 @@ export async function sendEmail(opts: SendEmailOptions): Promise<EmailResult> {
     return { success: false, error: "No valid recipients specified" }
   }
 
-  // If no API key configured, simulate email sending and log clearly
   if (!apiKey) {
-    console.info(
-      `[Resend Email (Simulated)]\n` +
-      `To: ${validRecipients.join(", ")}\n` +
-      `Subject: ${opts.subject}\n` +
-      `Note: Set RESEND_API_KEY in .env to send live emails via Resend.`
-    )
-    return {
-      success: true,
-      simulated: true,
-      id: `sim_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    }
+    return { success: false, error: "Email delivery is not configured" }
   }
 
   try {
@@ -72,14 +61,14 @@ export async function sendEmail(opts: SendEmailOptions): Promise<EmailResult> {
 
     if (!response.ok) {
       const errMsg = data?.message || data?.error || `HTTP ${response.status}`
-      console.warn(`[Resend Email Error] ${errMsg}`)
+      console.warn(JSON.stringify({ level: "warn", event: "email_delivery_failed", status: response.status }))
       return { success: false, error: errMsg }
     }
 
     return { success: true, id: data?.id }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error("[Resend Email Exception]", message)
+    console.error(JSON.stringify({ level: "error", event: "email_delivery_exception" }))
     return { success: false, error: message }
   }
 }

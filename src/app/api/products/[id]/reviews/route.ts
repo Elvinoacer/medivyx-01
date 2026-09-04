@@ -14,29 +14,31 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "Product not found." }, { status: 404 })
   }
   const reviews = await db.review.findMany({
-    where: { productId: id },
+    where: { productId: id, status: "PUBLISHED" },
     include: { user: { select: { name: true } } },
     orderBy: { createdAt: "desc" },
     take: 50,
   })
-  const publicReviews = reviews.filter((r) => r.status === "PUBLISHED")
+  const aggregates = await db.review.groupBy({ by: ["rating"], where: { productId: id, status: "PUBLISHED" }, _count: { _all: true } })
+  const publicReviews = reviews
   const breakdown = [5, 4, 3, 2, 1].map((rating) => ({
     rating,
-    count: publicReviews.filter((r) => r.rating === rating).length,
+    count: aggregates.find((row) => row.rating === rating)?._count._all || 0,
   }))
-  const average = publicReviews.length ? publicReviews.reduce((s, r) => s + r.rating, 0) / publicReviews.length : 0
+  const count = breakdown.reduce((sum, row) => sum + row.count, 0)
+  const average = count ? breakdown.reduce((sum, row) => sum + row.rating * row.count, 0) / count : 0
 
   const { getSession } = await import("@/lib/session")
   const session = await getSession()
   let mine: (ReturnType<typeof toReviewDTO> & { status: string }) | null = null
   if (session?.userId) {
-    const own = reviews.find((r) => r.userId === session.userId)
+    const own = await db.review.findUnique({ where: { productId_userId: { productId: id, userId: session.userId } }, include: { user: { select: { name: true } } } })
     if (own) mine = { ...toReviewDTO(own), status: own.status }
   }
 
   return NextResponse.json({
     average: Math.round(average * 10) / 10,
-    count: publicReviews.length,
+    count,
     breakdown,
     reviews: publicReviews.map(toReviewDTO),
     mine,
@@ -71,6 +73,11 @@ export async function POST(request: Request, { params }: Params) {
         { status: 409 }
       )
     }
+    const purchased = await db.orderItem.findFirst({
+      where: { productId: id, order: { userId: session.userId, status: { in: ["COMPLETED_PICKUP", "COMPLETED_DELIVERY"] } } },
+      select: { id: true },
+    })
+    if (!purchased) return NextResponse.json({ error: "Reviews are available after a completed purchase." }, { status: 403 })
     const review = await db.review.create({
       data: { productId: id, userId: session.userId!, rating, comment },
       include: { user: { select: { name: true } } },

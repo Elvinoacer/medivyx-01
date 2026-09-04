@@ -12,16 +12,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Switch } from "@/components/ui/switch"
-import { Toaster } from "@/components/ui/sonner"
 import { EmptyState } from "@/components/shared/empty-state"
 import { useAppStore } from "@/store/use-app-store"
 import { useCartStore } from "@/store/use-cart-store"
 import { useAuthStore } from "@/store/use-auth-store"
 import {
-  ordersApi, paymentsApi, prescriptionsApi, settingsApi, addressesApi, promotionsApi, storageApi,
+  ordersApi, paymentsApi, prescriptionsApi, settingsApi, addressesApi, promotionsApi,
   type CreateOrderPayload,
 } from "@/lib/api-client"
 import type { AddressDTO, DeliverySettings, OrderDTO } from "@/lib/types"
@@ -39,7 +36,7 @@ import {
 // ---------- local types ----------
 
 type PayMethod = "MPESA" | "CARD" | "CASH" | "LATER"
-type PaymentPhase = "select" | "awaiting_pin" | "failed"
+type PaymentPhase = "select" | "processing" | "failed"
 type Step = 1 | 2 | 3 | 4
 
 interface StagedRx {
@@ -55,13 +52,6 @@ interface UploadedRx {
   id: string
   fileName: string
   notes: string
-}
-
-interface CardForm {
-  number: string
-  name: string
-  expiry: string
-  cvv: string
 }
 
 const STEPS: { id: Step; label: string; hint: string; icon: typeof MapPin }[] = [
@@ -80,27 +70,6 @@ function normalizePhone(raw: string): string | null {
   if (/^254[17]\d{8}$/.test(digits)) return digits
   if (/^[17]\d{8}$/.test(digits)) return `254${digits}`
   return null
-}
-
-function validateCard(c: CardForm): string | null {
-  const digits = c.number.replace(/[\s-]/g, "")
-  if (!/^\d{15,19}$/.test(digits)) return "Enter a valid 16-digit card number."
-  if (!c.name.trim()) return "Enter the name printed on the card."
-  const m = /^(\d{2})\s*\/\s*(\d{2})$/.exec(c.expiry.trim())
-  if (!m) return "Expiry must be in MM/YY format."
-  const mm = Number(m[1])
-  const yy = 2000 + Number(m[2])
-  if (mm < 1 || mm > 12) return "Expiry month must be between 01 and 12."
-  const endOfMonth = new Date(yy, mm, 0, 23, 59, 59)
-  if (endOfMonth.getTime() < Date.now()) return "This card has expired."
-  if (!/^\d{3,4}$/.test(c.cvv)) return "CVV must be 3 or 4 digits."
-  return null
-}
-
-function formatExpiryInput(raw: string): string {
-  const digits = raw.replace(/\D/g, "").slice(0, 4)
-  if (digits.length <= 2) return digits
-  return `${digits.slice(0, 2)}/${digits.slice(2)}`
 }
 
 // ============================== VIEW ==============================
@@ -234,8 +203,8 @@ export function CheckoutView() {
           const match = zones.find(
             (z) => z.name.toLowerCase() === (preferred.area ?? "").trim().toLowerCase()
           )
-          if (match) setZone(match.name)
-          if (preferred.latitude != null && preferred.longitude != null) setDeliveryCoordinates({ latitude: preferred.latitude, longitude: preferred.longitude })
+          setZone(match?.name ?? "")
+          setDeliveryCoordinates(preferred.latitude != null && preferred.longitude != null ? { latitude: preferred.latitude, longitude: preferred.longitude } : null)
         } else {
           setAddressMode("new")
         }
@@ -251,8 +220,8 @@ export function CheckoutView() {
   function selectSavedAddress(a: AddressDTO) {
     setSelectedAddressId(a.id)
     const match = zones.find((z) => z.name.toLowerCase() === (a.area ?? "").trim().toLowerCase())
-    if (match) setZone(match.name)
-    if (a.latitude != null && a.longitude != null) setDeliveryCoordinates({ latitude: a.latitude, longitude: a.longitude })
+    setZone(match?.name ?? "")
+    setDeliveryCoordinates(a.latitude != null && a.longitude != null ? { latitude: a.latitude, longitude: a.longitude } : null)
   }
 
   const selectedAddress = addresses?.find((a) => a.id === selectedAddressId) ?? null
@@ -313,37 +282,23 @@ export function CheckoutView() {
     setRxError(null)
     try {
       const results: UploadedRx[] = []
+      const failed: StagedRx[] = []
       for (const s of staged) {
-        let fileUrl: string | undefined
-        let storageKey: string | undefined
-        let fileData: string | undefined = s.base64
-
         try {
-          const r2Res = await storageApi.uploadBase64({
-            fileData: s.base64,
+          const rx = await prescriptionsApi.upload({
             fileName: s.fileName,
             fileType: s.fileType,
-            folder: "prescriptions",
+            fileData: s.base64,
+            notes: s.notes.trim() || undefined,
           })
-          fileUrl = r2Res.url
-          storageKey = r2Res.key
-          fileData = undefined
-        } catch (uploadErr) {
-          console.warn("[R2 direct upload fallback in checkout]:", uploadErr)
+          results.push({ id: rx.id, fileName: s.fileName, notes: s.notes })
+          setUploaded((prev) => [...prev, { id: rx.id, fileName: s.fileName, notes: s.notes }])
+        } catch {
+          failed.push(s)
         }
-
-        const rx = await prescriptionsApi.upload({
-          fileName: s.fileName,
-          fileType: s.fileType,
-          fileData,
-          fileUrl,
-          storageKey,
-          notes: s.notes.trim() || undefined,
-        })
-        results.push({ id: rx.id, fileName: s.fileName, notes: s.notes })
       }
-      setUploaded((prev) => [...prev, ...results])
-      setStaged([])
+      setStaged(failed)
+      if (failed.length) throw new Error(`${failed.length} file${failed.length === 1 ? "" : "s"} failed. Successful uploads were kept; retry the remaining files.`)
       toast.success(
         results.length > 1
           ? `${results.length} prescriptions uploaded — pending pharmacist review`
@@ -361,22 +316,19 @@ export function CheckoutView() {
   // ---------- payment ----------
   const [method, setMethod] = useState<PayMethod>("MPESA")
   const [mpesaPhone, setMpesaPhone] = useState(user?.phone ?? "")
-  const [card, setCard] = useState<CardForm>({ number: "", name: "", expiry: "", cvv: "" })
   const [placing, setPlacing] = useState(false)
   const [paying, setPaying] = useState(false)
   const [paymentPhase, setPaymentPhase] = useState<PaymentPhase>("select")
   const [failureMessage, setFailureMessage] = useState<string | null>(null)
-  const [checkoutRequestId, setCheckoutRequestId] = useState<string | null>(null)
-  const [pinDialogOpen, setPinDialogOpen] = useState(false)
-  const [pin, setPin] = useState("")
   const [placedOrder, setPlacedOrder] = useState<OrderDTO | null>(null)
+  const [guestAccessToken, setGuestAccessToken] = useState<string | null>(null)
   const [inlineError, setInlineError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     return () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current)
     }
   }, [])
 
@@ -410,7 +362,6 @@ export function CheckoutView() {
   if (lines.length === 0 && !placedOrder) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16">
-        <Toaster position="bottom-left" richColors closeButton />
         <EmptyState
           icon={Package}
           title="Nothing to check out"
@@ -439,7 +390,7 @@ export function CheckoutView() {
       paymentMethod,
       ...(user
         ? {}
-        : { customer: { name: guestName.trim(), phone: normalizePhone(guestPhone) ?? guestPhone.trim() } }),
+        : { customer: { name: guestName.trim(), phone: normalizePhone(guestPhone) ?? guestPhone.trim(), ...(guestEmail.trim() ? { email: guestEmail.trim() } : {}) } }),
       ...(fulfillment === "DELIVERY"
         ? {
             deliveryArea: zone,
@@ -477,6 +428,10 @@ export function CheckoutView() {
       }
       const order = await ordersApi.create(buildPayload(paymentMethod, addressId))
       setPlacedOrder(order)
+      if (order.guestAccessToken) {
+        setGuestAccessToken(order.guestAccessToken)
+        sessionStorage.setItem(`sphere_order_access_${order.id}`, order.guestAccessToken)
+      }
       if (order.pointsRedeemed > 0) {
         toast.success(`${order.pointsRedeemed} Sphere Points redeemed`)
       }
@@ -493,16 +448,16 @@ export function CheckoutView() {
     }
   }
 
-  async function finalizeSuccess(message: string) {
+  async function finalizeSuccess(message: string, order: OrderDTO | null = placedOrder) {
     setPaymentPhase("select")
     setFailureMessage(null)
     setStep(4)
     toast.success(message)
     // refetch so the success screen reflects the completed payment
     // (status/payments/points from the server, not the pre-payment snapshot)
-    if (placedOrder) {
+    if (order) {
       try {
-        const updated = await ordersApi.get(placedOrder.id)
+        const updated = await ordersApi.get(order.id, guestAccessToken ?? sessionStorage.getItem(`sphere_order_access_${order.id}`) ?? undefined)
         setPlacedOrder(updated)
         void refreshSession() // loyalty balance changed if points were earned/redeemed
       } catch {
@@ -514,7 +469,7 @@ export function CheckoutView() {
   async function changeMethod() {
     if (placedOrder) {
       try {
-        await ordersApi.cancel(placedOrder.id, "Customer switched payment method before paying")
+        await ordersApi.cancel(placedOrder.id, "Customer switched payment method before paying", guestAccessToken ?? undefined)
         // cancelled orders re-credit redeemed points server-side — refresh the balance
         void refreshSession()
       } catch {
@@ -538,31 +493,40 @@ export function CheckoutView() {
     if (!order) return
     setPaying(true)
     try {
-      const init = await paymentsApi.mpesaInitiate(order.id, phone)
-      setCheckoutRequestId(init.checkoutRequestId)
-      setPin("")
-      setPaymentPhase("awaiting_pin")
-      setPinDialogOpen(true)
-
-      // Start automatic real-time status polling for phone STK prompt
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-      pollIntervalRef.current = setInterval(async () => {
+      const token = guestAccessToken ?? sessionStorage.getItem(`sphere_order_access_${order.id}`) ?? undefined
+      const init = await paymentsApi.mpesaInitiate(order.id, phone, crypto.randomUUID(), token)
+      setPaymentPhase("processing")
+      toast.info("STK push sent. Enter your PIN only on your phone.")
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current)
+      const deadline = Date.now() + 2 * 60_000
+      let delay = 2_500
+      const poll = async () => {
+        if (Date.now() >= deadline) {
+          setPaymentPhase("failed")
+          setFailureMessage("Payment confirmation is taking longer than expected. Check your M-Pesa messages before retrying.")
+          return
+        }
+        if (document.hidden) {
+          pollTimeoutRef.current = setTimeout(poll, delay)
+          return
+        }
         try {
-          const res = await paymentsApi.mpesaQuery(init.checkoutRequestId)
+          const res = await paymentsApi.mpesaQuery(init.checkoutRequestId, token)
           if (res.status === "SUCCESS") {
-            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-            setPinDialogOpen(false)
-            finalizeSuccess("M-Pesa payment confirmed — thank you!")
+            await finalizeSuccess("M-Pesa payment confirmed — thank you!", order)
+            return
           } else if (res.status === "FAILED") {
-            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-            setPinDialogOpen(false)
             setPaymentPhase("failed")
             setFailureMessage(res.payment?.failureReason || "M-Pesa payment was declined or timed out.")
+            return
           }
         } catch {
           // ignore transient polling errors
         }
-      }, 2500)
+        delay = Math.min(10_000, Math.round(delay * 1.5))
+        pollTimeoutRef.current = setTimeout(poll, delay)
+      }
+      pollTimeoutRef.current = setTimeout(poll, delay)
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Couldn't start the M-Pesa payment."
       setPaymentPhase("failed")
@@ -573,59 +537,16 @@ export function CheckoutView() {
     }
   }
 
-  async function confirmPin() {
-    if (pin.length !== 4 || !placedOrder || !checkoutRequestId) return
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-    setPaying(true)
-    // demo convention: 1234 / 0000 simulate a wrong PIN → FAILED, any other code approves
-    const result: "SUCCESS" | "FAILED" = pin === "1234" || pin === "0000" ? "FAILED" : "SUCCESS"
-    try {
-      await paymentsApi.mpesaCallback(checkoutRequestId, result, pin)
-      setPinDialogOpen(false)
-      if (result === "SUCCESS") {
-        finalizeSuccess("Payment received — thank you!")
-      } else {
-        setPaymentPhase("failed")
-        setFailureMessage("M-Pesa PIN rejected — the payment request was cancelled. Retry the STK push or choose another method.")
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Couldn't confirm the payment."
-      toast.error(msg)
-      setPinDialogOpen(false)
-      setPaymentPhase("failed")
-      setFailureMessage(msg)
-    } finally {
-      setPaying(false)
-    }
-  }
-
   async function startCard() {
     setFailureMessage(null)
-    const cardError = validateCard(card)
-    if (cardError) {
-      setInlineError(cardError)
-      return
-    }
     setInlineError(null)
     const order = placedOrder ?? (await placeOrder("CARD"))
     if (!order) return
     setPaying(true)
     try {
-      const res = await paymentsApi.cardInitiate(order.id, {
-        number: card.number.replace(/[\s-]/g, ""),
-        name: card.name.trim(),
-        expiry: card.expiry.trim(),
-        cvv: card.cvv.trim(),
-      })
-      if (res.status === "SUCCESS") {
-        finalizeSuccess("Card payment approved via IntaSend — thank you!")
-      } else if (res.status === "REQUIRES_3DS" && res.redirectUrl) {
-        toast.info("Redirecting for 3D Secure verification...")
-        window.location.href = res.redirectUrl
-      } else {
-        setPaymentPhase("failed")
-        setFailureMessage(res.failureReason ?? "Card declined. Please check the card details or try another method.")
-      }
+      const token = guestAccessToken ?? sessionStorage.getItem(`sphere_order_access_${order.id}`) ?? undefined
+      const res = await paymentsApi.cardCheckoutSession(order.id, crypto.randomUUID(), token)
+      window.location.assign(res.checkoutUrl)
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Card payment failed."
       setPaymentPhase("failed")
@@ -710,7 +631,6 @@ export function CheckoutView() {
 
   return (
     <div className="app-page app-page-checkout pb-10">
-      <Toaster position="bottom-left" richColors closeButton />
 
       <div className="mx-auto max-w-6xl px-4 py-6">
         <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Checkout</h1>
@@ -1298,60 +1218,13 @@ export function CheckoutView() {
 
                   {method === "CARD" ? (
                     <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="space-y-2 sm:col-span-2">
-                          <Label htmlFor="card-number">Card number</Label>
-                          <Input
-                            id="card-number"
-                            value={card.number}
-                            onChange={(e) => {
-                              const digits = e.target.value.replace(/\D/g, "").slice(0, 16)
-                              setCard((c) => ({ ...c, number: digits.replace(/(.{4})/g, "$1 ").trim() }))
-                            }}
-                            placeholder="4242 4242 4242 4242"
-                            inputMode="numeric"
-                            autoComplete="cc-number"
-                          />
-                        </div>
-                        <div className="space-y-2 sm:col-span-2">
-                          <Label htmlFor="card-name">Name on card</Label>
-                          <Input
-                            id="card-name"
-                            value={card.name}
-                            onChange={(e) => setCard((c) => ({ ...c, name: e.target.value }))}
-                            placeholder="AMINA YUSUF"
-                            autoComplete="cc-name"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="card-expiry">Expiry (MM/YY)</Label>
-                          <Input
-                            id="card-expiry"
-                            value={card.expiry}
-                            onChange={(e) => setCard((c) => ({ ...c, expiry: formatExpiryInput(e.target.value) }))}
-                            placeholder="09/27"
-                            inputMode="numeric"
-                            autoComplete="cc-exp"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="card-cvv">CVV</Label>
-                          <Input
-                            id="card-cvv"
-                            value={card.cvv}
-                            onChange={(e) => setCard((c) => ({ ...c, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
-                            placeholder="123"
-                            inputMode="numeric"
-                            autoComplete="cc-csc"
-                          />
-                        </div>
-                      </div>
-                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Lock className="h-3.5 w-3.5" aria-hidden /> Secured via IntaSend · card details are never stored
+                      <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                        You&apos;ll enter card details on IntaSend&apos;s secure hosted checkout. Sphere Pharmacy never receives your card number or CVV.
                       </p>
                       <Button size="lg" className="h-12 w-full gap-2 rounded-full text-base" onClick={startCard} disabled={placing || paying}>
                         {placing || paying ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <CreditCard className="h-5 w-5" aria-hidden />}
-                        {placing ? "Placing order…" : paying ? "Processing card…" : `Pay ${formatKES(payableTotal)} with card`}
+                        {placing ? "Placing order…" : paying ? "Opening secure checkout…" : `Continue to IntaSend · ${formatKES(payableTotal)}`}
                       </Button>
                     </div>
                   ) : null}
@@ -1723,73 +1596,21 @@ export function CheckoutView() {
                   you&apos;ll be refunded if anything can&apos;t be fulfilled.
                 </p>
 
-                <a
+                <Button asChild variant="outline" size="sm" className="flex w-full gap-1.5 rounded-full">
+                  <a
                   href={waLink("Hello! I need help with my checkout on the Sphere Pharmacy website.")}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex"
                 >
-                  <Button variant="outline" size="sm" className="w-full gap-1.5 rounded-full">
                     <MessageCircle className="h-4 w-4 text-emerald-600" /> Need help? WhatsApp us
-                  </Button>
-                </a>
+                  </a>
+                </Button>
               </CardContent>
             </Card>
           </aside>
         </div>
       </div>
 
-      <Dialog open={pinDialogOpen} onOpenChange={(open) => {
-        if (!open) {
-          setPinDialogOpen(false)
-          if (paymentPhase === "awaiting_pin") setPaymentPhase("select")
-        }
-      }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Phone className="h-5 w-5 text-emerald-600" aria-hidden /> Enter M-Pesa PIN
-            </DialogTitle>
-            <DialogDescription>
-              STK push sent to <strong>{normalizePhone(mpesaPhone) ?? mpesaPhone}</strong>. Enter your PIN to authorise the
-              payment of <strong>{formatKES(payableTotal)}</strong>.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex flex-col items-center gap-3 py-2">
-            <InputOTP maxLength={4} value={pin} onChange={setPin} disabled={paying}>
-              <InputOTPGroup>
-                <InputOTPSlot index={0} />
-                <InputOTPSlot index={1} />
-                <InputOTPSlot index={2} />
-                <InputOTPSlot index={3} />
-              </InputOTPGroup>
-            </InputOTP>
-            <p className="text-center text-xs text-muted-foreground">
-              Demo: enter any 4-digit PIN to approve. Use <strong>1234</strong> or <strong>0000</strong> to simulate a
-              wrong PIN.
-            </p>
-          </div>
-
-          <DialogFooter className="flex-col gap-2 sm:flex-col">
-            <Button className="w-full gap-2 rounded-full" onClick={confirmPin} disabled={pin.length !== 4 || paying}>
-              {paying ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Lock className="h-4 w-4" aria-hidden />}
-              {paying ? "Authorising…" : `Authorise ${formatKES(payableTotal)}`}
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full rounded-full"
-              onClick={() => {
-                setPinDialogOpen(false)
-                setPaymentPhase("select")
-              }}
-              disabled={paying}
-            >
-              Cancel STK push
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

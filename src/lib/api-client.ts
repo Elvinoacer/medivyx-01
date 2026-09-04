@@ -78,7 +78,7 @@ export const authApi = {
   register: (data: { name: string; email?: string; phone?: string; password: string }) =>
     req<SessionPayload>("/api/auth/register", { method: "POST", body: JSON.stringify(data) }),
   otpRequest: (phone: string) =>
-    req<{ demoCode: string }>("/api/auth/otp/request", { method: "POST", body: JSON.stringify({ phone }) }),
+    req<{ sent: true }>("/api/auth/otp/request", { method: "POST", body: JSON.stringify({ phone }) }),
   otpVerify: (phone: string, code: string, name?: string) =>
     req<SessionPayload>("/api/auth/otp/verify", { method: "POST", body: JSON.stringify({ phone, code, name }) }),
   staffLogin: (email: string, password: string) =>
@@ -136,6 +136,7 @@ export const addressesApi = {
 // ---------- catalogue ----------
 
 export interface ProductQuery {
+  ids?: string
   search?: string
   category?: string
   rx?: "yes" | "no"
@@ -152,7 +153,7 @@ export const catalogApi = {
     Object.entries(q).forEach(([k, v]) => {
       if (v !== undefined && v !== "" && v !== null) params.set(k, String(v))
     })
-    return req<ProductsResponse>(`/api/products?${params.toString()}`)
+    return req<ProductsResponse>(`/api/products?${params.toString()}`, { cache: "default" })
   },
   product: (id: string) => req<ProductDTO>(`/api/products/${id}`),
   reviews: (productId: string) => req<ReviewSummaryDTO>(`/api/products/${productId}/reviews`),
@@ -173,7 +174,7 @@ export interface CreateOrderPayload {
   fulfillment: "PICKUP" | "DELIVERY"
   reservation: boolean
   paymentMethod: "MPESA" | "CARD" | "CASH" | "LATER"
-  customer?: { name: string; phone: string }
+  customer?: { name: string; phone: string; email?: string }
   addressId?: string
   deliveryAddress?: string
   deliveryArea?: string
@@ -198,13 +199,13 @@ export const ordersApi = {
   // Rider board — orders assigned to the signed-in rider
   myDeliveries: () => req<OrderDTO[]>("/api/orders?scope=rider"),
   loyalty: () => req<LoyaltySummaryDTO>("/api/orders/loyalty"),
-  get: (id: string) => req<OrderDTO>(`/api/orders/${id}`),
+  get: (id: string, accessToken?: string) => req<OrderDTO>(`/api/orders/${id}`, accessToken ? { headers: { "x-order-access-token": accessToken } } : undefined),
   create: (payload: CreateOrderPayload) =>
-    req<OrderDTO>("/api/orders", { method: "POST", body: JSON.stringify(payload) }),
+    req<OrderDTO & { guestAccessToken?: string }>("/api/orders", { method: "POST", body: JSON.stringify(payload) }),
   updateStatus: (id: string, status: OrderStatus, note?: string) =>
     req<OrderDTO>(`/api/orders/${id}`, { method: "PATCH", body: JSON.stringify({ status, note }) }),
-  cancel: (id: string, reason?: string) =>
-    req<OrderDTO>(`/api/orders/${id}/cancel`, { method: "POST", body: JSON.stringify({ reason }) }),
+  cancel: (id: string, reason?: string, accessToken?: string) =>
+    req<OrderDTO>(`/api/orders/${id}/cancel`, { method: "POST", body: JSON.stringify({ reason }), ...(accessToken ? { headers: { "x-order-access-token": accessToken } } : {}) }),
   markPaidCash: (id: string) =>
     req<OrderDTO>(`/api/orders/${id}/cash-confirm`, { method: "POST" }),
   assignRider: (id: string, staffId: string) =>
@@ -286,29 +287,20 @@ export const storageApi = {
 // ---------- payments ----------
 
 export const paymentsApi = {
-  mpesaInitiate: (orderId: string, phone: string) =>
-    req<{ paymentId: string; checkoutRequestId: string; message: string; simulated?: boolean }>(
+  mpesaInitiate: (orderId: string, phone: string, idempotencyKey: string, accessToken?: string) =>
+    req<{ paymentId: string; checkoutRequestId: string; message: string }>(
       "/api/payments/mpesa/initiate",
-      { method: "POST", body: JSON.stringify({ orderId, phone }) }
+      { method: "POST", body: JSON.stringify({ orderId, phone, idempotencyKey }), ...(accessToken ? { headers: { "x-order-access-token": accessToken } } : {}) }
     ),
-  mpesaCallback: (checkoutRequestId: string, result: "SUCCESS" | "FAILED" | "TIMEOUT", pin?: string) =>
-    req<{ payment: { id: string; status: string }; orderStatus: string }>(
-      "/api/payments/mpesa/callback",
-      { method: "POST", body: JSON.stringify({ checkoutRequestId, result, pin }) }
-    ),
-  mpesaQuery: (checkoutRequestId: string) =>
+  mpesaQuery: (checkoutRequestId: string, accessToken?: string) =>
     req<{ status: "SUCCESS" | "FAILED" | "PENDING"; payment?: { id: string; status: string; reference?: string; failureReason?: string }; orderStatus?: string }>(
-      `/api/payments/mpesa/query?checkoutRequestId=${encodeURIComponent(checkoutRequestId)}`
+      `/api/payments/mpesa/query?checkoutRequestId=${encodeURIComponent(checkoutRequestId)}`,
+      accessToken ? { headers: { "x-order-access-token": accessToken } } : undefined
     ),
-  cardInitiate: (orderId: string, card: { number: string; name: string; expiry: string; cvv: string }) =>
-    req<{ paymentId: string; status: string; reference?: string; failureReason?: string; redirectUrl?: string; simulated?: boolean }>(
-      "/api/payments/intasend/initiate",
-      { method: "POST", body: JSON.stringify({ orderId, card }) }
-    ),
-  cardCheckoutSession: (orderId: string) =>
+  cardCheckoutSession: (orderId: string, idempotencyKey: string, accessToken?: string) =>
     req<{ paymentId: string; status: string; checkoutUrl: string; sessionId: string }>(
       "/api/payments/intasend/initiate",
-      { method: "POST", body: JSON.stringify({ orderId, mode: "checkout" }) }
+      { method: "POST", body: JSON.stringify({ orderId, mode: "checkout", idempotencyKey }), ...(accessToken ? { headers: { "x-order-access-token": accessToken } } : {}) }
     ),
   requestPayment: (orderId: string, phone?: string) =>
     req<{ ok: boolean; paymentId: string; checkoutRequestId: string; phone: string; amount: number; message: string }>(
@@ -439,9 +431,9 @@ export const adminServiceBookingsApi = {
 
 export const servicePaymentsApi = {
   mpesa: (bookingId: string, phone: string) =>
-    req<{ paymentId: string; checkoutRequestId: string; message: string; simulated?: boolean }>(`/api/service-bookings/${bookingId}/pay/mpesa`, { method: "POST", body: JSON.stringify({ phone }) }),
+    req<{ paymentId: string; checkoutRequestId: string; message: string }>(`/api/service-bookings/${bookingId}/pay/mpesa`, { method: "POST", body: JSON.stringify({ phone, idempotencyKey: crypto.randomUUID() }) }),
   card: (bookingId: string) =>
-    req<{ paymentId: string; checkoutUrl: string; status: string; simulated?: boolean }>(`/api/service-bookings/${bookingId}/pay/card`, { method: "POST" }),
+    req<{ paymentId: string; checkoutUrl: string; status: string }>(`/api/service-bookings/${bookingId}/pay/card`, { method: "POST", body: JSON.stringify({ idempotencyKey: crypto.randomUUID() }) }),
   status: (bookingId: string) =>
     req<{ bookingId: string; status: string; paymentStatus: string; providerReference?: string | null }>(`/api/service-bookings/${bookingId}/payment-status`),
   payAtPharmacy: (bookingId: string) =>

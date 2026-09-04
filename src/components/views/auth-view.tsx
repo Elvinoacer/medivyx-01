@@ -8,13 +8,11 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp"
-import { Toaster } from "@/components/ui/sonner"
 import { LogoMark } from "@/components/shared/logo"
 import { useAppStore, type AuthMode } from "@/store/use-app-store"
 import { useAuthStore } from "@/store/use-auth-store"
 import { authApi } from "@/lib/api-client"
 import type { SessionPayload } from "@/lib/types"
-import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
   Loader2, LogIn, UserPlus, Smartphone, Stethoscope, Eye, EyeOff, Info,
@@ -28,13 +26,6 @@ function normalizePhone(raw: string): string | null {
   if (/^[17]\d{8}$/.test(digits)) return `254${digits}`
   return null
 }
-
-const STAFF_DEMOS = [
-  { role: "Admin", email: "admin@spherepharmacy.co.ke", password: "admin123" },
-  { role: "Pharmacist", email: "pharmacist@spherepharmacy.co.ke", password: "pharm123" },
-  { role: "Staff", email: "staff@spherepharmacy.co.ke", password: "staff123" },
-  { role: "Rider", email: "rider@spherepharmacy.co.ke", password: "rider123" },
-]
 
 // ============================== VIEW ==============================
 
@@ -76,7 +67,6 @@ export function AuthView() {
   // otp
   const [otpPhone, setOtpPhone] = useState("")
   const [otpSent, setOtpSent] = useState(false)
-  const [demoCode, setDemoCode] = useState<string | null>(null)
   const [otpCode, setOtpCode] = useState("")
   const [otpName, setOtpName] = useState("")
 
@@ -149,10 +139,9 @@ export function AuthView() {
     setError(null)
     setLoading(true)
     try {
-      const res = await authApi.otpRequest(phone)
-      setDemoCode(res.demoCode)
+      await authApi.otpRequest(phone)
       setOtpSent(true)
-      toast.success("Verification code sent (demo)")
+      toast.success("Verification code sent")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't send the code — try again.")
     } finally {
@@ -226,7 +215,6 @@ export function AuthView() {
 
   return (
     <div className="app-page app-page-auth gradient-hero min-h-[calc(100vh-8rem)] px-4 py-10">
-      <Toaster position="bottom-left" richColors closeButton />
 
       <div className="mx-auto max-w-md">
         {/* brand */}
@@ -300,12 +288,6 @@ export function AuthView() {
                     {loading ? "Signing you in…" : "Sign in"}
                   </Button>
                 </form>
-                <DemoHint
-                  lines={[
-                    ["Demo customer", "customer@spherepharmacy.co.ke"],
-                    ["Password", "customer123"],
-                  ]}
-                />
                 <p className="mt-4 text-center text-xs text-muted-foreground">
                   New here?{" "}
                   <button type="button" onClick={() => setAuthMode("register")} className="font-semibold text-primary hover:underline">
@@ -408,17 +390,6 @@ export function AuthView() {
                   </form>
                 ) : (
                   <form onSubmit={handleOtpVerify} className="space-y-5" noValidate>
-                    {demoCode ? (
-                      <Alert className="border-teal-300 bg-teal-50 text-teal-900 dark:border-teal-700 dark:bg-teal-950/40 dark:text-teal-200 [&>svg]:text-teal-600">
-                        <Smartphone className="h-4 w-4" />
-                        <AlertTitle>Demo code</AlertTitle>
-                        <AlertDescription>
-                          This is a demo environment, so here&apos;s your code up front:{" "}
-                          <span className="font-mono text-base font-bold tracking-[0.2em]">{demoCode}</span>
-                        </AlertDescription>
-                      </Alert>
-                    ) : null}
-
                     <div className="flex flex-col items-center gap-2">
                       <Label htmlFor="otp-code" className="text-sm font-semibold">
                         Enter the 6-digit code
@@ -440,7 +411,7 @@ export function AuthView() {
                         {" · "}
                         <button
                           type="button"
-                          onClick={() => { setOtpSent(false); setDemoCode(null); setOtpCode("") }}
+                          onClick={() => { setOtpSent(false); setOtpCode("") }}
                           className="font-semibold text-primary hover:underline"
                         >
                           change number
@@ -491,10 +462,6 @@ export function AuthView() {
                     {loading ? "Signing in…" : "Sign in to dashboard"}
                   </Button>
                 </form>
-                <DemoHint
-                  title="Demo staff accounts"
-                  lines={STAFF_DEMOS.map((s) => [s.role, `${s.email} · ${s.password}`] as [string, string])}
-                />
               </TabsContent>
             </Tabs>
 
@@ -509,23 +476,6 @@ export function AuthView() {
           </CardContent>
         </Card>
       </div>
-    </div>
-  )
-}
-
-function DemoHint({ title, lines }: { title?: string; lines: [string, string][] }) {
-  return (
-    <div className={cn("mt-5 rounded-xl border border-dashed bg-muted/40 p-3.5")}>
-      {title ? <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{title}</p> : null}
-      <dl className="space-y-1.5 text-xs">
-        {lines.map(([k, v]) => (
-          <div key={k} className="flex flex-wrap items-baseline justify-between gap-2">
-            <dt className="font-semibold text-muted-foreground">{k}</dt>
-            <dd className="font-mono text-[11px]">{v}</dd>
-          </div>
-        ))}
-      </dl>
-      <p className="mt-2 text-[11px] text-muted-foreground">Demo environment — no real credentials required.</p>
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { getSession } from "@/lib/session"
 import { notifyServiceBooking, notifyStaff } from "@/lib/notify"
 
 function can(session: any) {
-  return Boolean(session?.staffId && ["ADMIN", "PHARMACIST", "STAFF"].includes(session.role))
+  return Boolean(session?.staffId && ["ADMIN", "PHARMACIST", "STAFF"].includes(session.staffRole))
 }
 
 function localMinutes(value: string) {

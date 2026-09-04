@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Toaster } from "@/components/ui/sonner"
 import { EmptyState } from "@/components/shared/empty-state"
 import { OrderStatusBadge } from "@/components/shared/status-badges"
 import { useAppStore } from "@/store/use-app-store"
@@ -187,7 +186,6 @@ export function OrdersView() {
             <Button onClick={() => navigate("admin")}>Open staff dashboard</Button>
           </CardContent>
         </Card>
-        <Toaster position="bottom-left" richColors closeButton />
       </div>
     )
   }
@@ -201,7 +199,6 @@ export function OrdersView() {
           description="Track orders, prescriptions and deliveries in one place. Sign in with your email, phone or OTP."
           action={{ label: "Sign in", onClick: () => openAuth("login", "orders") }}
         />
-        <Toaster position="bottom-left" richColors closeButton />
       </div>
     )
   }
@@ -313,7 +310,6 @@ export function OrdersView() {
         </>
       )}
 
-      <Toaster position="bottom-left" richColors closeButton />
     </div>
   )
 }

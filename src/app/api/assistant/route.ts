@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { enforceRateLimit, rejectOversizedRequest } from "@/lib/security/request"
 
 interface IncomingMessage {
   role: "user" | "assistant"
@@ -138,6 +139,10 @@ function sanitizeOutput(text: string): string {
 
 export async function POST(request: Request) {
   try {
+    const tooLarge = rejectOversizedRequest(request, 20_000)
+    if (tooLarge) return tooLarge
+    const limited = await enforceRateLimit(request, "assistant", 20, 60 * 60_000)
+    if (limited) return limited
     const apiKey = process.env.GROQ_API_KEY
     if (!apiKey) {
       return NextResponse.json({

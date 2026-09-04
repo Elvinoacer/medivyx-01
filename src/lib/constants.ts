@@ -111,7 +111,7 @@ export const FULFILLMENT_LABELS: Record<Fulfillment, string> = {
 // ---------- Payment ----------
 export const PAYMENT_PROVIDERS = ["MPESA", "INTASEND", "CASH"] as const
 export type PaymentProvider = (typeof PAYMENT_PROVIDERS)[number]
-export const PAYMENT_STATUSES = ["PENDING", "PROCESSING", "SUCCESS", "FAILED", "REFUNDED"] as const
+export const PAYMENT_STATUSES = ["PENDING", "PROCESSING", "SUCCESS", "FAILED", "REFUND_PENDING", "REFUNDED"] as const
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number]
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   STK_PUSH: "M-Pesa (STK Push)",

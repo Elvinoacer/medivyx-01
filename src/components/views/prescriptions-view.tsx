@@ -16,7 +16,6 @@ import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { Toaster } from "@/components/ui/sonner"
 import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
 import { RxStatusBadge } from "@/components/shared/status-badges"
 import { useAppStore } from "@/store/use-app-store"
@@ -252,7 +251,6 @@ export function PrescriptionsView() {
             <Skeleton key={i} className="h-40 w-full rounded-xl" />
           ))}
         </div>
-        <Toaster position="bottom-left" richColors closeButton />
       </div>
     )
   }
@@ -279,7 +277,6 @@ export function PrescriptionsView() {
             <Button onClick={() => navigate("admin")}>Open staff dashboard</Button>
           </CardContent>
         </Card>
-        <Toaster position="bottom-left" richColors closeButton />
       </div>
     )
   }
@@ -302,7 +299,6 @@ export function PrescriptionsView() {
             </p>
           </CardContent>
         </Card>
-        <Toaster position="bottom-left" richColors closeButton />
       </div>
     )
   }
@@ -311,7 +307,6 @@ export function PrescriptionsView() {
 
   return (
     <div className="app-page app-page-prescriptions mx-auto max-w-3xl px-4 py-8 pb-12">
-      <Toaster position="bottom-left" richColors closeButton />
 
       <SectionHeader
         title="My prescriptions"

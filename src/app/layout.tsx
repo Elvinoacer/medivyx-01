@@ -1,20 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"),
+  alternates: { canonical: "/" },
   title: "Sphere Pharmacy — Your community pharmacy on Lumumba Drive, Roysambu",
   description:
     "Browse medicines, health products and devices at Sphere Pharmacy. Order online with M-Pesa or card, upload prescriptions for pharmacist review, and choose delivery or pickup in Roysambu, Nairobi.",
@@ -46,36 +37,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
-      >
+      <body className="antialiased bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
-          <style>{`
-            @keyframes sphere-catalog-card-enter {
-              from {
-                opacity: 0;
-                transform: translateY(18px) scale(0.985);
-              }
-              to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-              }
-            }
-
-            section[aria-live="polite"] article {
-              animation: sphere-catalog-card-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
-              will-change: opacity, transform;
-            }
-
-            @media (prefers-reduced-motion: reduce) {
-              section[aria-live="polite"] article {
-                animation: none;
-                will-change: auto;
-              }
-            }
-          `}</style>
           {children}
-          <Toaster />
+          <Toaster position="bottom-left" richColors closeButton />
         </ThemeProvider>
       </body>
     </html>

@@ -262,6 +262,9 @@ export interface PromotionDTO {
   active: boolean
   startsAt: string | null
   endsAt: string | null
+  maxUses?: number | null
+  perUserLimit?: number | null
+  minimumSpend?: number | null
 }
 
 export interface DeliverySettings {

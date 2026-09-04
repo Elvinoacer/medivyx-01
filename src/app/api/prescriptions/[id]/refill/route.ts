@@ -1,144 +1,78 @@
+import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { ORDER_INCLUDE, toOrderDTO } from "@/lib/dto"
 import { orderReference, pickupCode } from "@/lib/hash"
-import { addStatusEvent, audit, notifyCustomer } from "@/lib/notify"
+import { audit, notifyCustomer, notifyStaff } from "@/lib/notify"
 import { requireCustomer } from "@/lib/session"
+import { money } from "@/lib/security/payment"
+import { enforceRateLimit, publicError } from "@/lib/security/request"
 
 type Params = { params: Promise<{ id: string }> }
 
-/** FR-5.5 — request a refill of a previously approved prescription (re-verification applies). */
-export async function POST(_request: Request, { params }: Params) {
+export async function POST(request: Request, { params }: Params) {
   const { session, error } = await requireCustomer()
   if (error) return error
-  const { id } = await params
+  const limited = await enforceRateLimit(request, "prescription-refill", 5, 24 * 60 * 60_000)
+  if (limited) return limited
 
-  const rx = await db.prescription.findUnique({ where: { id }, include: { order: { include: { items: true } } } })
-  if (!rx || rx.userId !== session.userId) {
-    return NextResponse.json({ error: "Prescription not found." }, { status: 404 })
-  }
-  if (rx.status !== "APPROVED" && rx.status !== "PARTIALLY_APPROVED") {
-    return NextResponse.json({ error: "Only approved prescriptions can be refilled." }, { status: 400 })
-  }
-  if (rx.refillsUsed >= rx.refillsAllowed) {
-    return NextResponse.json({ error: "No refills remaining on this prescription. Upload a new one from your doctor." }, { status: 400 })
-  }
-  if (rx.validUntil && rx.validUntil < new Date()) {
-    return NextResponse.json({ error: "This prescription has expired. Upload a new one from your doctor." }, { status: 400 })
-  }
-  const sourceOrder = rx.order
-  if (!sourceOrder || sourceOrder.items.length === 0) {
-    return NextResponse.json({ error: "No items found to refill for this prescription." }, { status: 400 })
-  }
+  try {
+    const { id } = await params
+    const rx = await db.prescription.findUnique({ where: { id }, include: { order: { include: { items: true } } } })
+    if (!rx || rx.userId !== session.userId || rx.deletedAt) return NextResponse.json({ error: "Prescription not found." }, { status: 404 })
+    if (!["APPROVED", "PARTIALLY_APPROVED"].includes(rx.status)) return NextResponse.json({ error: "Only approved prescriptions can be refilled." }, { status: 409 })
+    if (rx.refillsUsed >= rx.refillsAllowed) return NextResponse.json({ error: "No refills remain on this prescription." }, { status: 409 })
+    if (!rx.validUntil || rx.validUntil < new Date()) return NextResponse.json({ error: "This prescription has expired. Upload a current prescription." }, { status: 409 })
 
-  // verify current product availability at today's prices
-  const productIds = sourceOrder.items.map((i) => i.productId).filter((p): p is string => Boolean(p))
-  const products = await db.product.findMany({ where: { id: { in: productIds } } })
-  const lines = sourceOrder.items
-    .map((item) => ({ item, product: products.find((p) => p.id === item.productId) }))
-    .filter(
-      (l): l is { item: (typeof sourceOrder.items)[number]; product: (typeof products)[number] } =>
-        Boolean(l.product) && l.product!.active && l.product!.stockStatus !== "OUT_OF_STOCK" && l.product!.stockStatus !== "DISCONTINUED"
-    )
-  if (lines.length === 0) {
-    return NextResponse.json({ error: "The items on this prescription are currently unavailable. WhatsApp us and we'll suggest alternatives." }, { status: 400 })
-  }
-
-  const subtotal = lines.reduce((s, l) => s + l.product.price * l.item.qty, 0)
-  const fulfillment = sourceOrder.fulfillment
-  const reference = orderReference()
-
-  // clone prescription record for re-verification (new review cycle)
-  const refillRx = await db.prescription.create({
-    data: {
-      userId: rx.userId,
-      fileName: rx.fileName,
-      fileType: rx.fileType,
-      fileData: rx.fileData,
-      notes: `Refill request of prescription ${rx.id.slice(-6).toUpperCase()} — awaiting re-verification`,
-      status: "PENDING",
-      refillsAllowed: 0,
-    },
-  })
-
-  const order = await db.order.create({
-    data: {
-      reference,
-      userId: rx.userId,
-      type: "PRESCRIPTION",
-      status: "RECEIVED",
-      fulfillment,
-      subtotal,
-      total: subtotal,
-      pickupCode: fulfillment === "PICKUP" ? pickupCode() : null,
-      deliveryAddress: sourceOrder.deliveryAddress,
-      deliveryArea: sourceOrder.deliveryArea,
-      notes: `Refill of order ${sourceOrder.reference}`,
-      items: {
-        create: lines.map((l) => ({
-          productId: l.product.id,
-          name: l.product.name,
-          price: l.product.price,
-          qty: l.item.qty,
-          requiresPrescription: true,
-          lineTotal: l.product.price * l.item.qty,
-        })),
-      },
-    },
-  })
-
-  await db.prescription.update({ where: { id: refillRx.id }, data: { orderId: order.id } })
-  await db.prescription.update({ where: { id: rx.id }, data: { refillsUsed: { increment: 1 } } })
-
-  await db.order.update({ where: { id: order.id }, data: { status: "UNDER_REVIEW" } })
-  await addStatusEvent(order.id, "RECEIVED", "System", "Refill request received")
-  await addStatusEvent(order.id, "UNDER_REVIEW", "System", "Queued for pharmacist re-verification")
-
-  await audit("System", null, "RX_REFILL_REQUESTED", "Prescription", rx.id, `New order ${reference}`)
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
-  const orderUrl = `${appUrl}/#order-${order.id}`
-
-  const customerUser = rx.userId
-    ? await db.user.findUnique({ where: { id: rx.userId }, select: { name: true, email: true } })
-    : null
-  const customerName = customerUser?.name || "Customer"
-
-  await notifyCustomer(
-    rx.userId,
-    "PRESCRIPTION",
-    `Refill requested — order ${reference}`,
-    "We received your refill request. Our pharmacist will re-verify and confirm availability shortly.",
-    "IN_APP",
-    {
-      link: orderUrl,
-      metadata: { orderId: order.id, prescriptionId: rx.id, reference },
-      email: customerUser?.email
-        ? {
-            to: customerUser.email,
-            subject: `Refill Requested: Order ${reference} — Sphere Pharmacy`,
-            html: `<p>Hello ${customerName},</p><p>We received your prescription refill request for order <strong>${reference}</strong>.</p><p>Our pharmacist is re-verifying the prescription and will confirm medication availability shortly.</p><p><a href="${orderUrl}">Track order progress</a></p>`,
-            text: `Refill request received for order ${reference}.\nTrack order: ${orderUrl}`,
-          }
-        : undefined,
+    const sourceOrder = rx.order
+    const sourceItems = sourceOrder?.items.filter((item) => item.requiresPrescription && item.productId) ?? []
+    if (!sourceOrder || sourceItems.length === 0) return NextResponse.json({ error: "No prescription medicines are linked to this document." }, { status: 409 })
+    const products = await db.product.findMany({ where: { id: { in: sourceItems.map((item) => item.productId!) } } })
+    const lines = sourceItems.map((item) => ({ item, product: products.find((product) => product.id === item.productId) }))
+    if (lines.some(({ item, product }) => !product || !product.active || product.stockStatus === "DISCONTINUED" || product.stockQty < item.qty)) {
+      return NextResponse.json({ error: "One or more prescribed medicines are unavailable in the required quantity." }, { status: 409 })
     }
-  )
 
-  // Alert pharmacists
-  const { notifyStaff } = await import("@/lib/notify")
-  await notifyStaff({
-    roles: ["PHARMACIST", "ADMIN"],
-    event: "RX_REFILL_REQUESTED",
-    title: `Prescription Refill: ${reference}`,
-    message: `Customer ${customerName} requested a refill for prescription ${rx.fileName}. Re-verification required.`,
-    link: `${appUrl}/#admin-prescriptions`,
-    details: {
-      "Order Ref": reference,
-      Customer: customerName,
-      Prescription: rx.fileName,
-      RemainingRefills: rx.refillsAllowed - rx.refillsUsed - 1,
-    },
-  })
+    const subtotal = money(lines.reduce((sum, line) => sum + Number(line.product!.price) * line.item.qty, 0))
+    const reference = orderReference()
+    const order = await db.$transaction(async (tx) => {
+      const claimed = await tx.prescription.updateMany({
+        where: { id: rx.id, userId: session.userId!, refillsUsed: rx.refillsUsed, refillsAllowed: { gt: rx.refillsUsed }, validUntil: { gte: new Date() } },
+        data: { refillsUsed: { increment: 1 } },
+      })
+      if (claimed.count !== 1) throw new Error("REFILL_CONFLICT")
+      for (const line of lines) {
+        const reserved = await tx.product.updateMany({ where: { id: line.product!.id, active: true, stockQty: { gte: line.item.qty } }, data: { stockQty: { decrement: line.item.qty } } })
+        if (reserved.count !== 1) throw new Error("STOCK_CONFLICT")
+      }
+      const created = await tx.order.create({
+        data: {
+          reference, userId: rx.userId, type: "PRESCRIPTION", status: "UNDER_REVIEW", fulfillment: sourceOrder.fulfillment,
+          subtotal, total: subtotal, pickupCode: sourceOrder.fulfillment === "PICKUP" ? pickupCode() : null,
+          deliveryAddress: sourceOrder.deliveryAddress, deliveryArea: sourceOrder.deliveryArea,
+          notes: `Refill of order ${sourceOrder.reference}`, inventoryReservedAt: new Date(),
+          items: { create: lines.map(({ item, product }) => ({ productId: product!.id, name: product!.name, price: product!.price, qty: item.qty, requiresPrescription: true, lineTotal: money(Number(product!.price) * item.qty) })) },
+          statusHistory: { create: { status: "UNDER_REVIEW", actor: "System", note: "Refill queued for pharmacist re-verification" } },
+        },
+      })
+      await tx.prescription.create({ data: {
+        userId: rx.userId, orderId: created.id, fileName: rx.fileName, fileType: rx.fileType,
+        fileData: null, fileUrl: null, storageKey: rx.storageKey,
+        notes: `Refill use of prescription ${rx.id.slice(-6).toUpperCase()}`, status: "PENDING",
+      } })
+      return created
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 
-  const full = await db.order.findUnique({ where: { id: order.id }, include: ORDER_INCLUDE })
-  return NextResponse.json({ orderId: order.id, reference, order: toOrderDTO(full!) })
+    await audit("System", null, "RX_REFILL_REQUESTED", "Prescription", rx.id, `New order ${reference}`)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+    const customer = await db.user.findUnique({ where: { id: rx.userId! }, select: { name: true, email: true } })
+    await notifyCustomer(rx.userId, "PRESCRIPTION", `Refill requested — order ${reference}`, "Your refill is queued for pharmacist re-verification.", "IN_APP", {
+      link: `${appUrl}/orders/${order.id}`, metadata: { orderId: order.id, prescriptionId: rx.id, reference },
+      email: customer?.email ? { to: customer.email, subject: `Refill requested: ${reference}`, html: `<p>Your refill request <strong>${reference}</strong> is awaiting pharmacist review.</p>`, text: `Refill ${reference} is awaiting pharmacist review.` } : undefined,
+    })
+    await notifyStaff({ roles: ["PHARMACIST", "ADMIN"], event: "RX_REFILL_REQUESTED", title: `Prescription refill: ${reference}`, message: `${customer?.name || "A customer"} requested a prescription refill.`, link: `${appUrl}/admin/prescriptions` })
+    return NextResponse.json({ orderId: order.id, reference }, { status: 201 })
+  } catch (error) {
+    if (error instanceof Error && ["REFILL_CONFLICT", "STOCK_CONFLICT"].includes(error.message)) return NextResponse.json({ error: "The refill or stock changed while processing. Refresh and try again." }, { status: 409 })
+    return publicError("Could not request the refill.")
+  }
 }

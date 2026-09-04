@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server"
+import { enforceRateLimit } from "@/lib/security/request"
 
 export async function GET(request: Request) {
+  const limited = await enforceRateLimit(request, "location-search", 30, 10 * 60_000)
+  if (limited) return limited
   const q = new URL(request.url).searchParams.get("q")?.trim() || ""
+  if (q.length > 120) return NextResponse.json({ error: "Search is too long." }, { status: 400 })
   if (q.length < 2) return NextResponse.json({ results: [] })
   const url = new URL("https://nominatim.openstreetmap.org/search")
   url.searchParams.set("format","jsonv2")

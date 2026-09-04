@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { hashPassword } from "@/lib/hash"
+import { hashPassword, validatePassword } from "@/lib/hash"
 import { createSession, toUserDTO } from "@/lib/session"
+import { enforceRateLimit, rejectOversizedRequest } from "@/lib/security/request"
 
 const PHONE_RE = /^(?:\+?254|0)?(7\d{8}|1\d{8})$/
 function normalizePhone(raw: string): string | null {
@@ -12,6 +13,10 @@ function normalizePhone(raw: string): string | null {
 
 export async function POST(request: Request) {
   try {
+    const tooLarge = rejectOversizedRequest(request, 8_192)
+    if (tooLarge) return tooLarge
+    const limited = await enforceRateLimit(request, "register", 5, 30 * 60 * 1000)
+    if (limited) return limited
     const body = await request.json()
     const name = String(body.name ?? "").trim()
     const email = body.email ? String(body.email).trim().toLowerCase() : null
@@ -20,7 +25,8 @@ export async function POST(request: Request) {
 
     if (name.length < 2) return NextResponse.json({ error: "Please enter your full name." }, { status: 400 })
     if (!email && !phoneRaw) return NextResponse.json({ error: "Provide a phone number or an email address." }, { status: 400 })
-    if (password.length < 6) return NextResponse.json({ error: "Password must be at least 6 characters." }, { status: 400 })
+    const passwordError = validatePassword(password)
+    if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 })
 
     const phone = phoneRaw ? normalizePhone(phoneRaw) : null
     if (phoneRaw && !phone) return NextResponse.json({ error: "Enter a valid Kenyan phone number (e.g. 0712 345 678)." }, { status: 400 })
@@ -36,13 +42,9 @@ export async function POST(request: Request) {
     }
 
     const user = await db.user.create({
-      data: { name, email, phone, passwordHash: hashPassword(password) },
+      data: { name, email, phone, passwordHash: await hashPassword(password) },
     })
     await db.notificationPref.create({ data: { userId: user.id } }).catch(() => {})
-    if (phone) {
-      // link guest orders placed with this phone before registration
-      await db.order.updateMany({ where: { userId: null, guestPhone: phone }, data: { userId: user.id } })
-    }
     await createSession({ userId: user.id })
     return NextResponse.json({ role: "CUSTOMER", user: toUserDTO(user) })
   } catch {

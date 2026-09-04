@@ -33,13 +33,16 @@ const AssistantWidget = dynamic(() => import("@/components/assistant/assistant-w
 
 export default function Page() {
   const view = useAppStore((s) => s.view)
+  const hydrateFromLocation = useAppStore((s) => s.hydrateFromLocation)
   const refresh = useAuthStore((s) => s.refresh)
 
   useEffect(() => {
+    hydrateFromLocation()
+    window.addEventListener("popstate", hydrateFromLocation)
     refresh()
     const cleanup = setupForegroundNotificationListener()
-    return () => cleanup()
-  }, [refresh])
+    return () => { cleanup(); window.removeEventListener("popstate", hydrateFromLocation) }
+  }, [hydrateFromLocation, refresh])
 
   const home = view === "home"
 

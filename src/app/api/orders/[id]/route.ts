@@ -1,164 +1,115 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { ORDER_INCLUDE, toOrderDTO } from "@/lib/dto"
-import { addStatusEvent, audit, notifyCustomer, notifyStaff, statusNotification } from "@/lib/notify"
-import { requireStaff } from "@/lib/session"
-import { reversePointsForOrder } from "@/lib/loyalty"
-import { ORDER_STATUS_LABELS, ORDER_STATUSES, RIDER_ALLOWED_STATUSES, type OrderStatus } from "@/lib/constants"
+import { audit, notifyCustomer, notifyStaff, statusNotification } from "@/lib/notify"
+import { getSession, requireStaff } from "@/lib/session"
+import { tokenHash } from "@/lib/hash"
+import { canTransitionOrder } from "@/lib/security/order-workflow"
+import { ORDER_STATUS_LABELS, ORDER_STATUSES, type OrderStatus, type Role } from "@/lib/constants"
 import { orderStatusUpdateTemplate } from "@/lib/email/templates"
+import { escapeHtml, publicError, rejectOversizedRequest } from "@/lib/security/request"
 
 type Params = { params: Promise<{ id: string }> }
 
-export async function GET(_request: Request, { params }: Params) {
+function guestToken(request: Request): string | null {
+  const value = request.headers.get("x-order-access-token")?.trim()
+  return value && value.length <= 256 ? value : null
+}
+
+export async function GET(request: Request, { params }: Params) {
   const { id } = await params
-  const session = (await requireStaffRoute()) ?? (await getSessionSafe())
-  // customers can view own orders; staff can view all; guests get 401 (checkout success page handles)
+  const session = await getSession()
   const order = await db.order.findUnique({ where: { id }, include: ORDER_INCLUDE })
   if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 })
 
-  const isStaff = session?.staffId
-  const isOwner = session?.userId && order.userId === session.userId
-  if (!isStaff && !isOwner) {
-    // guests → 401 (sign-in prompt); signed-in but not the owner → 403 (wrong-account message)
-    if (session?.userId) {
-      return NextResponse.json(
-        { error: "This order was placed from a different account or as a guest — sign in with those details, or contact us with the order reference." },
-        { status: 403 }
-      )
-    }
-    return NextResponse.json({ error: "Please sign in to view this order." }, { status: 401 })
+  const role = session?.staffRole as Role | undefined
+  const staffCanView = Boolean(session?.staffId) && (
+    role !== "RIDER" || (order.riderId === session?.staffId && order.fulfillment === "DELIVERY")
+  )
+  const ownerCanView = Boolean(session?.userId && order.userId === session.userId)
+  const accessToken = guestToken(request)
+  const guestCanView = Boolean(
+    accessToken && order.guestAccessTokenHash && order.guestAccessExpiresAt &&
+    order.guestAccessExpiresAt > new Date() && tokenHash(accessToken) === order.guestAccessTokenHash
+  )
+
+  if (!staffCanView && !ownerCanView && !guestCanView) {
+    return NextResponse.json({ error: session ? "You do not have access to this order." : "An order access token or sign-in is required." }, { status: session ? 403 : 401 })
   }
   return NextResponse.json(toOrderDTO(order))
 }
 
-// PATCH — staff status workflow update (riders restricted to their own delivery orders)
 export async function PATCH(request: Request, { params }: Params) {
   const { session, error } = await requireStaff()
   if (error) return error
-  const { id } = await params
-  const order = await db.order.findUnique({ where: { id }, include: ORDER_INCLUDE })
-  if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 })
-
-  const actor = session.staffName ?? "Staff"
-
-  // RIDER role: only delivery orders assigned to them, only delivery-progress statuses
-  if (session.staffRole === "RIDER") {
-    if (order.riderId !== session.staffId || order.fulfillment !== "DELIVERY") {
-      return NextResponse.json({ error: "This delivery is not assigned to you." }, { status: 403 })
-    }
-  }
+  const tooLarge = rejectOversizedRequest(request, 16_384)
+  if (tooLarge) return tooLarge
 
   try {
+    const { id } = await params
+    const order = await db.order.findUnique({ where: { id }, include: ORDER_INCLUDE })
+    if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 })
+
+    const role = session.staffRole as Role
+    if (role === "RIDER" && (order.riderId !== session.staffId || order.fulfillment !== "DELIVERY")) {
+      return NextResponse.json({ error: "This delivery is not assigned to you." }, { status: 403 })
+    }
+
     const body = await request.json()
     const status = String(body.status ?? "") as OrderStatus
-    const note = body.note ? String(body.note).trim() : undefined
-    if (!ORDER_STATUSES.includes(status)) {
-      return NextResponse.json({ error: "Unknown order status." }, { status: 400 })
-    }
-    if (session.staffRole === "RIDER" && !RIDER_ALLOWED_STATUSES.includes(status)) {
-      return NextResponse.json({ error: "Riders can only mark orders out for delivery or delivered." }, { status: 403 })
-    }
-    if (order.status === status) {
-      return NextResponse.json(toOrderDTO(order))
+    const note = body.note ? String(body.note).trim().slice(0, 500) : undefined
+    if (!ORDER_STATUSES.includes(status)) return NextResponse.json({ error: "Unknown order status." }, { status: 400 })
+    if (order.status === status) return NextResponse.json(toOrderDTO(order))
+    if (status === "CANCELLED") return NextResponse.json({ error: "Use the cancellation action so reserved stock and loyalty are restored safely." }, { status: 409 })
+    if (status === "REFUNDED") return NextResponse.json({ error: "Use the refund action so the payment provider confirms the refund." }, { status: 409 })
+    if (!canTransitionOrder(order.status as OrderStatus, status, role)) {
+      return NextResponse.json({ error: `The order cannot move from ${order.status} to ${status}.` }, { status: 409 })
     }
 
-    // Stock decrement once, when an order first moves into PREPARING or beyond
-    const STOCK_DECREMENT_FROM: OrderStatus[] = ["PREPARING", "READY_FOR_PICKUP", "OUT_FOR_DELIVERY", "COMPLETED_PICKUP", "COMPLETED_DELIVERY"]
-    const alreadyPrepared = order.statusHistory.some((h) => STOCK_DECREMENT_FROM.includes(h.status as OrderStatus))
-    if (STOCK_DECREMENT_FROM.includes(status) && !alreadyPrepared) {
-      for (const item of order.items) {
-        if (!item.productId) continue
-        const product = await db.product.findUnique({ where: { id: item.productId } })
-        if (!product) continue
-        const qty = Math.max(0, product.stockQty - item.qty)
-        const stockStatus = qty <= 0 ? "OUT_OF_STOCK" : qty <= product.lowStockThreshold ? "LOW_STOCK" : "IN_STOCK"
-        await db.product.update({ where: { id: product.id }, data: { stockQty: qty, stockStatus } })
-        await audit(actor, session.staffRole, "STOCK_UPDATE", "Product", product.sku, `Order ${order.reference}: ${product.name} ${product.stockQty} → ${qty}`)
-      }
-    }
-
-    // Refund side-effects
-    if (status === "REFUNDED") {
-      await db.payment.updateMany({ where: { orderId: order.id, status: "SUCCESS" }, data: { status: "REFUNDED" } })
-    }
-
-    // Loyalty: claw back earned points + return redeemed points on cancel/refund
-    if (status === "REFUNDED" || status === "CANCELLED") {
-      await reversePointsForOrder(order.id, actor)
-    }
-
-    await db.order.update({ where: { id: order.id }, data: { status } })
-    await addStatusEvent(order.id, status, actor, note)
-    await audit(actor, session.staffRole, `ORDER_STATUS_${status}`, "Order", order.reference, note ?? undefined)
+    const actor = session.staffName ?? "Staff"
+    await db.$transaction(async (tx) => {
+      const changed = await tx.order.updateMany({
+        where: { id: order.id, version: order.version, status: order.status },
+        data: { status, version: { increment: 1 } },
+      })
+      if (changed.count !== 1) throw new Error("ORDER_CONFLICT")
+      await tx.orderStatusHistory.create({ data: { orderId: order.id, status, actor, note } })
+    })
+    await audit(actor, role, `ORDER_STATUS_${status}`, "Order", order.reference, note)
 
     const { title, message } = statusNotification(status, order.reference)
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
-    const orderUrl = `${appUrl}/#order-${order.id}`
-
-    const customerUser = order.userId
+    const orderUrl = `${appUrl}/orders/${order.id}`
+    const customer = order.userId
       ? await db.user.findUnique({ where: { id: order.userId }, select: { name: true, email: true } })
       : null
-    const customerName = customerUser?.name || order.guestName || "Valued Customer"
-    const customerEmail = customerUser?.email
-
-    const emailTemplate = orderStatusUpdateTemplate({
+    const email = orderStatusUpdateTemplate({
       orderReference: order.reference,
-      customerName,
-      statusLabel: ORDER_STATUS_LABELS[status] ?? status,
-      message,
-      pickupCode: status === "READY_FOR_PICKUP" ? order.pickupCode : null,
-      orderUrl,
+      customerName: customer?.name || order.guestName || "Valued Customer",
+      statusLabel: ORDER_STATUS_LABELS[status], message,
+      pickupCode: status === "READY_FOR_PICKUP" ? order.pickupCode : null, orderUrl,
     })
-
     await notifyCustomer(order.userId, "ORDER_STATUS", title, message, "IN_APP", {
       link: orderUrl,
       metadata: { orderId: order.id, status, reference: order.reference },
-      email: customerEmail
-        ? {
-            to: customerEmail,
-            subject: emailTemplate.subject,
-            html: emailTemplate.html,
-            text: emailTemplate.text,
-          }
-        : undefined,
+      email: (customer?.email || order.guestEmail) ? { to: customer?.email || order.guestEmail || undefined, ...email } : undefined,
     })
 
-    if (order.userId) {
-      // also model the WhatsApp/SMS channel so customers see multi-channel updates
-      await notifyCustomer(order.userId, "ORDER_STATUS", title, message, "WHATSAPP")
-    }
-
-    // If order was cancelled or rejected by staff, alert admin
-    if (status === "CANCELLED" || status === "REJECTED") {
+    if (status === "REJECTED") {
       await notifyStaff({
-        roles: ["ADMIN", "PHARMACIST"],
-        event: `ORDER_${status}`,
-        title: `Order ${order.reference} ${status.toLowerCase()}`,
-        message: `Order ${order.reference} was marked as ${status} by ${actor}.${note ? ` Reason: ${note}` : ""}`,
-        link: `${appUrl}/#admin-orders`,
-        details: {
-          "Order Ref": order.reference,
-          Status: status,
-          Actor: actor,
-          Note: note || "None",
-        },
+        roles: ["ADMIN", "PHARMACIST"], event: "ORDER_REJECTED",
+        title: `Order ${order.reference} rejected`, message: `Order ${order.reference} was rejected by ${actor}.`,
+        link: `${appUrl}/admin/orders`,
+        details: { "Order Ref": order.reference, Actor: actor, Note: escapeHtml(note || "None") },
       })
     }
 
     const updated = await db.order.findUnique({ where: { id: order.id }, include: ORDER_INCLUDE })
     return NextResponse.json(toOrderDTO(updated!))
-  } catch {
-    return NextResponse.json({ error: "Could not update the order status." }, { status: 500 })
+  } catch (error) {
+    if (error instanceof Error && error.message === "ORDER_CONFLICT") {
+      return NextResponse.json({ error: "The order changed while you were updating it. Refresh and try again." }, { status: 409 })
+    }
+    return publicError("Could not update the order status.")
   }
-}
-
-// small helpers to avoid import cycles
-async function requireStaffRoute() {
-  const { getSession } = await import("@/lib/session")
-  const s = await getSession()
-  return s?.staffId ? s : null
-}
-async function getSessionSafe() {
-  const { getSession } = await import("@/lib/session")
-  return getSession()
 }

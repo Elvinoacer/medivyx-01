@@ -14,9 +14,12 @@ import type {
 } from "@/lib/types"
 import type { OrderStatus, PaymentStatus, PaymentProvider, RxStatus, StockStatus, OrderType, Fulfillment, Role } from "@/lib/constants"
 
+type DbMoney = number | string | { toString(): string }
+const moneyNumber = (value: DbMoney | null | undefined): number => value == null ? 0 : Number(value)
+
 type DbProduct = {
   id: string; name: string; sku: string; brand: string | null; packSize: string | null;
-  price: number; compareAtPrice: number | null; stockStatus: string; stockQty: number;
+  price: DbMoney; compareAtPrice: DbMoney | null; stockStatus: string; stockQty: number;
   requiresPrescription: boolean; description: string; usageInfo: string | null;
   warnings: string | null; image: string | null; images?: string[]; categoryId: string | null;
   categoryName?: string | null; categorySlug?: string | null;
@@ -31,8 +34,8 @@ export function toProductDTO(p: DbProduct): ProductDTO {
     sku: p.sku,
     brand: p.brand,
     packSize: p.packSize,
-    price: p.price,
-    compareAtPrice: p.compareAtPrice,
+    price: moneyNumber(p.price),
+    compareAtPrice: p.compareAtPrice == null ? null : moneyNumber(p.compareAtPrice),
     stockStatus: p.stockStatus as StockStatus,
     stockQty: p.stockQty,
     requiresPrescription: p.requiresPrescription,
@@ -54,19 +57,19 @@ export function toCategoryDTO(c: { id: string; name: string; slug: string; descr
 }
 
 type DbOrderItem = {
-  id: string; productId: string | null; name: string; price: number; qty: number;
-  requiresPrescription: boolean; lineTotal: number;
+  id: string; productId: string | null; name: string; price: DbMoney; qty: number;
+  requiresPrescription: boolean; lineTotal: DbMoney;
 }
 
 function toOrderItemDTO(i: DbOrderItem): OrderItemDTO {
   return {
-    id: i.id, productId: i.productId, name: i.name, price: i.price, qty: i.qty,
-    requiresPrescription: i.requiresPrescription, lineTotal: i.lineTotal,
+    id: i.id, productId: i.productId, name: i.name, price: moneyNumber(i.price), qty: i.qty,
+    requiresPrescription: i.requiresPrescription, lineTotal: moneyNumber(i.lineTotal),
   }
 }
 
 type DbPayment = {
-  id: string; provider: string; method: string | null; status: string; amount: number;
+  id: string; provider: string; method: string | null; status: string; amount: DbMoney;
   phone: string | null; cardLast4: string | null; providerReference: string | null;
   failureReason: string | null; createdAt: Date;
 }
@@ -74,7 +77,7 @@ type DbPayment = {
 export function toPaymentDTO(p: DbPayment): PaymentDTO {
   return {
     id: p.id, provider: p.provider as PaymentProvider, method: p.method, status: p.status as PaymentStatus,
-    amount: p.amount, phone: p.phone, cardLast4: p.cardLast4, providerReference: p.providerReference,
+    amount: moneyNumber(p.amount), phone: p.phone, cardLast4: p.cardLast4, providerReference: p.providerReference,
     failureReason: p.failureReason, createdAt: p.createdAt.toISOString(),
   }
 }
@@ -104,8 +107,8 @@ export function toPrescriptionDTO(rx: DbPrescription, includeCustomer = false): 
     createdAt: rx.createdAt.toISOString(),
     orderId: rx.orderId,
     orderReference: rx.order?.reference ?? null,
-    fileUrl: rx.fileUrl ?? null,
-    storageKey: rx.storageKey ?? null,
+    fileUrl: null,
+    storageKey: null,
     ...(includeCustomer
       ? { customerName: rx.user?.name ?? null, customerPhone: rx.user?.phone ?? null }
       : {}),
@@ -116,10 +119,10 @@ export function toPrescriptionDTO(rx: DbPrescription, includeCustomer = false): 
 export function toOrderDTO(order: {
   id: string; reference: string; type: string; status: string; fulfillment: string;
   deliveryAddress: string | null; deliveryArea: string | null; deliveryNotes: string | null;
-  deliveryFee: number; subtotal: number; total: number; notes: string | null; pickupCode: string | null;
+  deliveryFee: DbMoney; subtotal: DbMoney; total: DbMoney; notes: string | null; pickupCode: string | null;
   riderId?: string | null; riderName: string | null; createdAt: Date; updatedAt: Date;
   pointsEarned?: number | null; pointsRedeemed?: number | null;
-  discountAmount?: number | null; promotionCode?: string | null;
+  discountAmount?: DbMoney | null; promotionCode?: string | null;
   guestName?: string | null; guestPhone?: string | null;
   user?: { name: string | null; phone: string | null } | null;
   items: DbOrderItem[];
@@ -136,11 +139,11 @@ export function toOrderDTO(order: {
     deliveryAddress: order.deliveryAddress,
     deliveryArea: order.deliveryArea,
     deliveryNotes: order.deliveryNotes,
-    deliveryFee: order.deliveryFee,
-    subtotal: order.subtotal,
-    discountAmount: order.discountAmount ?? 0,
+    deliveryFee: moneyNumber(order.deliveryFee),
+    subtotal: moneyNumber(order.subtotal),
+    discountAmount: moneyNumber(order.discountAmount),
     promotionCode: order.promotionCode ?? null,
-    total: order.total,
+    total: moneyNumber(order.total),
     notes: order.notes,
     pickupCode: order.pickupCode,
     pointsEarned: order.pointsEarned ?? 0,
@@ -174,12 +177,16 @@ export function toPromotionDTO(p: {
   id: string; title: string; description: string; badge: string | null; code: string | null;
   discountPct: number | null; color: string | null; active: boolean;
   startsAt: Date | null; endsAt: Date | null;
+  maxUses?: number | null; perUserLimit?: number | null; minimumSpend?: DbMoney | null;
 }): PromotionDTO {
   return {
     id: p.id, title: p.title, description: p.description, badge: p.badge, code: p.code,
     discountPct: p.discountPct, color: p.color, active: p.active,
     startsAt: p.startsAt ? p.startsAt.toISOString() : null,
     endsAt: p.endsAt ? p.endsAt.toISOString() : null,
+    maxUses: p.maxUses ?? null,
+    perUserLimit: p.perUserLimit ?? null,
+    minimumSpend: p.minimumSpend == null ? null : moneyNumber(p.minimumSpend),
   }
 }
 

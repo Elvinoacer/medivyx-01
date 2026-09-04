@@ -136,16 +136,16 @@ export function Header() {
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSearchOpen(!searchOpen)} aria-label="Search products">
             <Search className="h-5 w-5" />
           </Button>
-          <a href={`tel:${PHARMACY.phone}`} className="hidden lg:inline-flex">
-            <Button variant="outline" size="sm" className="gap-1.5">
+          <Button asChild variant="outline" size="sm" className="hidden gap-1.5 lg:inline-flex">
+            <a href={`tel:${PHARMACY.phone}`}>
               <Phone className="h-4 w-4" /> Call
-            </Button>
-          </a>
-          <a href={`https://wa.me/${PHARMACY.whatsapp}?text=${encodeURIComponent("Hello Sphere Pharmacy! I'd like to place an order.")}`} target="_blank" rel="noopener noreferrer" className="hidden lg:inline-flex">
-            <Button size="sm" className="gap-1.5 bg-emerald-700 hover:bg-emerald-800">
+            </a>
+          </Button>
+          <Button asChild size="sm" className="hidden gap-1.5 bg-emerald-700 hover:bg-emerald-800 lg:inline-flex">
+            <a href={`https://wa.me/${PHARMACY.whatsapp}?text=${encodeURIComponent("Hello Sphere Pharmacy! I'd like to place an order.")}`} target="_blank" rel="noopener noreferrer">
               WhatsApp
-            </Button>
-          </a>
+            </a>
+          </Button>
 
           {/* wishlist */}
           <WishSheet />

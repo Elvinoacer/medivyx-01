@@ -5,7 +5,7 @@ import { notifyServiceBooking } from "@/lib/notify"
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET?.trim()
   const auth = request.headers.get("authorization")
-  if (secret && auth !== `Bearer ${secret}`) {
+  if (!secret || secret.length < 32 || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 })
   }
 
@@ -24,27 +24,32 @@ export async function GET(request: Request) {
       include: { service: true, user: true },
     })
     for (const booking of bookings) {
-      const duplicate = await db.notification.findFirst({
-        where: { userId: booking.userId, event: window.event, metadata: { contains: booking.id } },
-        select: { id: true },
-      })
-      if (duplicate) continue
-      await notifyServiceBooking({
-        userId: booking.userId,
-        customerName: booking.user.name,
-        customerEmail: booking.user.email,
-        reference: booking.reference,
-        serviceName: booking.service.name,
-        status: "Appointment reminder",
-        message: `${window.text} ${booking.service.name} is scheduled for ${booking.scheduledStart.toLocaleString("en-KE",{weekday:"long",day:"numeric",month:"long",hour:"numeric",minute:"2-digit",timeZone:"Africa/Nairobi"})}.`,
-        start: booking.scheduledStart,
-        end: booking.scheduledEnd,
-        bookingId: booking.id,
-      })
-      await db.notification.create({
-        data: { userId: booking.userId, channel: "IN_APP", event: window.event, title: "Appointment reminder", message: window.text, metadata: JSON.stringify({ bookingId: booking.id, reference: booking.reference }) },
-      })
-      sent++
+      const key = `${window.event}:${booking.id}`
+      try {
+        const claimed = await db.$executeRaw`INSERT INTO "ScheduledJobDelivery" ("key", "createdAt") VALUES (${key}, NOW()) ON CONFLICT ("key") DO NOTHING`
+        if (claimed !== 1) continue
+      } catch {
+        continue
+      }
+      try {
+        await notifyServiceBooking({
+          userId: booking.userId,
+          customerName: booking.user.name,
+          customerEmail: booking.user.email,
+          reference: booking.reference,
+          serviceName: booking.service.name,
+          status: "Appointment reminder",
+          message: `${window.text} ${booking.service.name} is scheduled for ${booking.scheduledStart.toLocaleString("en-KE",{weekday:"long",day:"numeric",month:"long",hour:"numeric",minute:"2-digit",timeZone:"Africa/Nairobi"})}.`,
+          start: booking.scheduledStart,
+          end: booking.scheduledEnd,
+          bookingId: booking.id,
+          event: window.event,
+        })
+        await db.$executeRaw`UPDATE "ScheduledJobDelivery" SET "sentAt" = NOW() WHERE "key" = ${key}`
+        sent++
+      } catch {
+        await db.$executeRaw`DELETE FROM "ScheduledJobDelivery" WHERE "key" = ${key}`.catch(() => undefined)
+      }
     }
   }
   return NextResponse.json({ ok: true, sent })

@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server"
+import { enforceRateLimit, rejectOversizedRequest } from "@/lib/security/request"
 
 export async function POST(request: Request) {
   try {
+    const tooLarge = rejectOversizedRequest(request, 4_096)
+    if (tooLarge) return tooLarge
+    const limited = await enforceRateLimit(request, "reverse-geocode", 30, 10 * 60_000)
+    if (limited) return limited
     const body = await request.json()
     const latitude = Number(body.latitude)
     const longitude = Number(body.longitude)

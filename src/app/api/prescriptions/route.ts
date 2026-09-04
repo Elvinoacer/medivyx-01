@@ -3,7 +3,10 @@ import { db } from "@/lib/db"
 import { toPrescriptionDTOFull } from "@/lib/dto"
 import { addStatusEvent, notifyCustomer } from "@/lib/notify"
 import { requireCustomer, requireStaff } from "@/lib/session"
-import { uploadBase64ToR2 } from "@/lib/r2"
+import { getObjectFromR2, uploadBase64ToR2 } from "@/lib/r2"
+import { validateFile } from "@/lib/security/file"
+import { enforceRateLimit, publicError, rejectOversizedRequest } from "@/lib/security/request"
+import { randomUUID } from "crypto"
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10MB
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/heic", "application/pdf"]
@@ -15,12 +18,12 @@ export async function GET(request: Request) {
   const scope = url.searchParams.get("scope")
 
   if (scope === "queue") {
-    const { error } = await requireStaff(["PHARMACIST", "ADMIN", "STAFF"])
+    const { error } = await requireStaff(["PHARMACIST", "ADMIN"])
     if (error) return error
     const rows = await db.prescription.findMany({
       include: { user: { select: { name: true, phone: true } }, order: { select: { reference: true } }, reviewedBy: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
-      take: 300,
+      take: Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 50)),
     })
     const order = { PENDING: 0, CLARIFICATION_REQUESTED: 1, PARTIALLY_APPROVED: 2, APPROVED: 3, REJECTED: 4 }
     const sorted = rows.sort((a, b) => (order[a.status as keyof typeof order] ?? 9) - (order[b.status as keyof typeof order] ?? 9))
@@ -33,6 +36,7 @@ export async function GET(request: Request) {
     where: { userId: session.userId },
     include: { user: { select: { name: true, phone: true } }, order: { select: { reference: true } }, reviewedBy: { select: { name: true } } },
     orderBy: { createdAt: "desc" },
+    take: Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 50)),
   })
   return NextResponse.json(rows.map((rx) => toPrescriptionDTOFull(rx, true)))
 }
@@ -42,26 +46,36 @@ export async function POST(request: Request) {
   const { session, error } = await requireCustomer()
   if (error) return error
   try {
+    const tooLarge = rejectOversizedRequest(request, Math.ceil(MAX_FILE_BYTES / 3) * 4 + 16_384)
+    if (tooLarge) return tooLarge
+    const limited = await enforceRateLimit(request, "prescription-create", 10, 60 * 60 * 1000, session.userId!)
+    if (limited) return limited
     const body = await request.json()
     const fileName = String(body.fileName ?? "").trim()
     const fileType = String(body.fileType ?? "").trim().toLowerCase()
     let fileData = typeof body.fileData === "string" ? body.fileData : ""
-    let fileUrl: string | null = body.fileUrl ? String(body.fileUrl) : null
+    let fileUrl: string | null = null
     let storageKey: string | null = body.storageKey ? String(body.storageKey) : null
 
-    if (!fileName) return NextResponse.json({ error: "Choose a file to upload." }, { status: 400 })
+    if (!fileName || fileName.length > 120) return NextResponse.json({ error: "Choose a file with a valid name." }, { status: 400 })
     if (!ALLOWED_TYPES.includes(fileType)) {
       return NextResponse.json({ error: "Upload an image (PNG/JPEG/WebP/HEIC) or a PDF." }, { status: 400 })
     }
 
     // The frontend may upload the binary to R2 first and then send only
     // fileUrl/storageKey. In that case there is no base64 payload to validate.
-    const hasRemoteUpload = Boolean(fileUrl && storageKey)
+    const hasRemoteUpload = Boolean(storageKey)
     if (hasRemoteUpload) {
       const expectedPrefix = `prescriptions/${session.userId}/`
       if (!storageKey!.startsWith(expectedPrefix)) {
         return NextResponse.json({ error: "Invalid prescription storage reference." }, { status: 400 })
       }
+      const uploaded = await getObjectFromR2(storageKey!)
+      if (uploaded.metadata.ownerid !== session.userId || uploaded.metadata.category !== "prescriptions" || uploaded.contentType !== fileType) {
+        return NextResponse.json({ error: "Prescription upload ownership or metadata is invalid." }, { status: 400 })
+      }
+      const invalid = validateFile(uploaded.body, fileType, fileName, MAX_FILE_BYTES)
+      if (invalid) return NextResponse.json({ error: invalid }, { status: 400 })
       fileData = ""
     } else {
       // Accept both raw base64 and data URLs for the database/R2 fallback path.
@@ -77,6 +91,9 @@ export async function POST(request: Request) {
       if (decodedBytes > MAX_FILE_BYTES) {
         return NextResponse.json({ error: "File is too large — 10MB maximum." }, { status: 400 })
       }
+      const buffer = Buffer.from(fileData, "base64")
+      const invalid = validateFile(buffer, fileType, fileName, MAX_FILE_BYTES)
+      if (invalid) return NextResponse.json({ error: invalid }, { status: 400 })
     }
 
     const notes = body.notes ? String(body.notes).trim().slice(0, 1000) : null
@@ -88,26 +105,14 @@ export async function POST(request: Request) {
       if (order) orderId = order.id
     }
 
-    // If base64 was supplied, upload it to R2 here. If the client already uploaded
-    // directly to R2, preserve the supplied fileUrl/storageKey instead.
     if (fileData) {
-      try {
-        const ext = fileName.includes(".") ? `.${fileName.split(".").pop()}` : ""
-        const cleanName = fileName.replace(/\.[^/.]+$/, "").replace(/[^a-z0-9_-]/gi, "_").slice(0, 40)
-        const userFolder = session.userId || "guest"
-        const key = `prescriptions/${userFolder}/${Date.now()}_${cleanName}${ext}`
-        const r2Res = await uploadBase64ToR2(fileData, key, fileType, {
-          userId: session.userId || "anonymous",
-          fileName,
-        })
-        fileUrl = r2Res.url
-        storageKey = r2Res.key
-      } catch (err) {
-        console.warn("[R2 Prescription Upload Warning] Falling back to database base64 storage:", err)
-      }
+      const ext = fileName.includes(".") ? `.${fileName.split(".").pop()}` : ""
+      const key = `prescriptions/${session.userId}/${randomUUID()}${ext}`
+      const r2Res = await uploadBase64ToR2(fileData, key, fileType, { ownerid: session.userId!, originalname: fileName, category: "prescriptions" }, "private")
+      storageKey = r2Res.key
     }
 
-    if (!fileData && !fileUrl && !storageKey) {
+    if (!storageKey) {
       return NextResponse.json({ error: "The prescription file could not be stored. Please try again." }, { status: 400 })
     }
 
@@ -117,7 +122,7 @@ export async function POST(request: Request) {
         orderId,
         fileName,
         fileType,
-        fileData: fileData || null,
+        fileData: null,
         fileUrl,
         storageKey,
         notes,
@@ -168,6 +173,6 @@ export async function POST(request: Request) {
     })
     return NextResponse.json(toPrescriptionDTOFull(rx, true))
   } catch {
-    return NextResponse.json({ error: "Could not upload the prescription. Please try again." }, { status: 500 })
+    return publicError("Could not securely store the prescription. Please try again.")
   }
 }

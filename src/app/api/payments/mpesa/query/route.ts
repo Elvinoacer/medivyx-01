@@ -1,142 +1,22 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { ORDER_INCLUDE } from "@/lib/dto"
-import { queryStkPush, isDarajaConfigured } from "@/lib/mpesa/daraja"
-import { addStatusEvent, notifyCustomer, notifyStaff } from "@/lib/notify"
-import { awardPointsForOrder } from "@/lib/loyalty"
-import { paymentReceiptTemplate } from "@/lib/email/templates"
+import { tokenHash } from "@/lib/hash"
+import { enforceRateLimit } from "@/lib/security/request"
+import { getSession } from "@/lib/session"
 
+// Read-only status endpoint. Provider reconciliation is performed only by authenticated callbacks/jobs.
 export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const checkoutRequestId = searchParams.get("checkoutRequestId")
-
-    if (!checkoutRequestId) {
-      return NextResponse.json({ error: "checkoutRequestId is required." }, { status: 400 })
-    }
-
-    const payment = await db.payment.findFirst({
-      where: { checkoutRequestId },
-      orderBy: { createdAt: "desc" },
-    })
-
-    if (!payment) {
-      return NextResponse.json({ error: "Payment not found." }, { status: 404 })
-    }
-
-    // Already decided in DB
-    if (payment.status === "SUCCESS") {
-      return NextResponse.json({
-        status: "SUCCESS",
-        payment: { id: payment.id, status: "SUCCESS", reference: payment.providerReference },
-        orderStatus: "PAID",
-      })
-    }
-
-    if (payment.status === "FAILED") {
-      return NextResponse.json({
-        status: "FAILED",
-        payment: { id: payment.id, status: "FAILED", failureReason: payment.failureReason },
-        orderStatus: "AWAITING_PAYMENT",
-      })
-    }
-
-    // If still PROCESSING and Daraja is configured, query Safaricom live
-    if (isDarajaConfigured()) {
-      const queryResult = await queryStkPush(checkoutRequestId)
-
-      if (queryResult.status === "SUCCESS") {
-        const providerReference = `Q${Math.random().toString(36).slice(2, 8).toUpperCase()}${Date.now().toString(36).slice(-2).toUpperCase()}`
-        await db.payment.update({
-          where: { id: payment.id },
-          data: { status: "SUCCESS", providerReference, failureReason: null },
-        })
-
-        const order = await db.order.findUnique({ where: { id: payment.orderId }, include: ORDER_INCLUDE })
-        if (order && (order.status === "AWAITING_PAYMENT" || order.status === "PENDING" || order.status === "PRESCRIPTION_VERIFIED")) {
-          await db.order.update({ where: { id: order.id }, data: { status: "PAID" } })
-          await addStatusEvent(order.id, "PAID", "System", `M-Pesa payment confirmed via STK query (${providerReference})`)
-          const earned = await awardPointsForOrder(order.id)
-
-          const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
-          const orderUrl = `${appUrl}/#order-${order.id}`
-
-          const customerUser = order.userId
-            ? await db.user.findUnique({ where: { id: order.userId }, select: { name: true, email: true } })
-            : null
-          const customerName = customerUser?.name || order.guestName || "Customer"
-
-          const receiptEmail = paymentReceiptTemplate({
-            orderReference: order.reference,
-            customerName,
-            amount: order.total,
-            method: "M-Pesa",
-            pointsEarned: earned,
-            orderUrl,
-          })
-
-          await notifyCustomer(
-            order.userId,
-            "PAYMENT",
-            `Payment received — order ${order.reference}`,
-            `M-Pesa payment of KSh ${order.total.toLocaleString()} confirmed. Ref: ${providerReference}.${earned > 0 ? ` You earned ${earned} Sphere Points.` : ""}`,
-            "IN_APP",
-            {
-              link: orderUrl,
-              metadata: { orderId: order.id, reference: order.reference, amount: order.total, providerReference },
-              email: customerUser?.email
-                ? {
-                    to: customerUser.email,
-                    subject: receiptEmail.subject,
-                    html: receiptEmail.html,
-                    text: receiptEmail.text,
-                  }
-                : undefined,
-            }
-          )
-
-          await notifyStaff({
-            roles: ["ADMIN", "STAFF", "PHARMACIST"],
-            event: "PAYMENT_RECEIVED",
-            title: `Payment Confirmed: ${order.reference}`,
-            message: `M-Pesa payment of KSh ${order.total.toLocaleString()} confirmed for order ${order.reference}.`,
-            link: `${appUrl}/#admin-orders`,
-            details: {
-              "Order Ref": order.reference,
-              Amount: `KSh ${order.total.toLocaleString()}`,
-              Provider: "M-Pesa",
-              Receipt: providerReference,
-            },
-          })
-        }
-
-        return NextResponse.json({
-          status: "SUCCESS",
-          payment: { id: payment.id, status: "SUCCESS", reference: providerReference },
-          orderStatus: "PAID",
-        })
-      }
-
-      if (queryResult.status === "FAILED") {
-        await db.payment.update({
-          where: { id: payment.id },
-          data: { status: "FAILED", failureReason: queryResult.resultDesc || "Transaction cancelled or failed" },
-        })
-        return NextResponse.json({
-          status: "FAILED",
-          payment: { id: payment.id, status: "FAILED", failureReason: queryResult.resultDesc },
-          orderStatus: "AWAITING_PAYMENT",
-        })
-      }
-    }
-
-    return NextResponse.json({
-      status: "PENDING",
-      payment: { id: payment.id, status: payment.status },
-      orderStatus: "AWAITING_PAYMENT",
-    })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Error querying M-Pesa status"
-    return NextResponse.json({ error: msg }, { status: 500 })
-  }
+  const checkoutRequestId = new URL(request.url).searchParams.get("checkoutRequestId") || ""
+  if (!checkoutRequestId) return NextResponse.json({ error: "checkoutRequestId is required." }, { status: 400 })
+  const limited = await enforceRateLimit(request, "mpesa-status", 40, 10 * 60 * 1000, checkoutRequestId)
+  if (limited) return limited
+  const payment = await db.payment.findUnique({ where: { provider_checkoutRequestId: { provider: "MPESA", checkoutRequestId } }, include: { order: true } })
+  if (!payment) return NextResponse.json({ error: "Payment not found." }, { status: 404 })
+  const session = await getSession()
+  const accessToken = request.headers.get("x-order-access-token") || ""
+  const guestAllowed = Boolean(accessToken && payment.order.guestAccessTokenHash === tokenHash(accessToken) && payment.order.guestAccessExpiresAt && payment.order.guestAccessExpiresAt > new Date())
+  const staffAllowed = Boolean(session?.staffId && (session.staffRole !== "RIDER" || payment.order.riderId === session.staffId))
+  if (!(session?.userId === payment.order.userId || staffAllowed || guestAllowed)) return NextResponse.json({ error: "You cannot view this payment." }, { status: 403 })
+  const status = payment.status === "SUCCESS" ? "SUCCESS" : payment.status === "FAILED" ? "FAILED" : "PENDING"
+  return NextResponse.json({ status, payment: { id: payment.id, status: payment.status, reference: payment.providerReference || undefined, failureReason: payment.failureReason || undefined }, orderStatus: payment.order.status }, { headers: { "Cache-Control": "private, no-store" } })
 }

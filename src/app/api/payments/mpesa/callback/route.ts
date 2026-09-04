@@ -1,209 +1,79 @@
+import { createHash, timingSafeEqual } from "crypto"
+import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
+import { pointsForAmount } from "@/lib/constants"
 import { db } from "@/lib/db"
-import { ORDER_INCLUDE } from "@/lib/dto"
-import { addStatusEvent, notifyCustomer, notifyStaff } from "@/lib/notify"
-import { awardPointsForOrder } from "@/lib/loyalty"
-import { paymentReceiptTemplate } from "@/lib/email/templates"
+import { queryStkPush } from "@/lib/mpesa/daraja"
+import { notifyCustomer } from "@/lib/notify"
+import { paymentMatchesExpected } from "@/lib/security/payment"
 
-interface CallbackItem {
-  Name: string
-  Value?: string | number
+interface CallbackItem { Name: string; Value?: string | number }
+
+function validCallbackToken(request: Request): boolean {
+  const expected = process.env.MPESA_CALLBACK_TOKEN || ""
+  const provided = new URL(request.url).searchParams.get("token") || ""
+  const a = Buffer.from(expected)
+  const b = Buffer.from(provided)
+  return expected.length >= 24 && a.length === b.length && timingSafeEqual(a, b)
 }
 
-/**
- * Safaricom Daraja M-Pesa STK Push Callback Endpoint.
- * Receives Webhook notifications from Safaricom servers upon PIN completion or decline.
- * Also supports simulated client callbacks in development/test environments.
- */
 export async function POST(request: Request) {
+  if (!validCallbackToken(request)) return NextResponse.json({ error: "Invalid callback authentication." }, { status: 401 })
+  const raw = await request.text()
+  let body: { Body?: { stkCallback?: Record<string, unknown> } }
+  try { body = JSON.parse(raw) } catch { return NextResponse.json({ error: "Invalid JSON." }, { status: 400 }) }
+  const callback = body.Body?.stkCallback
+  if (!callback) return NextResponse.json({ error: "Invalid Daraja callback payload." }, { status: 400 })
+  const checkoutRequestId = String(callback.CheckoutRequestID || "")
+  const resultCode = Number(callback.ResultCode)
+  if (!checkoutRequestId || !Number.isInteger(resultCode)) return NextResponse.json({ error: "Incomplete callback payload." }, { status: 400 })
+  const items = ((callback.CallbackMetadata as { Item?: CallbackItem[] } | undefined)?.Item || [])
+  const value = (name: string) => items.find((item) => item.Name === name)?.Value
+  const receipt = value("MpesaReceiptNumber") ? String(value("MpesaReceiptNumber")) : null
+  const phone = value("PhoneNumber") ? String(value("PhoneNumber")) : null
+  const amount = value("Amount")
+  const payment = await db.payment.findUnique({ where: { provider_checkoutRequestId: { provider: "MPESA", checkoutRequestId } }, include: { order: true } })
+  if (!payment) return NextResponse.json({ error: "Unknown payment attempt." }, { status: 404 })
+  const eventId = `mpesa:${checkoutRequestId}:${resultCode}:${receipt || "none"}`
+  const payloadHash = createHash("sha256").update(raw).digest("hex")
+  const priorEvent = await db.paymentWebhookEvent.findUnique({ where: { eventId } })
+  if (priorEvent && (priorEvent.payloadHash !== payloadHash || priorEvent.paymentId !== payment.id)) return NextResponse.json({ error: "Conflicting callback replay." }, { status: 409 })
+  if (priorEvent) return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" })
+
   try {
-    const body = await request.json().catch(() => ({}))
-
-    let checkoutRequestId = ""
-    let isSuccess = false
-    let failureReason: string | null = null
-    let providerReference = ""
-    let mpesaPhone = ""
-    let amountPaid: number | null = null
-
-    // Case 1: Real Safaricom Daraja Callback payload
-    if (body?.Body?.stkCallback) {
-      const cb = body.Body.stkCallback
-      checkoutRequestId = String(cb.CheckoutRequestID ?? "")
-      const resultCode = Number(cb.ResultCode)
-      const resultDesc = String(cb.ResultDesc ?? "")
-
-      if (resultCode === 0) {
-        isSuccess = true
-        const items: CallbackItem[] = cb.CallbackMetadata?.Item ?? []
-        for (const item of items) {
-          if (item.Name === "MpesaReceiptNumber" && item.Value) {
-            providerReference = String(item.Value)
-          } else if (item.Name === "PhoneNumber" && item.Value) {
-            mpesaPhone = String(item.Value)
-          } else if (item.Name === "Amount" && item.Value) {
-            amountPaid = Number(item.Value)
+    let awarded = 0
+    let completed = false
+    if (resultCode === 0) {
+      const providerStatus = await queryStkPush(checkoutRequestId)
+      if (providerStatus.status !== "SUCCESS" || !paymentMatchesExpected({ expectedAmount: payment.amount, actualAmount: amount, expectedCurrency: payment.currency, actualCurrency: "KES", expectedPhone: payment.phone, actualPhone: phone, receipt })) return NextResponse.json({ error: "Payment verification mismatch." }, { status: 409 })
+      await db.$transaction(async (tx) => {
+        if (await tx.paymentWebhookEvent.findUnique({ where: { eventId } })) return
+        await tx.paymentWebhookEvent.create({ data: { provider: "MPESA", eventId, payloadHash, paymentId: payment.id } })
+        const changed = await tx.payment.updateMany({ where: { id: payment.id, status: { not: "SUCCESS" } }, data: { status: "SUCCESS", providerReference: receipt, failureReason: null } })
+        if (changed.count === 0) return
+        completed = true
+        const moved = await tx.order.updateMany({ where: { id: payment.orderId, status: { in: ["AWAITING_PAYMENT", "AVAILABILITY_CONFIRMED", "PRESCRIPTION_VERIFIED"] } }, data: { status: "PAID", version: { increment: 1 } } })
+        if (moved.count) await tx.orderStatusHistory.create({ data: { orderId: payment.orderId, status: "PAID", actor: "System", note: `M-Pesa payment confirmed (${receipt})` } })
+        if (payment.order.userId) {
+          awarded = pointsForAmount(Number(payment.amount))
+          if (awarded > 0) {
+            await tx.loyaltyLedger.create({ data: { eventKey: `earn:${payment.orderId}`, userId: payment.order.userId, orderId: payment.orderId, delta: awarded, reason: "PAYMENT_CAPTURED" } })
+            await tx.user.update({ where: { id: payment.order.userId }, data: { loyaltyPoints: { increment: awarded } } })
+            await tx.order.update({ where: { id: payment.orderId }, data: { pointsEarned: awarded } })
           }
         }
-      } else {
-        isSuccess = false
-        failureReason =
-          resultCode === 1032
-            ? "Payment cancelled by user on phone"
-            : resultCode === 1037
-              ? "Request timed out — no response from user phone"
-              : resultCode === 1
-                ? "Insufficient M-Pesa account balance"
-                : resultCode === 2001
-                  ? "Incorrect M-Pesa PIN entered"
-                  : resultDesc || `Transaction failed (code ${resultCode})`
-      }
-    }
-    // Case 2: Frontend simulation / demo test payload
-    else {
-      checkoutRequestId = String(body.checkoutRequestId ?? "")
-      const pin = body.pin ? String(body.pin) : null
-      const result = body.result === "SUCCESS" ? "SUCCESS" : body.result === "FAILED" ? "FAILED" : "TIMEOUT"
-
-      if (result === "SUCCESS") {
-        isSuccess = true
-      } else {
-        isSuccess = false
-        failureReason =
-          result === "TIMEOUT"
-            ? "Request timed out — no response from your phone"
-            : pin && ["1234", "0000"].includes(pin)
-              ? "Incorrect M-Pesa PIN entered"
-              : "Payment cancelled by user"
-      }
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+      if (completed) await notifyCustomer(payment.order.userId, "PAYMENT", `Payment received — order ${payment.order.reference}`, `M-Pesa payment of KSh ${Number(payment.amount).toLocaleString()} confirmed. Ref: ${receipt}.${awarded ? ` You earned ${awarded} Sphere Points.` : ""}`, "IN_APP", { link: `/orders/${payment.orderId}`, metadata: { orderId: payment.orderId, providerReference: receipt } })
+      return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" })
     }
 
-    if (!checkoutRequestId) {
-      return NextResponse.json({ error: "CheckoutRequestID is required." }, { status: 400 })
-    }
-
-    const payment = await db.payment.findFirst({
-      where: { checkoutRequestId },
-      orderBy: { createdAt: "desc" },
+    await db.$transaction(async (tx) => {
+      if (await tx.paymentWebhookEvent.findUnique({ where: { eventId } })) return
+      await tx.paymentWebhookEvent.create({ data: { provider: "MPESA", eventId, payloadHash, paymentId: payment.id } })
+      await tx.payment.updateMany({ where: { id: payment.id, status: { not: "SUCCESS" } }, data: { status: "FAILED", failureReason: `M-Pesa request failed (${resultCode})` } })
     })
-
-    if (!payment) {
-      return NextResponse.json({ error: "Payment request not found." }, { status: 404 })
-    }
-
-    if (payment.status === "SUCCESS") {
-      return NextResponse.json({
-        payment: { id: payment.id, status: payment.status },
-        orderStatus: "PAID",
-      })
-    }
-
-    const order = await db.order.findUnique({ where: { id: payment.orderId }, include: ORDER_INCLUDE })
-
-    if (isSuccess) {
-      if (!providerReference) {
-        providerReference = `Q${Math.random().toString(36).slice(2, 8).toUpperCase()}${Date.now().toString(36).slice(-2).toUpperCase()}`
-      }
-
-      await db.payment.update({
-        where: { id: payment.id },
-        data: { status: "SUCCESS", providerReference, failureReason: null },
-      })
-
-      if (order && (order.status === "AWAITING_PAYMENT" || order.status === "PENDING" || order.status === "PRESCRIPTION_VERIFIED")) {
-        await db.order.update({ where: { id: order.id }, data: { status: "PAID" } })
-        await addStatusEvent(order.id, "PAID", "System", `M-Pesa payment confirmed (${providerReference})`)
-        const earned = await awardPointsForOrder(order.id)
-
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
-        const orderUrl = `${appUrl}/#order-${order.id}`
-
-        const customerUser = order.userId
-          ? await db.user.findUnique({ where: { id: order.userId }, select: { name: true, email: true } })
-          : null
-        const customerName = customerUser?.name || order.guestName || "Valued Customer"
-        const customerEmail = customerUser?.email
-
-        const receiptEmail = paymentReceiptTemplate({
-          orderReference: order.reference,
-          customerName,
-          amount: amountPaid ?? order.total,
-          method: "M-Pesa",
-          pointsEarned: earned,
-          orderUrl,
-        })
-
-        // Notify customer via in-app + push + Resend email + SMS
-        await notifyCustomer(
-          order.userId,
-          "PAYMENT",
-          `Payment received — order ${order.reference}`,
-          `M-Pesa payment of KSh ${(amountPaid ?? order.total).toLocaleString()} confirmed (Ref: ${providerReference}).${earned > 0 ? ` You earned ${earned} Sphere Points.` : " Thank you!"}`,
-          "IN_APP",
-          {
-            link: orderUrl,
-            metadata: {
-              orderId: order.id,
-              reference: order.reference,
-              amount: amountPaid ?? order.total,
-              method: "M-Pesa",
-              providerReference,
-            },
-            email: customerEmail
-              ? {
-                  to: customerEmail,
-                  subject: receiptEmail.subject,
-                  html: receiptEmail.html,
-                  text: receiptEmail.text,
-                }
-              : undefined,
-          }
-        )
-
-        // Trigger SMS notification
-        await notifyCustomer(
-          order.userId,
-          "PAYMENT",
-          `Payment received — order ${order.reference}`,
-          `M-Pesa payment of KSh ${(amountPaid ?? order.total).toLocaleString()} confirmed. Ref: ${providerReference}. Thank you!`,
-          "SMS"
-        )
-
-        // Alert staff & admin
-        await notifyStaff({
-          roles: ["ADMIN", "STAFF", "PHARMACIST"],
-          event: "PAYMENT_RECEIVED",
-          title: `Payment Confirmed: ${order.reference}`,
-          message: `M-Pesa payment of KSh ${(amountPaid ?? order.total).toLocaleString()} confirmed for order ${order.reference}.`,
-          link: `${appUrl}/#admin-orders`,
-          details: {
-            "Order Ref": order.reference,
-            Amount: `KSh ${(amountPaid ?? order.total).toLocaleString()}`,
-            Provider: "M-Pesa",
-            Receipt: providerReference,
-            CustomerPhone: mpesaPhone || payment.phone || "N/A",
-          },
-        })
-      }
-
-      return NextResponse.json({
-        payment: { id: payment.id, status: "SUCCESS", providerReference },
-        orderStatus: "PAID",
-      })
-    }
-
-    // Payment failed or cancelled
-    await db.payment.update({
-      where: { id: payment.id },
-      data: { status: "FAILED", failureReason: failureReason || "Payment was cancelled or rejected" },
-    })
-
-    return NextResponse.json({
-      payment: { id: payment.id, status: "FAILED", failureReason },
-      orderStatus: order?.status ?? "AWAITING_PAYMENT",
-    })
-  } catch (err) {
-    console.error("[Daraja Callback Error]", err)
-    return NextResponse.json({ error: "Could not process the payment callback." }, { status: 500 })
+    return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" })
+  } catch {
+    return NextResponse.json({ error: "Callback processing failed." }, { status: 503 })
   }
 }

@@ -12,7 +12,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Toaster } from "@/components/ui/sonner"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { EmptyState } from "@/components/shared/empty-state"
 import { LogoFull } from "@/components/shared/logo"
@@ -67,11 +66,11 @@ interface NavItem {
 const NAV: NavItem[] = [
   {
     key: "overview", label: "Overview", title: "Overview", subtitle: "Today at the pharmacy — orders, revenue and queue health",
-    icon: LayoutDashboard, roles: ALL_STAFF,
+    icon: LayoutDashboard, roles: ["ADMIN"],
   },
   {
     key: "orders", label: "Orders", title: "Orders", subtitle: "Process the order queue — confirm, review, take payment, dispatch",
-    icon: Package, roles: ALL_STAFF,
+    icon: Package, roles: ["ADMIN", "PHARMACIST", "STAFF"],
   },
   {
     key: "dispatch", label: "Dispatch", title: "Dispatch board", subtitle: "Delivery orders — assign riders and track drop-offs to the door",
@@ -82,7 +81,7 @@ const NAV: NavItem[] = [
     icon: ClipboardList, roles: ["ADMIN", "PHARMACIST"],
   },
   {
-    key: "service-analytics", label: "Service analytics", title: "Service performance", subtitle: "Bookings, completion and care-service revenue", icon: BarChart3, roles: ["ADMIN", "PHARMACIST", "STAFF"],
+    key: "service-analytics", label: "Service analytics", title: "Service performance", subtitle: "Bookings, completion and care-service revenue", icon: BarChart3, roles: ["ADMIN"],
   },
   {
     key: "service-bookings", label: "Bookings", title: "Service bookings", subtitle: "Manage appointments, confirmations and the daily care calendar",
@@ -98,7 +97,7 @@ const NAV: NavItem[] = [
   },
   {
     key: "reviews", label: "Reviews", title: "Reviews", subtitle: "Moderate customer product reviews — publish or hide them",
-    icon: MessageSquareText, roles: ["ADMIN", "PHARMACIST", "STAFF"],
+    icon: MessageSquareText, roles: ["ADMIN", "PHARMACIST"],
   },
   {
     key: "promotions", label: "Promotions", title: "Promotions", subtitle: "Banners, promo codes and storefront campaigns",
@@ -140,14 +139,11 @@ export function AdminView() {
   const logout = useAuthStore((s) => s.logout)
   const openAuth = useAppStore((s) => s.openAuth)
   const navigate = useAppStore((s) => s.navigate)
+  const routeSection = useAppStore((s) => s.params.section)
 
-  const [section, setSection] = useState<AdminSectionKey>(() =>
-    // riders land on their delivery board instead of the overview
-    useAuthStore.getState().session?.role === "RIDER" ? "dispatch" : "overview"
-  )
+  const [section, setSection] = useState<AdminSectionKey>(() => navItem(routeSection as AdminSectionKey) ? routeSection as AdminSectionKey : useAuthStore.getState().session?.role === "RIDER" ? "dispatch" : "overview")
   const [refreshKey, setRefreshKey] = useState(0)
   const [navOpen, setNavOpen] = useState(false)
-  const [autoLanded, setAutoLanded] = useState(false)
 
   const [pushStatus, setPushStatus] = useState<NotificationPermission>("default")
   const [pushLoading, setPushLoading] = useState(false)
@@ -155,6 +151,10 @@ export function AdminView() {
   useEffect(() => {
     setPushStatus(getPushPermissionState())
   }, [])
+
+  useEffect(() => {
+    if (navItem(routeSection as AdminSectionKey)) setSection(routeSection as AdminSectionKey)
+  }, [routeSection])
 
   async function handleTogglePush() {
     setPushLoading(true)
@@ -171,10 +171,6 @@ export function AdminView() {
     }
   }
 
-  // Sonner toaster: mounted here so admin toasts render even though the root layout
-  // only mounts the legacy use-toast Toaster (layout is outside this task's scope).
-  const toaster = <Toaster closeButton position="bottom-right" richColors />
-
   // ---------- role guard ----------
   if (authLoading) {
     return (
@@ -188,7 +184,6 @@ export function AdminView() {
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
-        {toaster}
       </div>
     )
   }
@@ -203,7 +198,6 @@ export function AdminView() {
           onBackToStore={() => navigate("home")}
           onSessionChange={refreshSession}
         />
-        {toaster}
       </>
     )
   }
@@ -219,8 +213,8 @@ export function AdminView() {
   function goTo(next: AdminSectionKey) {
     const item = navItem(next)
     if (item && item.roles.includes(role as Role)) {
-      setAutoLanded(true)
       setSection(next)
+      navigate("admin", { section: next })
       setNavOpen(false)
     } else {
       toast.error("Your role doesn't have access to that section.")
@@ -235,7 +229,6 @@ export function AdminView() {
       toast.error("Sign out failed — please try again.")
     } finally {
       // reset the landing logic so the next sign-in auto-lands by role again
-      setAutoLanded(false)
       setSection("overview")
     }
   }
@@ -291,7 +284,6 @@ export function AdminView() {
 
   return (
     <div className="app-page app-page-admin w-full">
-      {toaster}
       <div className="mx-auto flex w-full max-w-7xl items-stretch">
         {/* ---------- desktop sidebar ---------- */}
         <aside className="admin-sidebar sticky top-32 hidden h-fit w-64 shrink-0 flex-col self-start border-r bg-muted/30 md:flex">

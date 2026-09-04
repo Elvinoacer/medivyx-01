@@ -37,7 +37,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import { Toaster } from "@/components/ui/sonner"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SectionHeader } from "@/components/shared/empty-state"
 import { useAppStore } from "@/store/use-app-store"
@@ -475,7 +474,6 @@ export function AccountView() {
           <Skeleton className="h-56 w-full rounded-xl" />
           <Skeleton className="h-56 w-full rounded-xl" />
         </div>
-        <Toaster position="bottom-left" richColors closeButton />
       </div>
     )
   }
@@ -543,7 +541,6 @@ export function AccountView() {
             </CardContent>
           </div>
         </Card>
-        <Toaster position="bottom-left" richColors closeButton />
       </div>
     )
   }
@@ -593,7 +590,6 @@ export function AccountView() {
             </div>
           </CardContent>
         </Card>
-        <Toaster position="bottom-left" richColors closeButton />
       </div>
     )
   }
@@ -607,7 +603,6 @@ export function AccountView() {
 
   return (
     <div className="app-page app-page-account mx-auto max-w-6xl px-4 py-8 pb-12">
-      <Toaster position="bottom-left" richColors closeButton />
 
       <SectionHeader
         title="Your health, orders and preferences"
@@ -977,9 +972,6 @@ export function AccountView() {
               <>
                 {(
                   [
-                    { key: "push", label: "Push Notifications", icon: BellRing, text: "Instant order alerts via Firebase Cloud Messaging" },
-                    { key: "sms", label: "SMS", icon: Smartphone, text: "Order & refill updates by text" },
-                    { key: "whatsapp", label: "WhatsApp", icon: MessageCircle, text: "Updates on your WhatsApp number" },
                     { key: "email", label: "Email", icon: Mail, text: "Order confirmations and receipts via Resend" },
                   ] as const
                 ).map((ch) => (
@@ -1021,7 +1013,7 @@ export function AccountView() {
                   <Switch id="channel-inapp" checked disabled aria-label="In-app notifications (always on)" />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Channel preferences apply to order, prescription and refill updates. In-app notifications are always on.
+                  Email preferences apply to order, prescription and refill updates. In-app notifications are always on.
                 </p>
               </>
             )}

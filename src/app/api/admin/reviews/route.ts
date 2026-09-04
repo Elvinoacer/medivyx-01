@@ -29,7 +29,7 @@ function toAdminReviewDTO(r: DbReview): AdminReviewDTO {
 
 // GET /api/admin/reviews — moderation queue (?status=PUBLISHED|HIDDEN, default all)
 export async function GET(request: Request) {
-  const { error } = await requireStaff(["ADMIN", "PHARMACIST", "STAFF"])
+  const { error } = await requireStaff(["ADMIN", "PHARMACIST"])
   if (error) return error
   const status = new URL(request.url).searchParams.get("status")?.trim()
   const reviews = await db.review.findMany({

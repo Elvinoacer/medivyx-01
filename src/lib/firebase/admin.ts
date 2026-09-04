@@ -141,21 +141,12 @@ export async function sendPushNotification(
   const uniqueTokens = Array.from(new Set(tokens.filter(Boolean)))
   const creds = getServiceAccountCredentials()
 
-  // Fallback / Simulated mode when Firebase service account is not yet configured
+  // Fail closed when live Firebase credentials are not configured.
   if (!creds) {
-    console.info(
-      `[Firebase Push (Simulated)]\n` +
-      `Tokens (${uniqueTokens.length}): ${uniqueTokens.join(", ")}\n` +
-      `Title: ${title}\n` +
-      `Body: ${body}\n` +
-      `Link: ${link ?? "none"}\n` +
-      `Note: Provide FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY in .env for live FCM dispatch.`
-    )
     return {
-      success: true,
-      sentCount: uniqueTokens.length,
-      failedCount: 0,
-      simulated: true,
+      success: false,
+      sentCount: 0,
+      failedCount: uniqueTokens.length,
     }
   }
 
@@ -234,7 +225,7 @@ export async function sendPushNotification(
           ) {
             invalidTokens.push(token)
           }
-          console.warn(`[Firebase FCM Warning] Push failed for token: ${resText}`)
+          console.warn(JSON.stringify({ level: "warn", event: "fcm_delivery_failed", status: res.status }))
         }
       } catch (err) {
         failedCount++

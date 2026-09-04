@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { toStaffDTO } from "@/lib/session"
 import { audit } from "@/lib/notify"
-import { requireStaff } from "@/lib/session"
-import { hashPassword } from "@/lib/hash"
+import { requireStaff, revokeStaffSessions } from "@/lib/session"
+import { hashPassword, validatePassword } from "@/lib/hash"
 import { ROLES, type Role } from "@/lib/constants"
 
 type Params = { params: Promise<{ id: string }> }
@@ -36,19 +36,25 @@ export async function PATCH(request: Request, { params }: Params) {
       const role = String(body.role) as Role
       if (!ROLES.includes(role)) return NextResponse.json({ error: "Choose a valid role." }, { status: 400 })
       data.role = role
+      data.authVersion = { increment: 1 }
     }
     if (body.active !== undefined) {
       if (id === session.staffId && body.active === false) {
         return NextResponse.json({ error: "You cannot deactivate your own account." }, { status: 400 })
       }
-      data.active = Boolean(body.active)
+      if (typeof body.active !== "boolean") return NextResponse.json({ error: "Active must be a boolean." }, { status: 400 })
+      data.active = body.active
+      data.authVersion = { increment: 1 }
     }
     if (body.password) {
-      if (String(body.password).length < 6) return NextResponse.json({ error: "Password must be at least 6 characters." }, { status: 400 })
-      data.passwordHash = hashPassword(String(body.password))
+      const passwordError = validatePassword(String(body.password))
+      if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 })
+      data.passwordHash = await hashPassword(String(body.password))
+      data.authVersion = { increment: 1 }
     }
 
     const updated = await db.staffUser.update({ where: { id }, data })
+    if (body.role !== undefined || body.active !== undefined || body.password) await revokeStaffSessions(id)
     await audit(session.staffName ?? "Admin", "ADMIN", "STAFF_UPDATED", "StaffUser", id, `${updated.name} (${updated.role})`)
     return NextResponse.json(toStaffDTO(updated))
   } catch {

@@ -3,8 +3,10 @@ import { db } from "@/lib/db"
 import { requireCustomer } from "@/lib/session"
 import { notifyServiceBooking } from "@/lib/notify"
 import { notifyStaff } from "@/lib/notify"
+import { randomBytes } from "crypto"
+import { enforceRateLimit, rejectOversizedRequest } from "@/lib/security/request"
 
-function ref(){return "SPB-"+Math.random().toString(36).slice(2,8).toUpperCase()}
+function ref(){return "SPB-"+randomBytes(6).toString("hex").toUpperCase()}
 function nairobiParts(date:Date){const parts=new Intl.DateTimeFormat("en-KE",{timeZone:"Africa/Nairobi",weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(date);const get=(type:string)=>parts.find(p=>p.type===type)?.value||"";const day=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(get("weekday"));return {day,minutes:Number(get("hour"))*60+Number(get("minute"))}}
 
 export async function GET(){
@@ -25,6 +27,8 @@ export async function GET(){
 export async function POST(request:Request){
  const {session,error}=await requireCustomer()
  if(error)return error
+ const tooLarge=rejectOversizedRequest(request,16_384);if(tooLarge)return tooLarge
+ const limited=await enforceRateLimit(request,"service-booking",8,60*60_000,session!.userId!);if(limited)return limited
  const body=await request.json()
  const service=await db.service.findUnique({where:{id:String(body.serviceId)},include:{availability:{where:{enabled:true}}}})
  if(!service||!service.active)return NextResponse.json({error:"Service is not available."},{status:404})
@@ -33,6 +37,7 @@ export async function POST(request:Request){
  if(Number.isNaN(start.getTime())||Number.isNaN(end.getTime())||end<=start)return NextResponse.json({error:"Invalid appointment time."},{status:400})
  if(end.getTime()-start.getTime()!==service.durationMinutes*60000)return NextResponse.json({error:"Appointment duration does not match the selected service."},{status:400})
  if(start<new Date())return NextResponse.json({error:"Please choose a future appointment."},{status:400})
+ if(start.getTime()>Date.now()+180*86400000)return NextResponse.json({error:"Appointments can be booked up to 180 days ahead."},{status:400})
  const startLocal=nairobiParts(start), endLocal=nairobiParts(end)
  if(startLocal.day!==endLocal.day)return NextResponse.json({error:"Appointment must fit within one Nairobi day."},{status:400})
  const day=startLocal.day
@@ -42,7 +47,10 @@ export async function POST(request:Request){
  if(!allowed)return NextResponse.json({error:"That time is outside service availability."},{status:409})
  const conflict=await db.serviceBooking.findFirst({where:{serviceId:service.id,status:{notIn:["CANCELLED","REJECTED","NO_SHOW"]},scheduledStart:{lt:end},scheduledEnd:{gt:start}}})
  if(conflict)return NextResponse.json({error:"That slot was just booked. Please choose another time."},{status:409})
- const created=await db.serviceBooking.create({data:{reference:ref(),serviceId:service.id,userId:session!.userId!,scheduledStart:start,scheduledEnd:end,status:"PENDING",customerNotes:body.customerNotes?String(body.customerNotes):null,price:service.price,paymentStatus:"UNPAID",statusHistory:{create:{status:"PENDING",actor:"CUSTOMER"}}},include:{service:true,statusHistory:{orderBy:{createdAt:"asc"}}}})
+ const notes=body.customerNotes?String(body.customerNotes).trim():null
+ if(notes&&notes.length>1000)return NextResponse.json({error:"Booking notes are too long."},{status:400})
+ let created
+ try{created=await db.serviceBooking.create({data:{reference:ref(),serviceId:service.id,userId:session!.userId!,scheduledStart:start,scheduledEnd:end,status:"PENDING",customerNotes:notes,price:service.price,paymentStatus:"UNPAID",statusHistory:{create:{status:"PENDING",actor:"CUSTOMER"}}},include:{service:true,statusHistory:{orderBy:{createdAt:"asc"}}}})}catch{return NextResponse.json({error:"That slot was just booked. Please choose another time."},{status:409})}
  await notifyServiceBooking({
   userId: session!.userId!,
   customerName: session!.user?.name,

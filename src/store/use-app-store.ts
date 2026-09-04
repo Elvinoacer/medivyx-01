@@ -82,6 +82,7 @@ interface AppState {
   assistantOpen: boolean
   catalogFilters: CatalogFilters
   history: HistoryEntry[]
+  hydrateFromLocation: () => void
 
   /** auth view state (set via openAuth or when navigating to "auth" with params.mode) */
   authMode: AuthMode
@@ -111,6 +112,41 @@ function mirrorParams(params: ViewParams): Pick<AppState, "selectedProductId" | 
   }
 }
 
+const SIMPLE_PATHS: Partial<Record<ViewName, string>> = {
+  home: "/", catalog: "/catalog", services: "/services", cart: "/cart",
+  checkout: "/checkout", auth: "/auth", orders: "/orders",
+  prescriptions: "/prescriptions", account: "/account", admin: "/admin",
+}
+
+function urlFor(view: ViewName, params: ViewParams): string {
+  let path = view === "product" && params.productId ? `/products/${encodeURIComponent(params.productId)}`
+    : view === "order" && params.orderId ? `/orders/${encodeURIComponent(params.orderId)}`
+    : SIMPLE_PATHS[view] || "/"
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (!value || key === "productId" || key === "orderId") continue
+    query.set(key, value)
+  }
+  if (query.size) path += `?${query.toString()}`
+  return path
+}
+
+function stateFromLocation(): HistoryEntry {
+  if (typeof window === "undefined") return { view: "home", params: {} }
+  const path = window.location.pathname.replace(/\/+$/, "") || "/"
+  const params: ViewParams = Object.fromEntries(new URLSearchParams(window.location.search))
+  const product = /^\/products\/([^/]+)$/.exec(path)
+  if (product) return { view: "product", params: { ...params, productId: decodeURIComponent(product[1]) } }
+  const order = /^\/orders\/([^/]+)$/.exec(path)
+  if (order) return { view: "order", params: { ...params, orderId: decodeURIComponent(order[1]) } }
+  const routes: Record<string, ViewName> = {
+    "/": "home", "/catalog": "catalog", "/services": "services", "/cart": "cart",
+    "/checkout": "checkout", "/auth": "auth", "/orders": "orders",
+    "/prescriptions": "prescriptions", "/account": "account", "/admin": "admin",
+  }
+  return { view: routes[path] || "home", params }
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   view: "home",
   params: {},
@@ -119,6 +155,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   assistantOpen: false,
   catalogFilters: DEFAULT_CATALOG_FILTERS,
   history: [],
+  hydrateFromLocation: () => {
+    const entry = stateFromLocation()
+    const patch: Partial<AppState> = { view: entry.view, params: entry.params, ...mirrorParams(entry.params) }
+    if (entry.view === "auth" && isAuthMode(entry.params.mode)) patch.authMode = entry.params.mode
+    set(patch)
+  },
 
   authMode: "login",
   authNext: null,
@@ -139,14 +181,20 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (params.next) patch.authNext = params.next as ViewName
     }
     set(patch)
+    if (typeof window !== "undefined") window.history.pushState({}, "", urlFor(view, params))
     if (typeof window !== "undefined") window.scrollTo({ top: 0 })
   },
 
   replace: (view, params = {}) => {
     set({ view, params, ...mirrorParams(params) })
+    if (typeof window !== "undefined") window.history.replaceState({}, "", urlFor(view, params))
   },
 
   goBack: () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back()
+      return
+    }
     const { history } = get()
     const last = history[history.length - 1]
     if (last) {

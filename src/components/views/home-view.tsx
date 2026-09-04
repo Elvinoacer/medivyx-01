@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Toaster } from "@/components/ui/sonner"
 import { ProductCard } from "@/components/shared/product-card"
 import { ProductImage } from "@/components/shared/product-image"
 import { SectionHeader, LoadingGrid } from "@/components/shared/empty-state"
@@ -157,11 +156,10 @@ export function HomeView() {
     () =>
       recentIds.length === 0
         ? Promise.resolve([])
-        : Promise.all(
-            recentIds
-              .slice(0, 6)
-              .map((id) => catalogApi.product(id).catch(() => null))
-          ).then((list) => list.filter((p): p is ProductDTO => p !== null)),
+        : catalogApi.products({ ids: recentIds.slice(0, 6).join(","), sort: "newest", pageSize: 6 }).then((result) => {
+            const byId = new Map(result.items.map((product) => [product.id, product]))
+            return recentIds.map((id) => byId.get(id)).filter((product): product is ProductDTO => Boolean(product)).slice(0, 6)
+          }),
     [recentIds.join(",")]
   )
 
@@ -177,7 +175,6 @@ export function HomeView() {
 
   return (
     <div className="landing-page pb-10">
-      <Toaster position="bottom-left" richColors closeButton />
 
       {/* ============ CATEGORIES ============ */}
       <section className="landing-section mx-auto max-w-7xl px-4 py-12" aria-labelledby="categories-heading">
@@ -453,16 +450,16 @@ export function HomeView() {
                 </li>
               </ul>
               <div className="flex flex-wrap gap-2 pt-1">
-                <a href={`tel:${PHARMACY.phone}`}>
-                  <Button variant="outline" size="sm" className="gap-1.5">
+                <Button asChild variant="outline" size="sm" className="gap-1.5">
+                  <a href={`tel:${PHARMACY.phone}`}>
                     <Phone className="h-4 w-4" /> Call
-                  </Button>
-                </a>
-                <a href={waLink("Hello Sphere Pharmacy! I'd like to make an enquiry.")} target="_blank" rel="noopener noreferrer">
-                  <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
+                  </a>
+                </Button>
+                <Button asChild size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
+                  <a href={waLink("Hello Sphere Pharmacy! I'd like to make an enquiry.")} target="_blank" rel="noopener noreferrer">
                     <MessageCircle className="h-4 w-4" /> WhatsApp
-                  </Button>
-                </a>
+                  </a>
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -484,11 +481,11 @@ export function HomeView() {
                 </span>
                 <p className="relative mt-4 max-w-xs text-sm font-semibold">Lumumba Drive · Roysambu</p>
                 <p className="relative mt-1 max-w-xs text-xs text-muted-foreground">{PHARMACY.address}</p>
-                <a href={PHARMACY.mapsUrl} target="_blank" rel="noopener noreferrer" className="relative mt-4">
-                  <Button size="sm" className="gap-1.5">
+                <Button asChild size="sm" className="relative mt-4 gap-1.5">
+                  <a href={PHARMACY.mapsUrl} target="_blank" rel="noopener noreferrer">
                     <MapPin className="h-4 w-4" /> Open in Google Maps
-                  </Button>
-                </a>
+                  </a>
+                </Button>
                 <p className="relative mt-3 text-[11px] text-muted-foreground">Ready in ~2 hours for pickup orders</p>
               </div>
             </CardContent>

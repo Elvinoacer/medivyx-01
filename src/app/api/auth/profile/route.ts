@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { hashPassword, verifyPassword } from "@/lib/hash"
+import { hashPassword, validatePassword, verifyPassword } from "@/lib/hash"
 import { requireCustomer, toUserDTO } from "@/lib/session"
 
 const PHONE_RE = /^(?:\+?254|0)?(7\d{8}|1\d{8})$/
@@ -46,13 +46,12 @@ export async function PATCH(request: Request) {
     }
     if (body.password) {
       const current = String(body.currentPassword ?? "")
-      if (!user.passwordHash || !verifyPassword(current, user.passwordHash)) {
+      if (!user.passwordHash || !(await verifyPassword(current, user.passwordHash))) {
         return NextResponse.json({ error: "Your current password is incorrect." }, { status: 401 })
       }
-      if (String(body.password).length < 6) {
-        return NextResponse.json({ error: "New password must be at least 6 characters." }, { status: 400 })
-      }
-      data.passwordHash = hashPassword(String(body.password))
+      const passwordError = validatePassword(String(body.password))
+      if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 })
+      data.passwordHash = await hashPassword(String(body.password))
     }
 
     const updated = await db.user.update({ where: { id: user.id }, data })

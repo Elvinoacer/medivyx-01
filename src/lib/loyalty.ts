@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
 import { LOYALTY, pointsForAmount } from "@/lib/constants"
 import type { LoyaltySummaryDTO } from "@/lib/types"
@@ -17,42 +18,32 @@ import type { LoyaltySummaryDTO } from "@/lib/types"
 
 /** Award points for a paid order (idempotent). Returns points awarded, or 0. */
 export async function awardPointsForOrder(orderId: string): Promise<number> {
-  const order = await db.order.findUnique({ where: { id: orderId } })
-  if (!order || order.pointsEarned > 0 || !order.userId) return 0
-  // Points are earned on the amount actually paid (total incl. delivery fee,
-  // excluding the value covered by redeemed points keeps the maths honest:
-  // net spend = total − points-redemption value).
-  const netSpend = Math.max(0, order.total - order.pointsRedeemed * LOYALTY.pointValue)
-  const points = pointsForAmount(netSpend)
-  if (points <= 0) return 0
-  await db.order.update({ where: { id: order.id }, data: { pointsEarned: points } })
-  await db.user.update({ where: { id: order.userId }, data: { loyaltyPoints: { increment: points } } })
-  return points
+  return db.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({ where: { id: orderId } })
+    if (!order || order.pointsEarned !== 0 || !order.userId) return 0
+    const netSpend = Math.max(0, Number(order.total) - order.pointsRedeemed * LOYALTY.pointValue)
+    const points = pointsForAmount(netSpend)
+    if (points <= 0) return 0
+    const claimed = await tx.order.updateMany({ where: { id: order.id, pointsEarned: 0 }, data: { pointsEarned: points } })
+    if (claimed.count !== 1) return 0
+    await tx.loyaltyLedger.create({ data: { eventKey: `earn:${order.id}`, userId: order.userId, orderId: order.id, delta: points, reason: "ORDER_PAID" } })
+    await tx.user.update({ where: { id: order.userId }, data: { loyaltyPoints: { increment: points } } })
+    return points
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 }
 
 /** Refund/claw back points when an order is cancelled or refunded. */
 export async function reversePointsForOrder(orderId: string, actor: string): Promise<void> {
-  const order = await db.order.findUnique({ where: { id: orderId } })
-  if (!order || !order.userId) return
-  const take = Math.min(order.pointsEarned, (await db.user.findUnique({ where: { id: order.userId } }))?.loyaltyPoints ?? 0)
-  if (order.pointsEarned > 0 && take > 0) {
-    await db.user.update({ where: { id: order.userId }, data: { loyaltyPoints: { decrement: take } } })
-  }
-  if (order.pointsRedeemed > 0) {
-    await db.user.update({ where: { id: order.userId }, data: { loyaltyPoints: { increment: order.pointsRedeemed } } })
-  }
-  if (order.pointsEarned > 0 || order.pointsRedeemed > 0) {
-    await db.auditLog.create({
-      data: {
-        actor,
-        actorRole: "SYSTEM",
-        action: "LOYALTY_REVERSAL",
-        entity: "Order",
-        entityId: order.reference,
-        details: `Clawed back ${order.pointsEarned} earned pts, returned ${order.pointsRedeemed} redeemed pts`,
-      },
-    })
-  }
+  await db.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({ where: { id: orderId } })
+    if (!order?.userId || await tx.loyaltyLedger.findUnique({ where: { eventKey: `reverse:${orderId}` } })) return
+    const user = await tx.user.findUnique({ where: { id: order.userId }, select: { loyaltyPoints: true } })
+    const clawback = Math.min(order.pointsEarned, user?.loyaltyPoints ?? 0)
+    const delta = order.pointsRedeemed - clawback
+    await tx.loyaltyLedger.create({ data: { eventKey: `reverse:${orderId}`, userId: order.userId, orderId, delta, reason: "ORDER_REFUNDED" } })
+    if (delta !== 0) await tx.user.update({ where: { id: order.userId }, data: { loyaltyPoints: { increment: delta } } })
+    if (order.pointsEarned > 0 || order.pointsRedeemed > 0) await tx.auditLog.create({ data: { actor, actorRole: "SYSTEM", action: "LOYALTY_REVERSAL", entity: "Order", entityId: order.reference, details: `Clawed back ${clawback} earned pts, returned ${order.pointsRedeemed} redeemed pts` } })
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 }
 
 /** Redemption quote for a customer + subtotal (post-promo). */

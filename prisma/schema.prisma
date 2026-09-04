@@ -13,6 +13,7 @@ model User {
   phone            String?           @unique
   email            String?           @unique
   passwordHash     String?
+  phoneVerifiedAt  DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   loyaltyPoints    Int               @default(0)
@@ -28,6 +29,7 @@ model User {
   serviceBookings  ServiceBooking[]
   serviceReviews   ServiceReview[]
   sessions         Session[]
+  loyaltyEntries   LoyaltyLedger[]
 }
 
 model Address {
@@ -42,27 +44,37 @@ model Address {
   longitude Float?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isDefault])
 }
 
 model Session {
-  id        String     @id @default(cuid())
-  token     String     @unique
-  userId    String?
-  staffId   String?
-  role      String
-  expiresAt DateTime
-  createdAt DateTime   @default(now())
-  staff     StaffUser? @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String     @id @default(cuid())
+  token       String     @unique
+  userId      String?
+  staffId     String?
+  role        String
+  expiresAt   DateTime
+  createdAt   DateTime   @default(now())
+  lastSeenAt  DateTime   @default(now())
+  authVersion Int        @default(0)
+  staff       StaffUser? @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  user        User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([staffId, expiresAt])
 }
 
 model OtpCode {
   id        String   @id @default(cuid())
   phone     String
-  code      String
+  codeHash  String
   expiresAt DateTime
   used      Boolean  @default(false)
+  attempts  Int      @default(0)
   createdAt DateTime @default(now())
+
+  @@index([phone, used, expiresAt, createdAt])
 }
 
 model StaffUser {
@@ -74,6 +86,7 @@ model StaffUser {
   role             String
   title            String?
   active           Boolean          @default(true)
+  authVersion      Int              @default(0)
   createdAt        DateTime         @default(now())
   avatar           String?
   notifications    Notification[]
@@ -103,8 +116,8 @@ model Product {
   categoryId           String?
   brand                String?
   packSize             String?
-  price                Float
-  compareAtPrice       Float?
+  price                Decimal        @db.Decimal(12, 2)
+  compareAtPrice       Decimal?       @db.Decimal(12, 2)
   stockStatus          String         @default("IN_STOCK")
   stockQty             Int            @default(0)
   lowStockThreshold    Int            @default(5)
@@ -134,6 +147,7 @@ model Review {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([productId, userId])
+  @@index([productId, status, createdAt])
 }
 
 model ProductAlert {
@@ -149,37 +163,49 @@ model ProductAlert {
 }
 
 model Order {
-  id              String               @id @default(cuid())
-  reference       String               @unique
-  userId          String?
-  guestName       String?
-  guestPhone      String?
-  type            String
-  status          String
-  fulfillment     String
-  deliveryAddress String?
-  deliveryArea    String?
-  deliveryNotes   String?
-  deliveryFee     Float                @default(0)
-  deliveryLatitude  Float?
-  deliveryLongitude Float?
-  subtotal        Float
-  discountAmount  Float                @default(0)
-  promotionCode   String?
-  total           Float
-  notes           String?
-  pickupCode      String?
-  riderId         String?
-  riderName       String?
-  pointsEarned    Int                  @default(0)
-  pointsRedeemed  Int                  @default(0)
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-  user            User?                @relation(fields: [userId], references: [id])
-  items           OrderItem[]
-  statusHistory   OrderStatusHistory[]
-  payments        Payment[]
-  prescriptions   Prescription[]
+  id                   String               @id @default(cuid())
+  reference            String               @unique
+  userId               String?
+  guestName            String?
+  guestPhone           String?
+  guestEmail           String?
+  guestAccessTokenHash String?              @unique
+  guestAccessExpiresAt DateTime?
+  type                 String
+  status               String
+  fulfillment          String
+  deliveryAddress      String?
+  deliveryArea         String?
+  deliveryNotes        String?
+  deliveryFee          Decimal              @default(0) @db.Decimal(12, 2)
+  deliveryLatitude     Float?
+  deliveryLongitude    Float?
+  subtotal             Decimal              @db.Decimal(12, 2)
+  discountAmount       Decimal              @default(0) @db.Decimal(12, 2)
+  promotionCode        String?
+  total                Decimal              @db.Decimal(12, 2)
+  notes                String?
+  pickupCode           String?              @unique
+  riderId              String?
+  riderName            String?
+  pointsEarned         Int                  @default(0)
+  pointsRedeemed       Int                  @default(0)
+  inventoryReservedAt  DateTime?
+  inventoryReleasedAt  DateTime?
+  version              Int                  @default(0)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  user                 User?                @relation(fields: [userId], references: [id])
+  items                OrderItem[]
+  statusHistory        OrderStatusHistory[]
+  payments             Payment[]
+  prescriptions        Prescription[]
+  loyaltyEntries       LoyaltyLedger[]
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([riderId, status, createdAt])
+  @@index([guestPhone, createdAt])
 }
 
 model OrderItem {
@@ -187,11 +213,14 @@ model OrderItem {
   orderId              String
   productId            String?
   name                 String
-  price                Float
+  price                Decimal @db.Decimal(12, 2)
   qty                  Int
   requiresPrescription Boolean @default(false)
-  lineTotal            Float
+  lineTotal            Decimal @db.Decimal(12, 2)
   order                Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([productId])
 }
 
 model OrderStatusHistory {
@@ -202,29 +231,49 @@ model OrderStatusHistory {
   actor     String
   createdAt DateTime @default(now())
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
 }
 
 model Prescription {
-  id             String     @id @default(cuid())
+  id             String                  @id @default(cuid())
   userId         String?
   orderId        String?
   fileName       String
   fileType       String
   fileData       String?
   notes          String?
-  status         String     @default("PENDING")
+  status         String                  @default("PENDING")
   reviewNotes    String?
   reviewedById   String?
   reviewedAt     DateTime?
-  refillsAllowed Int        @default(0)
-  refillsUsed    Int        @default(0)
+  refillsAllowed Int                     @default(0)
+  refillsUsed    Int                     @default(0)
   validUntil     DateTime?
-  createdAt      DateTime   @default(now())
+  createdAt      DateTime                @default(now())
   fileUrl        String?
   storageKey     String?
-  order          Order?     @relation(fields: [orderId], references: [id])
-  reviewedBy     StaffUser? @relation("RxReviewer", fields: [reviewedById], references: [id])
-  user           User?      @relation(fields: [userId], references: [id])
+  order          Order?                  @relation(fields: [orderId], references: [id])
+  reviewedBy     StaffUser?              @relation("RxReviewer", fields: [reviewedById], references: [id])
+  user           User?                   @relation(fields: [userId], references: [id])
+  accessLogs     PrescriptionAccessLog[]
+  deletedAt      DateTime?
+
+  @@index([userId, createdAt])
+  @@index([orderId, status])
+  @@index([status, createdAt])
+}
+
+model PrescriptionAccessLog {
+  id             String       @id @default(cuid())
+  prescriptionId String
+  actorId        String
+  actorRole      String
+  action         String
+  createdAt      DateTime     @default(now())
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  @@index([prescriptionId, createdAt])
 }
 
 model Payment {
@@ -233,29 +282,69 @@ model Payment {
   provider          String
   method            String?
   status            String   @default("PENDING")
-  amount            Float
+  amount            Decimal  @db.Decimal(12, 2)
+  currency          String   @default("KES")
   phone             String?
   cardLast4         String?
   providerReference String?
   checkoutRequestId String?
+  idempotencyKey    String?  @unique
+  eventId           String?  @unique
+  refundReference   String?  @unique
   failureReason     String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  webhookEvents     PaymentWebhookEvent[]
+
+  @@unique([provider, providerReference])
+  @@unique([provider, checkoutRequestId])
+  @@index([orderId, status, createdAt])
 }
 
 model Promotion {
+  id           String                @id @default(cuid())
+  title        String
+  description  String
+  badge        String?
+  code         String?               @unique
+  discountPct  Int?
+  color        String?
+  active       Boolean               @default(true)
+  startsAt     DateTime?
+  endsAt       DateTime?
+  createdAt    DateTime              @default(now())
+  maxUses      Int?
+  perUserLimit Int?
+  minimumSpend Decimal?              @db.Decimal(12, 2)
+  redemptions  PromotionRedemption[]
+}
+
+model PromotionRedemption {
   id          String    @id @default(cuid())
-  title       String
-  description String
-  badge       String?
-  code        String?
-  discountPct Int?
-  color       String?
-  active      Boolean   @default(true)
-  startsAt    DateTime?
-  endsAt      DateTime?
+  promotionId String
+  orderId     String    @unique
+  userId      String?
   createdAt   DateTime  @default(now())
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@index([promotionId, createdAt])
+  @@index([promotionId, userId])
+}
+
+model LoyaltyLedger {
+  id        String   @id @default(cuid())
+  eventKey  String   @unique
+  userId    String
+  orderId   String
+  delta     Int
+  reason    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([orderId, createdAt])
 }
 
 model AuditLog {
@@ -267,6 +356,9 @@ model AuditLog {
   entityId  String?
   details   String?
   createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity, entityId, createdAt])
 }
 
 model Notification {
@@ -322,7 +414,7 @@ model Service {
   description      String?
   category         String?
   durationMinutes  Int                   @default(15)
-  price            Float?
+  price            Decimal?              @db.Decimal(12, 2)
   priceLabel       String?
   heroImage        String?
   featured         Boolean               @default(false)
@@ -359,6 +451,7 @@ model ServiceAvailability {
   updatedAt DateTime @updatedAt
   service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
+  @@unique([serviceId, dayOfWeek, startTime, endTime])
   @@index([serviceId, dayOfWeek, enabled])
 }
 
@@ -372,7 +465,7 @@ model ServiceBooking {
   status          String                        @default("PENDING")
   customerNotes   String?
   staffNotes      String?
-  price           Float?
+  price           Decimal?                      @db.Decimal(12, 2)
   paymentStatus   String                        @default("UNPAID")
   createdAt       DateTime                      @default(now())
   updatedAt       DateTime                      @updatedAt
@@ -407,16 +500,37 @@ model ServicePayment {
   provider          String
   method            String?
   status            String         @default("PENDING")
-  amount            Float
+  amount            Decimal        @db.Decimal(12, 2)
+  currency          String         @default("KES")
   phone             String?
   providerReference String?
   checkoutRequestId String?
+  idempotencyKey    String?         @unique
+  eventId           String?        @unique
   failureReason     String?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   booking           ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  webhookEvents     PaymentWebhookEvent[]
 
+  @@unique([provider, providerReference])
+  @@unique([provider, checkoutRequestId])
   @@index([bookingId, status])
+}
+
+model PaymentWebhookEvent {
+  id               String          @id @default(cuid())
+  provider         String
+  eventId          String          @unique
+  payloadHash      String
+  paymentId        String?
+  servicePaymentId String?
+  createdAt        DateTime        @default(now())
+  payment          Payment?        @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  servicePayment   ServicePayment? @relation(fields: [servicePaymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId, createdAt])
+  @@index([servicePaymentId, createdAt])
 }
 
 model ServiceReview {
@@ -439,4 +553,19 @@ model ServiceReview {
 model Setting {
   key   String @id
   value String
+}
+
+model RateLimitBucket {
+  key        String   @id
+  count      Int      @default(0)
+  windowEnds DateTime
+  updatedAt  DateTime @updatedAt
+
+  @@index([windowEnds])
+}
+
+model ScheduledJobDelivery {
+  key       String   @id
+  sentAt    DateTime?
+  createdAt DateTime @default(now())
 }

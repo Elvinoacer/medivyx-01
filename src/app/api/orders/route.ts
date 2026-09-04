@@ -1,367 +1,173 @@
+import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
+import { DISPATCH_STATUSES, LOYALTY } from "@/lib/constants"
 import { db } from "@/lib/db"
 import { ORDER_INCLUDE, toOrderDTO } from "@/lib/dto"
-import { orderReference, pickupCode } from "@/lib/hash"
-import { addStatusEvent, notifyCustomer, notifyStaff } from "@/lib/notify"
+import { newOpaqueToken, orderReference, pickupCode, tokenHash } from "@/lib/hash"
+import { redemptionQuote } from "@/lib/loyalty"
+import { notifyCustomer, notifyStaff } from "@/lib/notify"
+import { money } from "@/lib/security/payment"
+import { enforceRateLimit, rejectOversizedRequest } from "@/lib/security/request"
 import { getSession, requireStaff } from "@/lib/session"
 import { computeDeliveryFee, getSettings } from "@/lib/settings"
-import { redemptionQuote } from "@/lib/loyalty"
-import { DISPATCH_STATUSES, LOYALTY, TERMINAL_STATUSES, type OrderStatus } from "@/lib/constants"
-import { orderConfirmationTemplate } from "@/lib/email/templates"
 
 const PHONE_RE = /^(?:\+?254|0)?(7\d{8}|1\d{8})$/
-function normalizePhone(raw: string): string | null {
-  const m = PHONE_RE.exec(raw.replace(/\s+/g, ""))
-  return m ? `+254${m[1]}` : null
-}
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+const normalizePhone = (raw: string) => { const match = PHONE_RE.exec(raw.replace(/\s+/g, "")); return match ? `+254${match[1]}` : null }
 
-// GET /api/orders               → customer's own orders
-// GET /api/orders?scope=all     → staff: all orders (filters: status, type, search)
-// GET /api/orders?scope=dispatch→ staff: delivery orders for the dispatch board
-// GET /api/orders?scope=rider   → rider: deliveries assigned to me
+function pageSize(url: URL, fallback = 50): number { return Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || fallback)) }
+
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const scope = url.searchParams.get("scope")
-
+  const take = pageSize(url)
   if (scope === "all") {
-    const { error } = await requireStaff()
+    const { error } = await requireStaff(["ADMIN", "PHARMACIST", "STAFF"])
     if (error) return error
-    const status = url.searchParams.get("status")?.trim() ?? ""
-    const type = url.searchParams.get("type")?.trim() ?? ""
-    const search = url.searchParams.get("search")?.trim() ?? ""
-
-    const where: Record<string, unknown> = {}
-    if (status) where.status = status
-    if (type) where.type = type
-    if (search) {
-      where.OR = [
-        { reference: { contains: search.toUpperCase() } },
-        { guestName: { contains: search } },
-        { guestPhone: { contains: search } },
-        { user: { name: { contains: search } } },
-        { user: { phone: { contains: search } } },
-        { deliveryAddress: { contains: search } },
-      ]
-    }
-    const orders = await db.order.findMany({ where, include: ORDER_INCLUDE, orderBy: { createdAt: "desc" }, take: 500 })
-    return NextResponse.json(orders.map(toOrderDTO))
+    const status = url.searchParams.get("status")?.trim()
+    const type = url.searchParams.get("type")?.trim()
+    const search = url.searchParams.get("search")?.trim().slice(0, 80)
+    const orders = await db.order.findMany({ where: { ...(status ? { status } : {}), ...(type ? { type } : {}), ...(search ? { OR: [{ reference: { contains: search.toUpperCase() } }, { guestName: { contains: search, mode: "insensitive" } }, { guestPhone: { contains: search } }] } : {}) }, include: ORDER_INCLUDE, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take })
+    return NextResponse.json(orders.map(toOrderDTO), { headers: { "Cache-Control": "private, no-store" } })
   }
-
-  // dispatch board — delivery orders in dispatch-relevant statuses, unassigned first
   if (scope === "dispatch") {
-    const { session, error } = await requireStaff()
+    const { error } = await requireStaff(["ADMIN", "PHARMACIST", "STAFF"])
     if (error) return error
-    const orders = await db.order.findMany({
-      where: { fulfillment: "DELIVERY", status: { in: DISPATCH_STATUSES } },
-      include: ORDER_INCLUDE,
-      orderBy: [{ riderId: "asc" }, { createdAt: "asc" }],
-      take: 100,
-    })
-    return NextResponse.json(orders.map(toOrderDTO))
+    const orders = await db.order.findMany({ where: { fulfillment: "DELIVERY", status: { in: DISPATCH_STATUSES } }, include: ORDER_INCLUDE, orderBy: [{ riderId: "asc" }, { createdAt: "asc" }], take })
+    return NextResponse.json(orders.map(toOrderDTO), { headers: { "Cache-Control": "private, no-store" } })
   }
-
-  // rider board — only orders assigned to the signed-in rider
   if (scope === "rider") {
     const { session, error } = await requireStaff(["RIDER"])
     if (error) return error
-    const orders = await db.order.findMany({
-      where: { riderId: session!.staffId, status: { in: DISPATCH_STATUSES } },
-      include: ORDER_INCLUDE,
-      orderBy: { createdAt: "asc" },
-    })
-    return NextResponse.json(orders.map(toOrderDTO))
+    const orders = await db.order.findMany({ where: { riderId: session.staffId, fulfillment: "DELIVERY", status: { in: DISPATCH_STATUSES } }, include: ORDER_INCLUDE, orderBy: { createdAt: "asc" }, take })
+    return NextResponse.json(orders.map(toOrderDTO), { headers: { "Cache-Control": "private, no-store" } })
   }
-
-  // customer scope
   const session = await getSession()
-  if (!session || session.role !== "CUSTOMER" || !session.userId) {
-    return NextResponse.json({ error: "Please sign in to view your orders." }, { status: 401 })
-  }
-  const orders = await db.order.findMany({ where: { userId: session.userId }, include: ORDER_INCLUDE, orderBy: { createdAt: "desc" } })
-  return NextResponse.json(orders.map(toOrderDTO))
+  if (!session?.userId) return NextResponse.json({ error: "Please sign in to view your orders." }, { status: 401 })
+  const orders = await db.order.findMany({ where: { userId: session.userId }, include: ORDER_INCLUDE, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take })
+  return NextResponse.json(orders.map(toOrderDTO), { headers: { "Cache-Control": "private, no-store" } })
 }
 
-// POST /api/orders — create an order/reservation
 export async function POST(request: Request) {
   try {
+    const tooLarge = rejectOversizedRequest(request, 64 * 1024)
+    if (tooLarge) return tooLarge
+    const limited = await enforceRateLimit(request, "order-create", 12, 15 * 60 * 1000)
+    if (limited) return limited
     const body = await request.json()
-    const session = await getSession()
+    const rawItems = Array.isArray(body.items) ? body.items : []
+    if (!rawItems.length || rawItems.length > 50) return NextResponse.json({ error: "Your cart must contain between 1 and 50 items." }, { status: 400 })
+    const requested = new Map<string, number>()
+    for (const item of rawItems) {
+      const id = String(item?.productId || "")
+      const qty = Number(item?.qty)
+      if (!id || !Number.isInteger(qty) || qty < 1 || qty > 99) return NextResponse.json({ error: "A cart quantity is invalid." }, { status: 400 })
+      requested.set(id, (requested.get(id) || 0) + qty)
+    }
+    if ([...requested.values()].some((qty) => qty > 99)) return NextResponse.json({ error: "A product quantity exceeds the order limit." }, { status: 400 })
+    const products = await db.product.findMany({ where: { id: { in: [...requested.keys()] } } })
+    if (products.length !== requested.size) return NextResponse.json({ error: "A product no longer exists." }, { status: 409 })
+    const lines = products.map((product) => ({ product, qty: requested.get(product.id)! }))
+    for (const { product, qty } of lines) if (!product.active || product.stockStatus === "DISCONTINUED" || product.stockQty < qty) return NextResponse.json({ error: `${product.name} does not have enough stock.` }, { status: 409 })
 
-    const items = Array.isArray(body.items) ? body.items : []
-    if (items.length === 0) return NextResponse.json({ error: "Your cart is empty." }, { status: 400 })
+    const session = await getSession()
+    const userId = session?.role === "CUSTOMER" ? session.userId : null
+    let guestName: string | null = null, guestPhone: string | null = null, guestEmail: string | null = null, guestAccessToken: string | null = null
+    if (!userId) {
+      guestName = String(body.customer?.name || "").trim().slice(0, 100)
+      guestPhone = normalizePhone(String(body.customer?.phone || ""))
+      guestEmail = body.customer?.email ? String(body.customer.email).trim().toLowerCase() : null
+      if (guestName.length < 2 || !guestPhone || (guestEmail && !EMAIL_RE.test(guestEmail))) return NextResponse.json({ error: "Enter valid guest contact details." }, { status: 400 })
+      guestAccessToken = newOpaqueToken()
+    }
+    const hasRx = lines.some(({ product }) => product.requiresPrescription)
+    const rxIds: string[] = Array.isArray(body.prescriptionIds) ? [...new Set((body.prescriptionIds as unknown[]).map(String))] : []
+    if (hasRx) {
+      if (!userId) return NextResponse.json({ error: "Prescription items require a verified account." }, { status: 401 })
+      const owned = await db.prescription.findMany({ where: { id: { in: rxIds }, userId, orderId: null, deletedAt: null } })
+      if (!rxIds.length || owned.length !== rxIds.length) return NextResponse.json({ error: "Upload an unused prescription from your account." }, { status: 400 })
+    }
 
     const fulfillment = body.fulfillment === "DELIVERY" ? "DELIVERY" : "PICKUP"
-    const reservation = Boolean(body.reservation)
     const paymentMethod = ["MPESA", "CARD", "CASH", "LATER"].includes(body.paymentMethod) ? body.paymentMethod : "CASH"
-
-    // resolve products server-side (never trust client prices)
-    const productIds = items.map((i: { productId: string }) => String(i.productId))
-    const products = await db.product.findMany({ where: { id: { in: productIds } } })
-    const orderLines: { product: (typeof products)[number]; qty: number }[] = []
-    for (const item of items) {
-      const product = products.find((p) => p.id === String(item.productId))
-      const qty = Math.max(1, Math.min(99, Math.trunc(Number(item.qty)) || 1))
-      if (!product) return NextResponse.json({ error: "One of the products no longer exists." }, { status: 400 })
-      if (!product.active || product.stockStatus === "DISCONTINUED") {
-        return NextResponse.json({ error: `${product.name} is no longer available.` }, { status: 400 })
-      }
-      if (product.stockStatus === "OUT_OF_STOCK") {
-        return NextResponse.json({ error: `${product.name} is out of stock. Remove it or order via WhatsApp to be notified.` }, { status: 400 })
-      }
-      orderLines.push({ product, qty })
-    }
-
-    const hasRx = orderLines.some((l) => l.product.requiresPrescription)
-
-    // customer resolution
-    let userId = session?.role === "CUSTOMER" ? session.userId : null
-    let guestName: string | null = null
-    let guestPhone: string | null = null
-
-    if (!userId) {
-      const name = String(body.customer?.name ?? "").trim()
-      const phoneRaw = String(body.customer?.phone ?? "").trim()
-      if (name.length < 2) return NextResponse.json({ error: "Enter your name for this order." }, { status: 400 })
-      const phone = normalizePhone(phoneRaw)
-      if (!phone) return NextResponse.json({ error: "Enter a valid phone number (e.g. 0712 345 678)." }, { status: 400 })
-      guestName = name
-      guestPhone = phone
-    }
-
-    // FR-2.2/FR-5.4: prescription items need an identifiable, contactable customer + uploaded rx
-    if (hasRx) {
-      if (!userId) {
-        return NextResponse.json(
-          { error: "Prescription items require an account. Create one (quick, phone OTP works) so our pharmacist can verify your prescription." },
-          { status: 401 }
-        )
-      }
-      const rxIds = Array.isArray(body.prescriptionIds) ? body.prescriptionIds.map(String) : []
-      if (rxIds.length === 0) {
-        return NextResponse.json({ error: "Upload a prescription for the prescription-only items before placing the order." }, { status: 400 })
-      }
-      const owned = await db.prescription.findMany({ where: { id: { in: rxIds }, userId } })
-      if (owned.length !== rxIds.length) {
-        return NextResponse.json({ error: "Some uploaded prescriptions could not be found on your account." }, { status: 400 })
-      }
-    }
-
-    // delivery details + fee
     const settings = await getSettings()
-    let deliveryAddress: string | null = null
-    let deliveryArea: string | null = null
-    let deliveryNotes: string | null = null
-    let deliveryLatitude: number | null = body.deliveryLatitude != null ? Number(body.deliveryLatitude) : null
-    let deliveryLongitude: number | null = body.deliveryLongitude != null ? Number(body.deliveryLongitude) : null
-    let deliveryFee = 0
-
-    if (fulfillment === "DELIVERY") {
-      if (userId && body.addressId) {
-        const addr = await db.address.findFirst({ where: { id: String(body.addressId), userId } })
-        if (addr) {
-          deliveryAddress = addr.text
-          deliveryArea = addr.area
-          deliveryNotes = addr.notes
-          deliveryLatitude = addr.latitude
-          deliveryLongitude = addr.longitude
-        }
-      }
-      if (!deliveryAddress) {
-        deliveryAddress = String(body.deliveryAddress ?? "").trim() || null
-        deliveryArea = body.deliveryArea ? String(body.deliveryArea).trim() : null
-        deliveryNotes = body.deliveryNotes ? String(body.deliveryNotes).trim() : null
-      }
-      if (!deliveryAddress) {
-        return NextResponse.json({ error: "Enter the delivery address." }, { status: 400 })
-      }
+    let deliveryAddress: string | null = null, deliveryArea: string | null = null, deliveryNotes: string | null = null
+    let latitude: number | null = null, longitude: number | null = null
+    if (fulfillment === "DELIVERY" && userId && body.addressId) {
+      const address = await db.address.findFirst({ where: { id: String(body.addressId), userId } })
+      if (address) { deliveryAddress = address.text; deliveryArea = address.area; deliveryNotes = address.notes; latitude = address.latitude; longitude = address.longitude }
     }
-
-    const subtotal = orderLines.reduce((s, l) => s + l.product.price * l.qty, 0)
-    if (fulfillment === "DELIVERY") {
-      deliveryFee = computeDeliveryFee(deliveryArea, settings.delivery, subtotal, deliveryLatitude, deliveryLongitude)
+    if (fulfillment === "DELIVERY" && !deliveryAddress) {
+      deliveryAddress = String(body.deliveryAddress || "").trim().slice(0, 300) || null
+      deliveryArea = body.deliveryArea ? String(body.deliveryArea).trim().slice(0, 100) : null
+      deliveryNotes = body.deliveryNotes ? String(body.deliveryNotes).trim().slice(0, 500) : null
+      latitude = body.deliveryLatitude == null ? null : Number(body.deliveryLatitude)
+      longitude = body.deliveryLongitude == null ? null : Number(body.deliveryLongitude)
     }
+    if (fulfillment === "DELIVERY" && !deliveryAddress) return NextResponse.json({ error: "Enter the delivery address." }, { status: 400 })
+    if (latitude != null && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)) return NextResponse.json({ error: "Invalid delivery latitude." }, { status: 400 })
+    if (longitude != null && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180)) return NextResponse.json({ error: "Invalid delivery longitude." }, { status: 400 })
 
-    // ---- promo code (validated server-side; discounts apply to the subtotal) ----
-    let discountAmount = 0
-    let promotionCode: string | null = null
-    const rawCode = body.promotionCode ? String(body.promotionCode).trim().toUpperCase() : ""
-    if (rawCode) {
+    const subtotal = money(lines.reduce((sum, line) => sum + Number(line.product.price) * line.qty, 0))
+    const deliveryFee = fulfillment === "DELIVERY" ? money(computeDeliveryFee(deliveryArea, settings.delivery, subtotal, latitude, longitude)) : 0
+    let promotion: Awaited<ReturnType<typeof db.promotion.findUnique>> = null
+    const code = body.promotionCode ? String(body.promotionCode).trim().toUpperCase() : ""
+    if (code) {
+      promotion = await db.promotion.findUnique({ where: { code } })
       const now = new Date()
-      const promo = await db.promotion.findFirst({
-        where: {
-          code: rawCode,
-          active: true,
-          discountPct: { not: null },
-          AND: [
-            { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
-            { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
-          ],
-        },
-      })
-      if (!promo) {
-        return NextResponse.json({ error: `Promo code ${rawCode} isn't valid or has expired.` }, { status: 400 })
-      }
-      discountAmount = Math.min(Math.round((subtotal * promo.discountPct!) / 100), subtotal)
-      promotionCode = promo.code
+      if (!promotion?.active || !promotion.discountPct || promotion.startsAt && promotion.startsAt > now || promotion.endsAt && promotion.endsAt < now || promotion.minimumSpend && subtotal < Number(promotion.minimumSpend)) return NextResponse.json({ error: "This promotion is unavailable for the order." }, { status: 400 })
     }
-
-    const total = Math.max(0, subtotal - discountAmount + deliveryFee)
-
-    // ---- Sphere Points redemption (signed-in customers only) ----
+    const discountAmount = promotion ? money(Math.min(subtotal, subtotal * promotion.discountPct! / 100)) : 0
     let pointsRedeemed = 0
     if (body.redeemPoints && userId) {
-      const user = await db.user.findUnique({ where: { id: userId } })
-      const quote = redemptionQuote(Math.max(0, subtotal - discountAmount), user?.loyaltyPoints ?? 0)
-      if (quote.points > 0) {
-        pointsRedeemed = quote.points
-        await db.user.update({ where: { id: userId }, data: { loyaltyPoints: { decrement: quote.points } } })
-      }
+      const user = await db.user.findUnique({ where: { id: userId }, select: { loyaltyPoints: true } })
+      pointsRedeemed = redemptionQuote(subtotal - discountAmount, user?.loyaltyPoints || 0).points
     }
-    const finalTotal = Math.max(0, total - pointsRedeemed * LOYALTY.pointValue)
+    const total = money(Math.max(0, subtotal - discountAmount + deliveryFee - pointsRedeemed * LOYALTY.pointValue))
+    const initialStatus = hasRx ? "UNDER_REVIEW" : paymentMethod === "MPESA" || paymentMethod === "CARD" ? "AWAITING_PAYMENT" : "RECEIVED"
+    const type = hasRx ? (lines.every(({ product }) => product.requiresPrescription) ? "PRESCRIPTION" : "MIXED") : body.reservation ? "RESERVATION" : "OTC"
 
-    const type = hasRx ? (orderLines.every((l) => l.product.requiresPrescription) ? "PRESCRIPTION" : "MIXED") : reservation ? "RESERVATION" : "OTC"
-
-    const reference = orderReference()
-    const order = await db.order.create({
-      data: {
-        reference,
-        userId,
-        guestName,
-        guestPhone,
-        type,
-        status: "RECEIVED",
-        fulfillment,
-        deliveryAddress,
-        deliveryArea,
-        deliveryNotes,
-        deliveryFee,
-        subtotal,
-        discountAmount,
-        promotionCode,
-        total: finalTotal,
-        pointsRedeemed,
-        notes: body.notes ? String(body.notes).trim() : null,
+    const order = await db.$transaction(async (tx) => {
+      if (promotion) {
+        if (promotion.maxUses != null && await tx.promotionRedemption.count({ where: { promotionId: promotion.id } }) >= promotion.maxUses) throw new Error("PROMOTION_LIMIT")
+        if (userId && promotion.perUserLimit != null && await tx.promotionRedemption.count({ where: { promotionId: promotion.id, userId } }) >= promotion.perUserLimit) throw new Error("PROMOTION_LIMIT")
+      }
+      for (const { product, qty } of lines) {
+        const reserved = await tx.product.updateMany({ where: { id: product.id, active: true, stockQty: { gte: qty } }, data: { stockQty: { decrement: qty } } })
+        if (reserved.count !== 1) throw new Error(`OUT_OF_STOCK:${product.name}`)
+      }
+      if (pointsRedeemed && userId) {
+        const debited = await tx.user.updateMany({ where: { id: userId, loyaltyPoints: { gte: pointsRedeemed } }, data: { loyaltyPoints: { decrement: pointsRedeemed } } })
+        if (debited.count !== 1) throw new Error("POINTS_CHANGED")
+      }
+      const created = await tx.order.create({ data: {
+        reference: orderReference(), userId, guestName, guestPhone, guestEmail,
+        guestAccessTokenHash: guestAccessToken ? tokenHash(guestAccessToken) : null,
+        guestAccessExpiresAt: guestAccessToken ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : null,
+        type, status: initialStatus, fulfillment, deliveryAddress, deliveryArea, deliveryNotes,
+        deliveryLatitude: latitude, deliveryLongitude: longitude, deliveryFee, subtotal, discountAmount,
+        promotionCode: promotion?.code || null, total, pointsRedeemed,
+        notes: body.notes ? String(body.notes).trim().slice(0, 1000) : null,
         pickupCode: fulfillment === "PICKUP" ? pickupCode() : null,
-        items: {
-          create: orderLines.map((l) => ({
-            productId: l.product.id,
-            name: l.product.name,
-            price: l.product.price,
-            qty: l.qty,
-            requiresPrescription: l.product.requiresPrescription,
-            lineTotal: l.product.price * l.qty,
-          })),
-        },
-      },
-      include: ORDER_INCLUDE,
-    })
+        inventoryReservedAt: new Date(),
+        items: { create: lines.map(({ product, qty }) => ({ productId: product.id, name: product.name, price: product.price, qty, requiresPrescription: product.requiresPrescription, lineTotal: money(Number(product.price) * qty) })) },
+        statusHistory: { create: { status: initialStatus, actor: "System", note: hasRx ? "Prescription queued for pharmacist review" : "Order received" } },
+      }, include: ORDER_INCLUDE })
+      if (hasRx) await tx.prescription.updateMany({ where: { id: { in: rxIds }, userId, orderId: null }, data: { orderId: created.id } })
+      if (promotion) await tx.promotionRedemption.create({ data: { promotionId: promotion.id, orderId: created.id, userId } })
+      if (pointsRedeemed && userId) await tx.loyaltyLedger.create({ data: { eventKey: `redeem:${created.id}`, userId, orderId: created.id, delta: -pointsRedeemed, reason: "ORDER_REDEMPTION" } })
+      return created
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 
-    await addStatusEvent(order.id, "RECEIVED", "System", "Order received")
-
-    // attach uploaded prescriptions to this order (authorised owner only, already validated)
-    if (hasRx && userId) {
-      const rxIds = (Array.isArray(body.prescriptionIds) ? body.prescriptionIds.map(String) : [])
-      await db.prescription.updateMany({ where: { id: { in: rxIds }, userId }, data: { orderId: order.id } })
-      const nextStatus: OrderStatus = "UNDER_REVIEW"
-      await db.order.update({ where: { id: order.id }, data: { status: nextStatus } })
-      await addStatusEvent(order.id, nextStatus, "System", "Prescription uploaded — queued for pharmacist review")
-    }
-
-    if (!hasRx) {
-      // reservation & cash orders wait for staff availability confirmation;
-      // online payments move the order to AWAITING_PAYMENT right away
-      if (paymentMethod === "MPESA" || paymentMethod === "CARD") {
-        await db.order.update({ where: { id: order.id }, data: { status: "AWAITING_PAYMENT" } })
-        await addStatusEvent(order.id, "AWAITING_PAYMENT", "System", "Awaiting customer payment")
-      }
-    }
-
-    // 1. Notify Customer (In-app + Firebase Push + Resend Email)
-    const customerUser = userId ? await db.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }) : null
-    const customerName = customerUser?.name || guestName || "Valued Customer"
-    const customerEmail = customerUser?.email || (typeof body.customer?.email === "string" ? body.customer.email.trim() : null)
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
-    const orderUrl = `${appUrl}/#order-${order.id}`
-
-    const emailTemplate = orderConfirmationTemplate({
-      orderReference: reference,
-      customerName,
-      items: orderLines.map((l) => ({
-        name: l.product.name,
-        qty: l.qty,
-        price: l.product.price,
-        lineTotal: l.product.price * l.qty,
-      })),
-      subtotal,
-      deliveryFee,
-      discountAmount,
-      total: finalTotal,
-      pointsEarned: Math.floor(finalTotal / LOYALTY.earnPerKES),
-      fulfillment: order.fulfillment as "PICKUP" | "DELIVERY",
-      deliveryAddress: order.deliveryAddress,
-      deliveryArea: order.deliveryArea,
-      pickupCode: order.pickupCode,
-      orderUrl,
-    })
-
-    await notifyCustomer(
-      userId,
-      "ORDER_STATUS",
-      `Order ${reference} received`,
-      reservation
-        ? `We received your reservation ${reference}. We'll confirm availability shortly — pay and collect in store.`
-        : `We received your order ${reference} (KSh ${finalTotal.toLocaleString()}). You'll get updates as it progresses.`,
-      "IN_APP",
-      {
-        link: orderUrl,
-        metadata: { orderId: order.id, reference, total: finalTotal },
-        email: customerEmail
-          ? {
-              to: customerEmail,
-              subject: emailTemplate.subject,
-              html: emailTemplate.html,
-              text: emailTemplate.text,
-            }
-          : undefined,
-      }
-    )
-
-    // 2. Notify Admins & Pharmacists / Staff via Push + Email
-    if (hasRx) {
-      await notifyStaff({
-        roles: ["ADMIN", "PHARMACIST"],
-        event: "NEW_PRESCRIPTION_ORDER",
-        title: `New Rx Order: ${reference}`,
-        message: `Prescription order ${reference} received from ${customerName} (KSh ${finalTotal.toLocaleString()}). Pharmacist verification needed.`,
-        link: `${appUrl}/#admin-prescriptions`,
-        details: {
-          "Order Ref": reference,
-          Customer: customerName,
-          Fulfillment: fulfillment,
-          Total: `KSh ${finalTotal.toLocaleString()}`,
-          Status: "Under Review",
-        },
-      })
-    } else {
-      await notifyStaff({
-        roles: ["ADMIN", "STAFF", "PHARMACIST"],
-        event: "NEW_ORDER",
-        title: `New Order: ${reference}`,
-        message: `New ${fulfillment.toLowerCase()} order ${reference} received for KSh ${finalTotal.toLocaleString()}.`,
-        link: `${appUrl}/#admin-orders`,
-        details: {
-          "Order Ref": reference,
-          Customer: customerName,
-          Fulfillment: fulfillment,
-          Total: `KSh ${finalTotal.toLocaleString()}`,
-        },
-      })
-    }
-
-    const finalOrder = await db.order.findUnique({ where: { id: order.id }, include: ORDER_INCLUDE })
-    return NextResponse.json(toOrderDTO(finalOrder!))
-  } catch (e) {
-    console.error(e)
-    return NextResponse.json({ error: "Could not place your order. Please try again." }, { status: 500 })
+    const orderLink = `/orders/${order.id}${guestAccessToken ? `#access=${guestAccessToken}` : ""}`
+    await notifyCustomer(userId, "ORDER_STATUS", `Order ${order.reference} received`, `We received your order ${order.reference} (KSh ${total.toLocaleString()}).`, "IN_APP", { link: orderLink, metadata: { orderId: order.id }, email: (userId ? (await db.user.findUnique({ where: { id: userId }, select: { email: true } }))?.email : guestEmail) ? { to: (userId ? (await db.user.findUnique({ where: { id: userId }, select: { email: true } }))?.email : guestEmail)!, subject: `Order ${order.reference} received`, html: `<p>Your order <strong>${order.reference}</strong> has been received.</p><p><a href="${orderLink}">Track your order</a></p>`, text: `Order ${order.reference} received. Track: ${orderLink}` } : undefined })
+    await notifyStaff({ roles: hasRx ? ["ADMIN", "PHARMACIST"] : ["ADMIN", "PHARMACIST", "STAFF"], event: hasRx ? "NEW_PRESCRIPTION_ORDER" : "NEW_ORDER", title: `New order: ${order.reference}`, message: `A ${fulfillment.toLowerCase()} order for KSh ${total.toLocaleString()} was received.`, link: hasRx ? "/admin/prescriptions" : "/admin/orders" })
+    return NextResponse.json({ ...toOrderDTO(order), ...(guestAccessToken ? { guestAccessToken } : {}) })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ""
+    if (message.startsWith("OUT_OF_STOCK:")) return NextResponse.json({ error: `${message.slice(13)} just went out of stock.` }, { status: 409 })
+    if (message === "POINTS_CHANGED") return NextResponse.json({ error: "Your points balance changed. Review the total and try again." }, { status: 409 })
+    if (message === "PROMOTION_LIMIT") return NextResponse.json({ error: "This promotion has reached its usage limit." }, { status: 409 })
+    return NextResponse.json({ error: "Could not place your order. No stock or points were deducted." }, { status: 500 })
   }
 }

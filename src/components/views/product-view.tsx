@@ -8,7 +8,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
-import { Toaster } from "@/components/ui/sonner"
 import { ProductCard, StarRow } from "@/components/shared/product-card"
 import { ProductImage } from "@/components/shared/product-image"
 import { EmptyState, LoadingGrid, SectionHeader } from "@/components/shared/empty-state"
@@ -253,7 +252,6 @@ export function ProductView() {
 
   return (
     <div className="app-page app-page-product pb-10">
-      <Toaster position="bottom-left" richColors closeButton />
 
       <div className="mx-auto max-w-7xl px-4 py-6">
         {/* breadcrumb / back */}
@@ -475,11 +473,11 @@ export function ProductView() {
             )}
 
             <div className="product-secondary-actions mt-3 flex flex-wrap gap-2">
-              <a href={waLink(waText)} target="_blank" rel="noopener noreferrer" className="flex-1">
-                <Button variant="outline" size="lg" className="h-11 w-full gap-2 rounded-full">
+              <Button asChild variant="outline" size="lg" className="h-11 flex-1 gap-2 rounded-full">
+                <a href={waLink(waText)} target="_blank" rel="noopener noreferrer">
                   <MessageCircle className="h-4 w-4 text-emerald-600" /> Order via WhatsApp
-                </Button>
-              </a>
+                </a>
+              </Button>
               <Button
                 variant="ghost"
                 size="lg"

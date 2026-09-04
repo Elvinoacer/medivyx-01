@@ -6,6 +6,8 @@ import type { SessionPayload, StaffDTO, UserDTO } from "@/lib/types"
 
 const COOKIE_NAME = "sphere_session"
 const SESSION_DAYS = 30
+const STAFF_SESSION_DAYS = 7
+const STAFF_IDLE_MS = 12 * 60 * 60 * 1000
 
 export interface ResolvedSession {
   sessionId: string
@@ -23,10 +25,22 @@ export async function getSession(): Promise<ResolvedSession | null> {
   const token = jar.get(COOKIE_NAME)?.value
   if (!token) return null
   const session = await db.session.findUnique({ where: { token }, include: { user: true, staff: true } })
-  if (!session || session.expiresAt < new Date()) return null
+  const now = new Date()
+  const staffInvalid = session?.staffId && (
+    !session.staff?.active ||
+    session.authVersion !== session.staff.authVersion ||
+    session.lastSeenAt.getTime() < now.getTime() - STAFF_IDLE_MS
+  )
+  if (!session || session.expiresAt < now || staffInvalid) {
+    if (session) await db.session.deleteMany({ where: { id: session.id } })
+    return null
+  }
+  if (session.lastSeenAt.getTime() < now.getTime() - 5 * 60 * 1000) {
+    await db.session.update({ where: { id: session.id }, data: { lastSeenAt: now } })
+  }
   return {
     sessionId: session.id,
-    role: session.role as Role | "CUSTOMER",
+    role: session.staff ? session.staff.role as Role : "CUSTOMER",
     userId: session.userId,
     staffId: session.staffId,
     staffName: session.staff?.name ?? null,
@@ -39,10 +53,13 @@ export async function getSession(): Promise<ResolvedSession | null> {
 export async function createSession(
   target: { userId: string } | { staffId: string }
 ): Promise<void> {
-  const role = "userId" in target ? "CUSTOMER" : ((await db.staffUser.findUnique({ where: { id: (target as { staffId: string }).staffId } }))?.role ?? "STAFF")
+  const staff = "staffId" in target ? await db.staffUser.findUnique({ where: { id: target.staffId } }) : null
+  if (staff && !staff.active) throw new Error("This staff account is disabled.")
+  const role = "userId" in target ? "CUSTOMER" : (staff?.role ?? "STAFF")
   const token = newSessionToken()
-  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 3600 * 1000)
-  await db.session.create({ data: { token, role, expiresAt, ...(target as { userId?: string; staffId?: string }) } })
+  const days = staff ? STAFF_SESSION_DAYS : SESSION_DAYS
+  const expiresAt = new Date(Date.now() + days * 24 * 3600 * 1000)
+  await db.session.create({ data: { token, role, expiresAt, authVersion: staff?.authVersion ?? 0, ...(target as { userId?: string; staffId?: string }) } })
   const jar = await cookies()
   jar.set(COOKIE_NAME, token, {
     httpOnly: true,
@@ -60,6 +77,10 @@ export async function destroySession(): Promise<void> {
     await db.session.deleteMany({ where: { token } })
   }
   jar.delete(COOKIE_NAME)
+}
+
+export async function revokeStaffSessions(staffId: string): Promise<void> {
+  await db.session.deleteMany({ where: { staffId } })
 }
 
 // ---------- Payload builders ----------

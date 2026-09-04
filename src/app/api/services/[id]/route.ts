@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getSession } from "@/lib/session"
+import { managedImage, validateServiceFields } from "@/lib/security/service"
 
 function dto(service: any) {
   return {
@@ -12,12 +13,12 @@ function dto(service: any) {
 
 async function managed() {
   const session = await getSession()
-  return session?.staffId && ["ADMIN", "PHARMACIST", "STAFF"].includes(session.role) ? session : null
+  return session?.staffId && session.staffRole && ["ADMIN", "PHARMACIST", "STAFF"].includes(session.staffRole) ? session : null
 }
 
 function imageCreates(images: any[]) {
   return images.slice(0, 10).map((img: any, i: number) => ({
-    url: String(img.url || img),
+    url: managedImage(img.url || img)!,
     storageKey: img.storageKey ? String(img.storageKey) : null,
     alt: img.alt ? String(img.alt) : null,
     sortOrder: i,
@@ -53,6 +54,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
 
   const { id } = await ctx.params
   const body = await request.json()
+  if (Array.isArray(body.images) && (body.images.length > 10 || body.images.some((image: any) => !managedImage(image?.url || image)))) return NextResponse.json({ error: "Every service image must be an owned upload or site image." }, { status: 400 })
 
   const existing = await db.service.findUnique({
     where: { id },
@@ -62,31 +64,9 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     return NextResponse.json({ error: "Service not found." }, { status: 404 })
   }
 
-  const data: any = {}
-
-  for (const key of ["name", "slug", "shortDescription", "description", "category", "priceLabel", "heroImage"]) {
-    if (key in body) {
-      data[key] = body[key] === "" ? null : body[key]
-    }
-  }
-
-  if ("durationMinutes" in body) {
-    data.durationMinutes = Math.max(1, Number(body.durationMinutes) || 15)
-  }
-
-  if ("price" in body) {
-    data.price = body.price === null || body.price === "" ? null : Number(body.price)
-  }
-
-  for (const key of ["featured", "active"]) {
-    if (key in body) {
-      data[key] = Boolean(body[key])
-    }
-  }
-
-  if ("sortOrder" in body) {
-    data.sortOrder = Number(body.sortOrder) || 0
-  }
+  const validated = validateServiceFields(body, true)
+  if (validated.error) return NextResponse.json({ error: validated.error }, { status: 400 })
+  const data: any = validated.data
 
   const service = await db.$transaction(async (tx) => {
     if (Array.isArray(body.images)) {

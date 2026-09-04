@@ -3,7 +3,8 @@ import { db } from "@/lib/db"
 import { audit } from "@/lib/notify"
 import { requireStaff } from "@/lib/session"
 import { STOCK_STATUSES } from "@/lib/constants"
-import { sanitizeImageInput } from "@/lib/image"
+import { managedImage } from "@/lib/security/service"
+import { rejectOversizedRequest } from "@/lib/security/request"
 
 /** CSV import — header columns:
  *  name,sku,category,brand,packSize,price,compareAtPrice,stockQty,stockStatus,requiresPrescription,description,image
@@ -11,6 +12,8 @@ import { sanitizeImageInput } from "@/lib/image"
 export async function POST(request: Request) {
   const { session, error } = await requireStaff(["ADMIN", "PHARMACIST"])
   if (error) return error
+  const oversized = rejectOversizedRequest(request, 2_000_000)
+  if (oversized) return oversized
   try {
     const body = await request.json()
     const csv = String(body.csv ?? "").trim()
@@ -18,6 +21,7 @@ export async function POST(request: Request) {
 
     const lines = csv.split(/\r?\n/).filter((l) => l.trim().length > 0)
     if (lines.length < 2) return NextResponse.json({ error: "CSV needs a header row and at least one product row." }, { status: 400 })
+    if (lines.length > 1001) return NextResponse.json({ error: "CSV imports are limited to 1,000 products." }, { status: 400 })
 
     const header = splitCsvLine(lines[0]).map((h) => h.trim().toLowerCase())
     const idx = (name: string) => header.indexOf(name)
@@ -37,11 +41,13 @@ export async function POST(request: Request) {
       const cols = splitCsvLine(lines[r])
       const rowNo = r + 1
       const name = (cols[iName] ?? "").trim()
-      if (!name) { errors.push(`Row ${rowNo}: missing name`); continue }
+      if (name.length < 2 || name.length > 160) { errors.push(`Row ${rowNo}: product name must be 2–160 characters`); continue }
       const price = Number((cols[iPrice] ?? "").replace(/[^0-9.]/g, ""))
       if (!Number.isFinite(price) || price <= 0) { errors.push(`Row ${rowNo}: invalid price "${cols[iPrice]}"`); continue }
 
-      const qty = Math.max(0, Math.trunc(Number(cols[iQty] ?? 0)) || 0)
+      const rawQty = Number(cols[iQty] ?? 0)
+      if (!Number.isSafeInteger(rawQty) || rawQty < 0) { errors.push(`Row ${rowNo}: stock quantity must be a non-negative whole number`); continue }
+      const qty = rawQty
       let stockStatus = (cols[iStatus] ?? "").trim().toUpperCase().replace(/ /g, "_")
       if (!(STOCK_STATUSES as readonly string[]).includes(stockStatus)) stockStatus = qty <= 0 ? "OUT_OF_STOCK" : qty <= 5 ? "LOW_STOCK" : "IN_STOCK"
 
@@ -53,17 +59,22 @@ export async function POST(request: Request) {
       const requiresPrescription = ["1", "true", "yes", "y", "rx", "true()"].includes(rxRaw)
 
       const sku = (iSku >= 0 ? cols[iSku]?.trim() : "") || `SPH-IMP-${r}${Date.now().toString(36).slice(-3).toUpperCase()}`
+      if (!/^[A-Za-z0-9._-]{3,64}$/.test(sku)) { errors.push(`Row ${rowNo}: invalid SKU`); continue }
+      const compareAtPrice = iCompare >= 0 && cols[iCompare]?.trim() ? Number(cols[iCompare].replace(/[^0-9.]/g, "")) : null
+      if (compareAtPrice != null && (!Number.isFinite(compareAtPrice) || compareAtPrice <= price)) { errors.push(`Row ${rowNo}: compare-at price must exceed price`); continue }
+      const image = managedImage(iImage >= 0 ? cols[iImage] : undefined)
+      if (iImage >= 0 && cols[iImage]?.trim() && !image) { errors.push(`Row ${rowNo}: image must be an owned upload or site image`); continue }
       const data = {
         name,
         brand: iBrand >= 0 ? cols[iBrand]?.trim() || null : null,
         packSize: iPack >= 0 ? cols[iPack]?.trim() || null : null,
         price,
-        compareAtPrice: iCompare >= 0 && cols[iCompare]?.trim() ? Number(cols[iCompare].replace(/[^0-9.]/g, "")) || null : null,
+        compareAtPrice,
         stockQty: qty,
         stockStatus,
         requiresPrescription,
-        description: iDesc >= 0 ? cols[iDesc]?.trim() || "" : "",
-        image: sanitizeImageInput(iImage >= 0 ? cols[iImage] : undefined),
+        description: iDesc >= 0 ? (cols[iDesc]?.trim() || "").slice(0, 5_000) : "",
+        image,
         categoryId: category?.id ?? null,
       }
 
@@ -76,8 +87,8 @@ export async function POST(request: Request) {
           await db.product.create({ data: { ...data, sku } })
           created++
         }
-      } catch (e) {
-        errors.push(`Row ${rowNo}: could not save (${(e as Error).message})`)
+      } catch {
+        errors.push(`Row ${rowNo}: could not save product`)
       }
     }
 

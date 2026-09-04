@@ -1,284 +1,128 @@
-/**
- * IntaSend Payment Gateway Integration for Card Payments (Visa / Mastercard) in Kenya.
- *
- * Licensed by Central Bank of Kenya (CBK). Native KES settlement with zero FX friction.
- * Supports both Checkout Sessions (hosted/inline modal) and direct card processing with 3D Secure.
- * Fallback to development simulation when keys are absent in local test environments.
- */
+import { timingSafeEqual, createHmac } from "crypto"
 
-function getBaseUrl(): string {
-  const env = (process.env.INTASEND_ENVIRONMENT || "sandbox").toLowerCase()
-  return env === "production"
-    ? "https://payment.intasend.com/api/v1"
-    : "https://sandbox.intasend.com/api/v1"
+function configured(): { publishableKey: string; secretKey: string } {
+  const publishableKey = process.env.INTASEND_PUBLISHABLE_KEY
+  const secretKey = process.env.INTASEND_SECRET_KEY
+  if (!isIntaSendConfigured()) throw new Error("IntaSend is not configured")
+  return { publishableKey: publishableKey!, secretKey: secretKey! }
+}
+
+function baseUrl(): string {
+  return process.env.INTASEND_ENVIRONMENT === "production" ? "https://payment.intasend.com/api/v1" : "https://sandbox.intasend.com/api/v1"
 }
 
 export function isIntaSendConfigured(): boolean {
-  return Boolean(process.env.INTASEND_SECRET_KEY || process.env.INTASEND_PUBLISHABLE_KEY)
-}
-
-export interface IntaSendCardPayload {
-  number: string
-  name: string
-  expiry: string // MM/YY
-  cvv: string
-}
-
-export interface IntaSendChargeParams {
-  orderId: string
-  reference: string
-  amount: number
-  customer: {
-    name: string
-    email?: string | null
-    phone?: string | null
-  }
-  card: IntaSendCardPayload
-}
-
-export interface IntaSendChargeResult {
-  paymentId: string
-  status: "SUCCESS" | "FAILED" | "PROCESSING" | "REQUIRES_3DS"
-  reference?: string
-  redirectUrl?: string
-  failureReason?: string
-  simulated?: boolean
+  const configured = Boolean(process.env.INTASEND_PUBLISHABLE_KEY && process.env.INTASEND_SECRET_KEY && process.env.INTASEND_WEBHOOK_SECRET && process.env.INTASEND_WEBHOOK_SECRET.length >= 24)
+  return configured && (process.env.NODE_ENV !== "production" || process.env.INTASEND_ENVIRONMENT === "production")
 }
 
 export interface IntaSendCheckoutSessionParams {
   orderId: string
   reference: string
   amount: number
-  customer: {
-    name: string
-    email?: string | null
-    phone?: string | null
-  }
+  customer: { name: string; email?: string | null; phone?: string | null }
   redirectUrl?: string
 }
 
-export interface IntaSendCheckoutSessionResult {
-  url: string
-  id: string
-  signature?: string
-  simulated?: boolean
-}
-
-/**
- * Creates an IntaSend hosted checkout session or inline modal checkout.
- */
-export async function createIntaSendCheckoutSession(
-  params: IntaSendCheckoutSessionParams
-): Promise<IntaSendCheckoutSessionResult> {
-  const { reference, amount, customer, redirectUrl } = params
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
-
-  if (!isIntaSendConfigured()) {
-    console.info(`[IntaSend Simulated Checkout] Created checkout session for ${reference} (KSh ${amount})`)
-    return {
-      url: `${appUrl}/#order-${params.orderId}`,
-      id: `sim_session_${Date.now()}`,
-      simulated: true,
-    }
-  }
-
-  const pubKey = process.env.INTASEND_PUBLISHABLE_KEY
-  const secretKey = process.env.INTASEND_SECRET_KEY
-
-  const names = customer.name.trim().split(" ")
-  const firstName = names[0] || "Valued"
-  const lastName = names.slice(1).join(" ") || "Customer"
-
-  const payload = {
-    public_key: pubKey,
-    first_name: firstName,
-    last_name: lastName,
-    email: customer.email || "customer@spherepharmacy.co.ke",
-    phone_number: customer.phone || "254700000000",
-    host: appUrl,
-    amount: Math.round(amount),
-    currency: "KES",
-    api_ref: reference,
-    redirect_url: redirectUrl || `${appUrl}/#order-${params.orderId}`,
-    card_tarrif: "BUSINESS-PAYS",
-  }
-
-  const url = `${getBaseUrl()}/checkout/`
-  const response = await fetch(url, {
+export async function createIntaSendCheckoutSession(params: IntaSendCheckoutSessionParams): Promise<{ url: string; id: string }> {
+  const { publishableKey, secretKey } = configured()
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) throw new Error("NEXT_PUBLIC_APP_URL is required for hosted checkout")
+  const names = params.customer.name.trim().split(/\s+/)
+  const response = await fetch(`${baseUrl()}/checkout/`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${secretKey}`,
-    },
-    body: JSON.stringify(payload),
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`IntaSend Checkout Error (${response.status}): ${errorText}`)
-  }
-
-  const data = await response.json()
-  return {
-    url: data.url,
-    id: data.id,
-    signature: data.signature,
-    simulated: false,
-  }
-}
-
-/**
- * Charges a credit or debit card through IntaSend.
- * Validates card format and handles 3DS redirect or simulation.
- */
-export async function chargeIntaSendCard(
-  params: IntaSendChargeParams
-): Promise<IntaSendChargeResult> {
-  const { reference, amount, card } = params
-  const number = card.number.replace(/\s+/g, "")
-
-  // Validate format
-  if (!/^\d{13,19}$/.test(number)) {
-    return { paymentId: "", status: "FAILED", failureReason: "Enter a valid card number." }
-  }
-  if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(card.expiry)) {
-    return { paymentId: "", status: "FAILED", failureReason: "Expiry must be MM/YY." }
-  }
-  const [mm, yy] = card.expiry.split("/").map(Number)
-  const now = new Date()
-  const expYear = 2000 + yy
-  if (expYear < now.getFullYear() || (expYear === now.getFullYear() && mm < now.getMonth() + 1)) {
-    return { paymentId: "", status: "FAILED", failureReason: "This card has expired." }
-  }
-  if (!/^\d{3,4}$/.test(card.cvv)) {
-    return { paymentId: "", status: "FAILED", failureReason: "Enter the 3-digit CVV." }
-  }
-
-  // Simulated fallback or demo testing rules
-  if (!isIntaSendConfigured() || process.env.INTASEND_MOCK_TEST === "true") {
-    // Card decline testing rule: numbers ending 0000 or CVV 000 simulate decline
-    const declined = number.endsWith("0000") || card.cvv === "000"
-    if (declined) {
-      return {
-        paymentId: `IS_DEC_${Date.now()}`,
-        status: "FAILED",
-        failureReason: "Card declined by issuing bank (insufficient funds or 3DS cancelled).",
-        simulated: true,
-      }
-    }
-
-    const providerRef = `INT-${Math.random().toString(36).slice(2, 8).toUpperCase()}${Date.now().toString(36).slice(-2).toUpperCase()}`
-    console.info(`[IntaSend Simulated Charge] Approved card ending ${number.slice(-4)} for KSh ${amount} (${reference}) Ref: ${providerRef}`)
-    return {
-      paymentId: `IS_PAY_${Date.now()}`,
-      status: "SUCCESS",
-      reference: providerRef,
-      simulated: true,
-    }
-  }
-
-  // Live IntaSend API Charge
-  try {
-    const secretKey = process.env.INTASEND_SECRET_KEY
-    const pubKey = process.env.INTASEND_PUBLISHABLE_KEY
-
-    const payload = {
-      public_key: pubKey,
-      card_number: number,
-      cvv: card.cvv,
-      expiration_month: String(mm).padStart(2, "0"),
-      expiration_year: String(expYear),
-      amount: Math.round(amount),
-      currency: "KES",
-      api_ref: reference,
-      name: card.name,
-      email: params.customer.email || "customer@spherepharmacy.co.ke",
-    }
-
-    const url = `${getBaseUrl()}/processing/charge/`
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${secretKey}`,
-      },
-      body: JSON.stringify(payload),
-    })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      return {
-        paymentId: data.id || "",
-        status: "FAILED",
-        failureReason: data.detail || data.message || "Card transaction was rejected.",
-      }
-    }
-
-    if (data.url) {
-      // 3D Secure verification challenge required
-      return {
-        paymentId: data.id || "",
-        status: "REQUIRES_3DS",
-        redirectUrl: data.url,
-      }
-    }
-
-    if (data.state === "COMPLETE") {
-      return {
-        paymentId: data.id,
-        status: "SUCCESS",
-        reference: data.invoice_id || data.tracking_id,
-      }
-    }
-
-    return {
-      paymentId: data.id || "",
-      status: "PROCESSING",
-      reference: data.invoice_id,
-    }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "IntaSend gateway connection error"
-    return {
-      paymentId: "",
-      status: "FAILED",
-      failureReason: msg,
-    }
-  }
-}
-
-/**
- * Verify payment status by invoice or tracking id with IntaSend.
- */
-export async function checkIntaSendStatus(invoiceId: string): Promise<{ state: string; confirmed: boolean }> {
-  if (!isIntaSendConfigured()) {
-    return { state: "COMPLETE", confirmed: true }
-  }
-
-  const pubKey = process.env.INTASEND_PUBLISHABLE_KEY
-  const secretKey = process.env.INTASEND_SECRET_KEY
-  const url = `${getBaseUrl()}/payment/status/`
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${secretKey}`,
-    },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${secretKey}` },
     body: JSON.stringify({
-      invoice_id: invoiceId,
-      public_key: pubKey,
+      public_key: publishableKey,
+      first_name: names[0] || "Customer",
+      last_name: names.slice(1).join(" ") || "Customer",
+      email: params.customer.email || undefined,
+      phone_number: params.customer.phone || undefined,
+      host: appUrl,
+      amount: params.amount.toFixed(2),
+      currency: "KES",
+      api_ref: params.reference,
+      redirect_url: params.redirectUrl || `${appUrl}/orders/${params.orderId}`,
+      card_tarrif: "BUSINESS-PAYS",
     }),
   })
+  if (!response.ok) throw new Error(`IntaSend checkout could not be created (${response.status})`)
+  const data = await response.json() as { url?: string; id?: string; invoice_id?: string }
+  const id = data.invoice_id || data.id
+  if (!data.url || !id) throw new Error("IntaSend returned an incomplete checkout response")
+  return { url: data.url, id }
+}
 
-  if (!response.ok) {
-    return { state: "UNKNOWN", confirmed: false }
-  }
+export interface IntaSendInvoice { id: string; state: string; amount: number; currency: string; apiRef: string; trackingId?: string }
 
-  const data = await response.json()
-  const state = String(data.invoice?.state ?? "").toUpperCase()
+export async function getIntaSendInvoice(invoiceId: string): Promise<IntaSendInvoice> {
+  const { publishableKey, secretKey } = configured()
+  const response = await fetch(`${baseUrl()}/payment/status/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${secretKey}` },
+    body: JSON.stringify({ invoice_id: invoiceId, public_key: publishableKey }),
+  })
+  if (!response.ok) throw new Error(`IntaSend verification failed (${response.status})`)
+  const data = await response.json() as { invoice?: Record<string, unknown> }
+  const invoice = data.invoice || {}
   return {
-    state,
-    confirmed: state === "COMPLETE",
+    id: String(invoice.invoice_id || invoice.id || invoiceId),
+    state: String(invoice.state || "UNKNOWN").toUpperCase(),
+    amount: Number(invoice.value ?? invoice.amount ?? 0),
+    currency: String(invoice.currency || "").toUpperCase(),
+    apiRef: String(invoice.api_ref || ""),
+    trackingId: invoice.tracking_id ? String(invoice.tracking_id) : undefined,
+  }
+}
+
+export function verifyIntaSendWebhook(rawBody: string, headers: Headers): boolean {
+  const secret = process.env.INTASEND_WEBHOOK_SECRET
+  if (!secret || secret.length < 24) return false
+  const provided = headers.get("x-intasend-signature") || headers.get("x-webhook-signature") || ""
+  const direct = headers.get("x-intasend-webhook-secret") || ""
+  const expected = createHmac("sha256", secret).update(rawBody).digest("hex")
+  return safeEqual(provided.replace(/^sha256=/, ""), expected) || safeEqual(direct, secret)
+}
+
+function safeEqual(a: string, b: string): boolean {
+  const left = Buffer.from(a)
+  const right = Buffer.from(b)
+  return left.length === right.length && timingSafeEqual(left, right)
+}
+
+export async function checkIntaSendStatus(invoiceId: string): Promise<{ state: string; confirmed: boolean }> {
+  const invoice = await getIntaSendInvoice(invoiceId)
+  return { state: invoice.state, confirmed: invoice.state === "COMPLETE" }
+}
+
+export interface IntaSendRefund { id: string; state: string; amount: number; invoiceId: string }
+
+export async function createIntaSendRefund(invoiceId: string, amount: number, reason: string, details: string): Promise<IntaSendRefund> {
+  const { publishableKey, secretKey } = configured()
+  const response = await fetch(`${baseUrl()}/chargebacks/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${secretKey}`, INTASEND_PUBLIC_API_KEY: publishableKey },
+    body: JSON.stringify({ public_key: publishableKey, invoice: invoiceId, amount: amount.toFixed(2), reason, reason_details: details }),
+  })
+  if (!response.ok) throw new Error(`IntaSend refund request failed (${response.status})`)
+  return parseRefund(await response.json(), invoiceId, amount)
+}
+
+export async function getIntaSendRefund(refundId: string): Promise<IntaSendRefund> {
+  const { secretKey } = configured()
+  const response = await fetch(`${baseUrl()}/chargebacks/${encodeURIComponent(refundId)}/`, { headers: { Authorization: `Bearer ${secretKey}`, Accept: "application/json" }, cache: "no-store" })
+  if (!response.ok) throw new Error(`IntaSend refund verification failed (${response.status})`)
+  return parseRefund(await response.json(), "", 0)
+}
+
+function parseRefund(value: unknown, fallbackInvoice: string, fallbackAmount: number): IntaSendRefund {
+  const data = value && typeof value === "object" ? value as Record<string, unknown> : {}
+  const id = String(data.chargeback_id || data.id || data.reference || "")
+  if (!id) throw new Error("IntaSend returned an incomplete refund response")
+  return {
+    id,
+    state: String(data.state || data.status || "PENDING").toUpperCase(),
+    amount: Number(data.amount ?? fallbackAmount),
+    invoiceId: String(data.invoice_id || data.invoice || fallbackInvoice),
   }
 }

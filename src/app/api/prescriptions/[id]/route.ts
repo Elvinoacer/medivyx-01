@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { toPrescriptionDTOFull } from "@/lib/dto"
-import { addStatusEvent, audit, notifyCustomer } from "@/lib/notify"
+import { audit, notifyCustomer } from "@/lib/notify"
 import { getSession, requireStaff } from "@/lib/session"
 import { RX_STATUSES, type RxStatus, type OrderStatus } from "@/lib/constants"
 import { getPresignedDownloadUrl } from "@/lib/r2"
@@ -21,29 +21,44 @@ export async function GET(_request: Request, { params }: Params) {
   if (!session) return NextResponse.json({ error: "Sign in to view this prescription." }, { status: 401 })
 
   const rx = await db.prescription.findUnique({ where: { id }, include: RX_INCLUDE })
-  if (!rx) return NextResponse.json({ error: "Prescription not found." }, { status: 404 })
+  if (!rx || rx.deletedAt) return NextResponse.json({ error: "Prescription not found." }, { status: 404 })
 
   const isOwner = session.userId && rx.userId === session.userId
-  const isStaff = Boolean(session.staffId)
+  const isStaff = session.staffRole === "ADMIN" || session.staffRole === "PHARMACIST"
   if (!isOwner && !isStaff) {
     return NextResponse.json({ error: "You do not have access to this prescription." }, { status: 403 })
   }
 
-  let presignedUrl = rx.fileUrl
+  let presignedUrl: string | null = null
   if (rx.storageKey) {
     try {
-      presignedUrl = await getPresignedDownloadUrl(rx.storageKey, 3600)
-    } catch (e) {
-      console.warn("[Prescription Presigned URL Error]", e)
+      presignedUrl = await getPresignedDownloadUrl(rx.storageKey, 300)
+    } catch {
+      return NextResponse.json({ error: "The prescription file is temporarily unavailable." }, { status: 503 })
     }
   }
 
   const dto = toPrescriptionDTOFull(rx, true)
+  await db.prescriptionAccessLog.create({ data: { prescriptionId: rx.id, actorId: session.userId || session.staffId!, actorRole: session.staffRole || "CUSTOMER", action: "VIEW" } })
   return NextResponse.json({
     ...dto,
-    fileData: rx.fileData ?? "",
-    fileUrl: presignedUrl ?? rx.fileUrl ?? null,
+    fileData: "",
+    fileUrl: presignedUrl,
+    storageKey: undefined,
   })
+}
+
+export async function DELETE(_request: Request, { params }: Params) {
+  const { id } = await params
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: "Sign in to delete this prescription." }, { status: 401 })
+  const rx = await db.prescription.findUnique({ where: { id } })
+  if (!rx || rx.deletedAt) return NextResponse.json({ error: "Prescription not found." }, { status: 404 })
+  const allowed = rx.userId === session.userId || session.staffRole === "ADMIN"
+  if (!allowed) return NextResponse.json({ error: "You do not have permission to delete this prescription." }, { status: 403 })
+  if (rx.orderId && session.staffRole !== "ADMIN") return NextResponse.json({ error: "Contact the pharmacy to delete a prescription linked to an order." }, { status: 409 })
+  await db.prescription.update({ where: { id }, data: { deletedAt: new Date() } })
+  return NextResponse.json({ ok: true })
 }
 
 // PATCH — pharmacist review (APPROVED / REJECTED / CLARIFICATION_REQUESTED / PARTIALLY_APPROVED)
@@ -67,37 +82,38 @@ export async function PATCH(request: Request, { params }: Params) {
     const validDays = [30, 60, 90, 180].includes(Number(body.validDays)) ? Number(body.validDays) : 90
     const actor = session.staffName ?? "Pharmacist"
 
-    await db.prescription.update({
-      where: { id },
-      data: {
+    let linkedOrderUpdate: { reference: string; next: OrderStatus; note: string } | null = null
+    await db.$transaction(async (tx) => {
+      await tx.prescription.update({
+        where: { id }, data: {
         status,
         reviewNotes,
         reviewedById: session.staffId,
         reviewedAt: new Date(),
         refillsAllowed: status === "APPROVED" || status === "PARTIALLY_APPROVED" ? refillsAllowed : 0,
         validUntil: status === "APPROVED" || status === "PARTIALLY_APPROVED" ? new Date(Date.now() + validDays * 24 * 3600 * 1000) : null,
-      },
+        },
+      })
+
+      if (rx.orderId) {
+        const order = await tx.order.findUnique({ where: { id: rx.orderId }, select: { id: true, reference: true, status: true } })
+        const all = await tx.prescription.findMany({ where: { orderId: rx.orderId, deletedAt: null }, select: { status: true } })
+        const allApproved = all.length > 0 && all.every((item) => ["APPROVED", "PARTIALLY_APPROVED"].includes(item.status))
+        const allDecided = all.length > 0 && all.every((item) => ["APPROVED", "PARTIALLY_APPROVED", "REJECTED"].includes(item.status))
+        const anyRejected = all.some((item) => item.status === "REJECTED")
+        const next: OrderStatus = allApproved ? "PRESCRIPTION_VERIFIED" : allDecided && anyRejected ? "REJECTED" : "UNDER_REVIEW"
+        if (order && order.status === "UNDER_REVIEW" && next !== order.status) {
+          const note = next === "PRESCRIPTION_VERIFIED" ? "All prescriptions verified by a pharmacist" : "Prescription set rejected after all documents were reviewed"
+          await tx.order.update({ where: { id: order.id }, data: { status: next, version: { increment: 1 } } })
+          await tx.orderStatusHistory.create({ data: { orderId: order.id, status: next, actor, note } })
+          linkedOrderUpdate = { reference: order.reference, next, note }
+        }
+      }
     })
 
-    // linked order transitions (FR-5.7)
-    if (rx.orderId) {
-      const order = await db.order.findUnique({ where: { id: rx.orderId } })
-      if (order && order.status === "UNDER_REVIEW") {
-        const next: OrderStatus =
-          status === "APPROVED" || status === "PARTIALLY_APPROVED"
-            ? "PRESCRIPTION_VERIFIED"
-            : status === "REJECTED"
-              ? "REJECTED"
-              : "UNDER_REVIEW" // clarification keeps it under review
-        await db.order.update({ where: { id: order.id }, data: { status: next } })
-        const note =
-          status === "APPROVED" ? "Prescription verified by pharmacist"
-          : status === "PARTIALLY_APPROVED" ? `Partially approved: ${reviewNotes ?? ""}`
-          : status === "REJECTED" ? `Prescription rejected: ${reviewNotes ?? ""}`
-          : `Clarification requested: ${reviewNotes ?? ""}`
-        await addStatusEvent(order.id, next, actor, note.slice(0, 300))
-        await notifyCustomer(rx.userId, "PRESCRIPTION", `Prescription update — order ${order.reference}`, note.slice(0, 300), "WHATSAPP")
-      }
+    if (linkedOrderUpdate) {
+      const update = linkedOrderUpdate as { reference: string; next: OrderStatus; note: string }
+      await notifyCustomer(rx.userId, "PRESCRIPTION", `Prescription update — order ${update.reference}`, update.note, "IN_APP")
     }
 
     if (rx.userId) {
@@ -110,7 +126,7 @@ export async function PATCH(request: Request, { params }: Params) {
         status: status as "APPROVED" | "REJECTED" | "CLARIFICATION_REQUESTED" | "PARTIALLY_APPROVED",
         reviewNotes: reviewNotes ?? null,
         refillsAllowed: refillsAllowed > 0 ? refillsAllowed : undefined,
-        actionUrl: rx.orderId ? `${appUrl}/#order-${rx.orderId}` : `${appUrl}/#prescriptions`,
+        actionUrl: rx.orderId ? `${appUrl}/orders/${rx.orderId}` : `${appUrl}/prescriptions`,
       })
 
       const noteText =
@@ -126,7 +142,7 @@ export async function PATCH(request: Request, { params }: Params) {
         noteText,
         "IN_APP",
         {
-          link: rx.orderId ? `${appUrl}/#order-${rx.orderId}` : `${appUrl}/#prescriptions`,
+          link: rx.orderId ? `${appUrl}/orders/${rx.orderId}` : `${appUrl}/prescriptions`,
           metadata: { prescriptionId: rx.id, status, reviewNotes },
           email: customerUser?.email
             ? {

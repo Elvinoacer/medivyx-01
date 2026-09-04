@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Toaster } from "@/components/ui/sonner"
 import { EmptyState } from "@/components/shared/empty-state"
 import { ProductImage } from "@/components/shared/product-image"
 import { RxFlagBadge } from "@/components/shared/status-badges"
@@ -56,7 +55,6 @@ export function CartView() {
   if (lines.length === 0) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16">
-        <Toaster position="bottom-left" richColors closeButton />
         <EmptyState
           icon={ShoppingCart}
           title="Your cart is empty"
@@ -64,11 +62,11 @@ export function CartView() {
           action={{ label: "Browse products", onClick: () => navigate("catalog") }}
         />
         <div className="mt-6 flex justify-center">
-          <a href={waLink("Hello Sphere Pharmacy! I'd like help placing an order.")} target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" className="gap-1.5 rounded-full">
+          <Button asChild variant="outline" className="gap-1.5 rounded-full">
+            <a href={waLink("Hello Sphere Pharmacy! I'd like help placing an order.")} target="_blank" rel="noopener noreferrer">
               <MessageCircle className="h-4 w-4 text-emerald-700" /> Need help? Order via WhatsApp
-            </Button>
-          </a>
+            </a>
+          </Button>
         </div>
       </div>
     )
@@ -76,7 +74,6 @@ export function CartView() {
 
   return (
     <div className="app-page app-page-cart pb-10">
-      <Toaster position="bottom-left" richColors closeButton />
 
       <div className="mx-auto max-w-5xl px-4 py-6">
         <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Your cart</h1>

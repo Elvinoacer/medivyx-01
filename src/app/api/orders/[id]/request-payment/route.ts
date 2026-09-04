@@ -1,115 +1,57 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { ORDER_INCLUDE, toOrderDTO } from "@/lib/dto"
 import { requireStaff } from "@/lib/session"
-import { initiateStkPush, formatDarajaPhone } from "@/lib/mpesa/daraja"
+import { formatDarajaPhone, initiateStkPush } from "@/lib/mpesa/daraja"
+import { money } from "@/lib/security/payment"
+import { isUniqueConstraintError, rejectOversizedRequest } from "@/lib/security/request"
 import { audit, notifyCustomer } from "@/lib/notify"
 
 const PHONE_RE = /^(?:\+?254|0)?(7\d{8}|1\d{8})$/
+const PAYABLE = ["PRESCRIPTION_VERIFIED", "AVAILABILITY_CONFIRMED", "AWAITING_PAYMENT", "READY_FOR_PICKUP", "OUT_FOR_DELIVERY"]
 
-type Params = { params: Promise<{ id: string }> }
-
-/**
- * Staff & Rider endpoint to trigger an M-Pesa STK push prompt to a customer.
- * Used for:
- * 1. Rider collecting payment at delivery.
- * 2. Pharmacist requesting payment after verifying a prescription.
- * 3. Store staff requesting payment over phone or counter.
- */
-export async function POST(request: Request, { params }: Params) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireStaff(["ADMIN", "STAFF", "PHARMACIST", "RIDER"])
   if (error) return error
-
+  const sizeError = rejectOversizedRequest(request, 8 * 1024)
+  if (sizeError) return sizeError
   const { id } = await params
-  const order = await db.order.findUnique({
-    where: { id },
-    include: {
-      ...ORDER_INCLUDE,
-      user: { select: { name: true, phone: true, email: true } },
-    },
-  })
-
-  if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 })
-
-  if (order.status === "PAID" || order.status.startsWith("COMPLETED")) {
-    return NextResponse.json({ error: "This order is already paid." }, { status: 400 })
-  }
-
   const body = await request.json().catch(() => ({}))
-  // Phone can be provided in body (e.g. if customer changed phone on delivery) or use order/user phone
-  const rawPhone = String(body.phone || order.guestPhone || order.user?.phone || "").trim()
-  const m = PHONE_RE.exec(rawPhone.replace(/\s+/g, ""))
-
-  if (!m) {
-    return NextResponse.json(
-      { error: "No valid Safaricom phone number found for this customer. Please enter a valid number (e.g. 0712 345 678)." },
-      { status: 400 }
-    )
+  const idempotency = String(body.idempotencyKey || "")
+  if (!/^[a-zA-Z0-9_-]{16,100}$/.test(idempotency)) return NextResponse.json({ error: "A valid idempotency key is required." }, { status: 400 })
+  const order = await db.order.findUnique({ where: { id }, include: { user: { select: { phone: true } }, prescriptions: { where: { deletedAt: null }, select: { status: true } } } })
+  if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 })
+  if (session.staffRole === "RIDER" && (order.riderId !== session.staffId || order.status !== "OUT_FOR_DELIVERY")) return NextResponse.json({ error: "Riders may request payment only for their assigned delivery." }, { status: 403 })
+  if (!PAYABLE.includes(order.status)) return NextResponse.json({ error: "This order is not ready for payment." }, { status: 409 })
+  if (order.prescriptions.length && order.prescriptions.some((rx) => !["APPROVED", "PARTIALLY_APPROVED"].includes(rx.status))) return NextResponse.json({ error: "Prescription review must be completed before payment." }, { status: 409 })
+  if (await db.payment.findFirst({ where: { orderId: id, status: "SUCCESS" }, select: { id: true } })) return NextResponse.json({ error: "This order is already paid." }, { status: 409 })
+  const match = PHONE_RE.exec(String(body.phone || order.guestPhone || order.user?.phone || "").replace(/\s+/g, ""))
+  if (!match) return NextResponse.json({ error: "Enter a valid Kenyan M-Pesa number." }, { status: 400 })
+  const phone = `+254${match[1]}`
+  const amount = money(order.total)
+  if (!Number.isSafeInteger(amount) || amount <= 0) return NextResponse.json({ error: "M-Pesa requires a positive whole-KSh amount." }, { status: 409 })
+  const key = `staff:${id}:mpesa:${idempotency}`
+  const existing = await db.payment.findUnique({ where: { idempotencyKey: key } })
+  if (existing?.checkoutRequestId) return NextResponse.json({ paymentId: existing.id, checkoutRequestId: existing.checkoutRequestId, message: "Payment request already sent." })
+  let payment = existing
+  if (!payment) try {
+    payment = await db.payment.create({ data: { orderId: id, provider: "MPESA", method: "STK_PUSH", status: "PENDING", amount: order.total, currency: "KES", phone, idempotencyKey: key } })
+  } catch (createError) {
+    if (!isUniqueConstraintError(createError)) throw createError
+    payment = await db.payment.findUnique({ where: { idempotencyKey: key } })
   }
-
-  const phone = `+254${m[1]}`
-  const darajaPhone = formatDarajaPhone(phone)
-  const actor = session.staffName ?? "Staff"
-
+  if (!payment) return NextResponse.json({ error: "Could not reserve the payment request." }, { status: 503 })
   try {
-    // Expire any earlier pending STK pushes for this order
-    await db.payment.updateMany({
-      where: { orderId: order.id, status: { in: ["PENDING", "PROCESSING"] }, method: "STK_PUSH" },
-      data: { status: "FAILED", failureReason: "Superseded by staff-initiated request" },
-    })
-
-    const stkResult = await initiateStkPush({
-      phone: darajaPhone,
-      amount: order.total,
-      reference: order.reference,
-      description: `Order ${order.reference}`,
-    })
-
-    const payment = await db.payment.create({
-      data: {
-        orderId: order.id,
-        provider: "MPESA",
-        method: "STK_PUSH",
-        status: "PROCESSING",
-        amount: order.total,
-        phone,
-        checkoutRequestId: stkResult.checkoutRequestId,
-      },
-    })
-
-    await audit(
-      actor,
-      session.staffRole,
-      "PAYMENT_REQUESTED",
-      "Order",
-      order.reference,
-      `STK Push of KSh ${order.total} sent to ${phone} by ${session.staffRole} ${actor}`
-    )
-
-    // Send customer in-app notification & push alert
-    await notifyCustomer(
-      order.userId,
-      "PAYMENT",
-      `Payment request — ${order.reference}`,
-      `Please check your phone (${phone}). An M-Pesa STK prompt for KSh ${order.total.toLocaleString()} has been sent.`,
-      "IN_APP",
-      {
-        link: `/#order-${order.id}`,
-        metadata: { orderId: order.id, reference: order.reference, amount: order.total },
-      }
-    )
-
-    return NextResponse.json({
-      ok: true,
-      paymentId: payment.id,
-      checkoutRequestId: stkResult.checkoutRequestId,
-      phone,
-      amount: order.total,
-      message: stkResult.customerMessage,
-      simulated: stkResult.simulated ?? false,
-    })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to initiate M-Pesa STK push."
-    return NextResponse.json({ error: msg }, { status: 500 })
+    const result = await initiateStkPush({ phone: formatDarajaPhone(phone), amount, reference: order.reference, description: `Order ${order.reference}` })
+    await db.$transaction([
+      db.payment.update({ where: { id: payment.id }, data: { status: "PROCESSING", checkoutRequestId: result.checkoutRequestId } }),
+      db.payment.updateMany({ where: { orderId: id, id: { not: payment.id }, status: { in: ["PENDING", "PROCESSING"] }, method: "STK_PUSH" }, data: { status: "FAILED", failureReason: "Superseded by a new payment request" } }),
+    ])
+    if (["PRESCRIPTION_VERIFIED", "AVAILABILITY_CONFIRMED"].includes(order.status)) await db.order.updateMany({ where: { id, status: order.status }, data: { status: "AWAITING_PAYMENT", version: { increment: 1 } } })
+    await audit(session.staffName || "Staff", session.staffRole, "PAYMENT_REQUESTED", "Order", order.reference, `M-Pesa request created by ${session.staffRole}`)
+    await notifyCustomer(order.userId, "PAYMENT", `Payment request — ${order.reference}`, `An M-Pesa prompt for KSh ${amount.toLocaleString()} was sent to your phone.`, "IN_APP", { link: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/orders/${id}`, metadata: { orderId: id, reference: order.reference, amount } })
+    return NextResponse.json({ paymentId: payment.id, checkoutRequestId: result.checkoutRequestId, phone, amount, message: result.customerMessage })
+  } catch {
+    await db.payment.update({ where: { id: payment.id }, data: { status: "FAILED", failureReason: "M-Pesa request could not be started" } })
+    return NextResponse.json({ error: "M-Pesa is temporarily unavailable. No payment was taken." }, { status: 503 })
   }
 }

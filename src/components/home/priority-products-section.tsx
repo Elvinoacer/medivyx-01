@@ -89,15 +89,15 @@ export function PriorityProductsSection({
               <RefreshCw className="h-4 w-4" /> Retry
             </Button>
           ) : null}
-          <a
+          <Button asChild variant="secondary" size="sm" className="gap-1.5 bg-emerald-700 text-white hover:bg-emerald-800">
+            <a
             href={waLink("Hi, I'd like to ask about available priority products.")}
             target="_blank"
             rel="noopener noreferrer"
           >
-            <Button variant="secondary" size="sm" className="gap-1.5 bg-emerald-700 text-white hover:bg-emerald-800">
               <MessageCircle className="h-4 w-4" /> Ask on WhatsApp
-            </Button>
-          </a>
+            </a>
+          </Button>
         </div>
       </div>
     )

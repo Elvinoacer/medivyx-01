@@ -14,13 +14,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { Toaster } from "@/components/ui/sonner"
 import { EmptyState } from "@/components/shared/empty-state"
 import { OrderStatusBadge, PaymentStatusBadge, RxFlagBadge, RxStatusBadge } from "@/components/shared/status-badges"
 import { useAppStore } from "@/store/use-app-store"
@@ -82,34 +80,6 @@ function normalizePhone(raw: string): string | null {
   return null
 }
 
-interface CardForm {
-  number: string
-  name: string
-  expiry: string
-  cvv: string
-}
-
-function validateCard(c: CardForm): string | null {
-  const digits = c.number.replace(/[\s-]/g, "")
-  if (!/^\d{15,19}$/.test(digits)) return "Enter a valid 16-digit card number."
-  if (!c.name.trim()) return "Enter the name printed on the card."
-  const m = /^(\d{2})\s*\/\s*(\d{2})$/.exec(c.expiry.trim())
-  if (!m) return "Expiry must be in MM/YY format."
-  const mm = Number(m[1])
-  const yy = 2000 + Number(m[2])
-  if (mm < 1 || mm > 12) return "Expiry month must be between 01 and 12."
-  const endOfMonth = new Date(yy, mm, 0, 23, 59, 59)
-  if (endOfMonth.getTime() < Date.now()) return "This card has expired."
-  if (!/^\d{3,4}$/.test(c.cvv)) return "CVV must be 3 or 4 digits."
-  return null
-}
-
-function formatExpiryInput(raw: string): string {
-  const digits = raw.replace(/\D/g, "").slice(0, 4)
-  if (digits.length <= 2) return digits
-  return `${digits.slice(0, 2)}/${digits.slice(2)}`
-}
-
 // ---------- status timeline icons ----------
 
 const TIMELINE_ICONS: Record<OrderStatus, LucideIcon> = {
@@ -138,6 +108,7 @@ const PAYMENT_PROVIDER_ICONS: Record<string, LucideIcon> = {
 const CANCELLABLE_STATUSES: OrderStatus[] = [
   "RECEIVED",
   "UNDER_REVIEW",
+  "PRESCRIPTION_VERIFIED",
   "AVAILABILITY_CONFIRMED",
   "AWAITING_PAYMENT",
 ]
@@ -175,8 +146,9 @@ export function OrderDetailView() {
   useEffect(() => {
     if (!orderId) return
     let cancelled = false
+    const accessToken = sessionStorage.getItem(`sphere_order_access_${orderId}`) ?? undefined
     ordersApi
-      .get(orderId)
+      .get(orderId, accessToken)
       .then((res) => {
         if (!cancelled) setResult({ id: orderId, order: res })
       })
@@ -208,7 +180,7 @@ export function OrderDetailView() {
   async function refetchOrder() {
     if (!orderId) return
     try {
-      const res = await ordersApi.get(orderId)
+      const res = await ordersApi.get(orderId, sessionStorage.getItem(`sphere_order_access_${orderId}`) ?? undefined)
       setResult({ id: orderId, order: res })
     } catch {
       /* keep the current view; the refresh button re-triggers the effect */
@@ -219,18 +191,14 @@ export function OrderDetailView() {
 
   const [payMethod, setPayMethod] = useState<"mpesa" | "card">("mpesa")
   const [mpesaPhoneInput, setMpesaPhoneInput] = useState<string | null>(null)
-  const [pin, setPin] = useState("")
-  const [pinOpen, setPinOpen] = useState(false)
-  const [checkoutRequestId, setCheckoutRequestId] = useState<string | null>(null)
   const [paying, setPaying] = useState(false)
   const [payError, setPayError] = useState<string | null>(null)
-  const [card, setCard] = useState<CardForm>({ number: "", name: "", expiry: "", cvv: "" })
   const [cardError, setCardError] = useState<string | null>(null)
-  const pollTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current)
     }
   }, [])
 
@@ -272,30 +240,38 @@ export function OrderDetailView() {
     }
     setPaying(true)
     try {
-      const init = await paymentsApi.mpesaInitiate(order.id, phone)
-      setCheckoutRequestId(init.checkoutRequestId)
-      setPin("")
-      setPinOpen(true)
-
-      // Start automatic polling for customer PIN entry
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current)
-      pollTimerRef.current = setInterval(async () => {
+      const accessToken = sessionStorage.getItem(`sphere_order_access_${order.id}`) ?? undefined
+      const init = await paymentsApi.mpesaInitiate(order.id, phone, crypto.randomUUID(), accessToken)
+      toast.info("STK push sent. Enter your PIN only on your phone.")
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current)
+      const deadline = Date.now() + 2 * 60_000
+      let delay = 2_500
+      const poll = async () => {
+        if (Date.now() >= deadline) {
+          setPayError("Confirmation is taking longer than expected. Check your M-Pesa messages before retrying.")
+          return
+        }
+        if (document.hidden) {
+          pollTimerRef.current = setTimeout(poll, delay)
+          return
+        }
         try {
-          const res = await paymentsApi.mpesaQuery(init.checkoutRequestId)
+          const res = await paymentsApi.mpesaQuery(init.checkoutRequestId, accessToken)
           if (res.status === "SUCCESS") {
-            if (pollTimerRef.current) clearInterval(pollTimerRef.current)
-            setPinOpen(false)
             toast.success("M-Pesa payment confirmed — thank you!")
             await refetchOrder()
+            return
           } else if (res.status === "FAILED") {
-            if (pollTimerRef.current) clearInterval(pollTimerRef.current)
-            setPinOpen(false)
             setPayError(res.payment?.failureReason || "M-Pesa payment was declined or timed out.")
+            return
           }
         } catch {
           // ignore transient poll error
         }
-      }, 2500)
+        delay = Math.min(10_000, Math.round(delay * 1.5))
+        pollTimerRef.current = setTimeout(poll, delay)
+      }
+      pollTimerRef.current = setTimeout(poll, delay)
     } catch (err) {
       const msg = errMessage(err, "Couldn't start the M-Pesa payment. Please try again.")
       setPayError(msg)
@@ -304,58 +280,14 @@ export function OrderDetailView() {
     }
   }
 
-  async function confirmPin() {
-    if (pin.length !== 4 || !order || !checkoutRequestId) return
-    if (pollTimerRef.current) clearInterval(pollTimerRef.current)
-    setPaying(true)
-    setPayError(null)
-    // demo convention: 1234 / 0000 simulate a wrong PIN → FAILED, any other PIN approves
-    const outcome: "SUCCESS" | "FAILED" = pin === "1234" || pin === "0000" ? "FAILED" : "SUCCESS"
-    try {
-      await paymentsApi.mpesaCallback(checkoutRequestId, outcome, pin)
-      if (outcome === "SUCCESS") {
-        setPinOpen(false)
-        toast.success("Payment received — thank you!")
-        await refetchOrder()
-      } else {
-        setPayError(
-          "M-Pesa PIN rejected — the payment request was cancelled. Enter the PIN again or close and start a new request."
-        )
-        setPin("")
-      }
-    } catch (err) {
-      const msg = errMessage(err, "Couldn't confirm the payment. Please try again.")
-      setPayError(msg)
-    } finally {
-      setPaying(false)
-    }
-  }
-
   async function startCard() {
     if (!order) return
-    const invalid = validateCard(card)
-    setCardError(invalid)
-    if (invalid) return
     setPaying(true)
     setCardError(null)
     try {
-      const res = await paymentsApi.cardInitiate(order.id, {
-        number: card.number.replace(/[\s-]/g, ""),
-        name: card.name.trim(),
-        expiry: card.expiry.trim(),
-        cvv: card.cvv.trim(),
-      })
-      if (res.status === "SUCCESS") {
-        toast.success("Card payment approved via IntaSend — thank you!")
-        await refetchOrder()
-      } else if (res.status === "REQUIRES_3DS" && res.redirectUrl) {
-        toast.info("Redirecting for 3D Secure verification...")
-        window.location.href = res.redirectUrl
-      } else {
-        setCardError(
-          res.failureReason ?? "Card declined. Check the card details or try another method."
-        )
-      }
+      const accessToken = sessionStorage.getItem(`sphere_order_access_${order.id}`) ?? undefined
+      const res = await paymentsApi.cardCheckoutSession(order.id, crypto.randomUUID(), accessToken)
+      window.location.assign(res.checkoutUrl)
     } catch (err) {
       setCardError(errMessage(err, "Card payment failed. Please try again."))
     } finally {
@@ -369,7 +301,7 @@ export function OrderDetailView() {
     if (!order) return
     setCancelling(true)
     try {
-      await ordersApi.cancel(order.id, cancelReason.trim() || undefined)
+      await ordersApi.cancel(order.id, cancelReason.trim() || undefined, sessionStorage.getItem(`sphere_order_access_${order.id}`) ?? undefined)
       setCancelOpen(false)
       setCancelReason("")
       toast.success("Order cancelled. A refund is issued automatically if you had already paid.")
@@ -445,7 +377,6 @@ export function OrderDetailView() {
           description="Pick an order from your history to track it here."
           action={{ label: "My orders", onClick: goBack }}
         />
-        <Toaster position="bottom-left" richColors closeButton />
       </div>
     )
   }
@@ -475,7 +406,6 @@ export function OrderDetailView() {
           description="This order may have been removed, or the reference doesn't match an order on your account."
           action={{ label: "Back", onClick: goBack }}
         />
-        <Toaster position="bottom-left" richColors closeButton />
       </div>
     )
   }
@@ -501,7 +431,6 @@ export function OrderDetailView() {
             }}
           />
         )}
-        <Toaster position="bottom-left" richColors closeButton />
       </div>
     )
   }
@@ -524,7 +453,6 @@ export function OrderDetailView() {
             </div>
           </CardContent>
         </Card>
-        <Toaster position="bottom-left" richColors closeButton />
       </div>
     )
   }
@@ -533,7 +461,6 @@ export function OrderDetailView() {
 
   return (
     <div className="app-page app-page-order mx-auto max-w-3xl space-y-4 px-4 py-6 pb-16">
-      <Toaster position="bottom-left" richColors closeButton />
 
       {/* ---------- header ---------- */}
       <div>
@@ -749,54 +676,10 @@ export function OrderDetailView() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="card-number">Card number</Label>
-                      <Input
-                        id="card-number"
-                        inputMode="numeric"
-                        autoComplete="cc-number"
-                        placeholder="4242 4242 4242 4242"
-                        value={card.number}
-                        onChange={(e) => setCard({ ...card, number: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="card-name">Name on card</Label>
-                      <Input
-                        id="card-name"
-                        autoComplete="cc-name"
-                        placeholder="JANE WANJIKU"
-                        value={card.name}
-                        onChange={(e) => setCard({ ...card, name: e.target.value })}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label htmlFor="card-expiry">Expiry (MM/YY)</Label>
-                        <Input
-                          id="card-expiry"
-                          inputMode="numeric"
-                          autoComplete="cc-exp"
-                          placeholder="09/27"
-                          value={card.expiry}
-                          onChange={(e) => setCard({ ...card, expiry: formatExpiryInput(e.target.value) })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="card-cvv">CVV</Label>
-                        <Input
-                          id="card-cvv"
-                          inputMode="numeric"
-                          autoComplete="cc-csc"
-                          placeholder="123"
-                          maxLength={4}
-                          value={card.cvv}
-                          onChange={(e) =>
-                            setCard({ ...card, cvv: e.target.value.replace(/\D/g, "") })
-                          }
-                        />
-                      </div>
-                    </div>
+                    <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                      Card details are entered only on IntaSend&apos;s secure hosted checkout. Sphere Pharmacy never receives your card number or CVV.
+                    </p>
                     {cardError ? (
                       <p className="text-sm text-destructive" role="alert">
                         {cardError}
@@ -808,7 +691,7 @@ export function OrderDetailView() {
                       ) : (
                         <Lock className="h-4 w-4" aria-hidden />
                       )}
-                      Pay {formatKES(order.total)}
+                      Continue to IntaSend · {formatKES(order.total)}
                     </Button>
                   </div>
                 )}
@@ -1019,45 +902,6 @@ export function OrderDetailView() {
         </CardContent>
       </Card>
 
-      {/* ---------- PIN dialog ---------- */}
-      <Dialog open={pinOpen} onOpenChange={(open) => !open && setPinOpen(false)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Enter your M-Pesa PIN</DialogTitle>
-            <DialogDescription>
-              We sent an STK push to {mpesaPhone || "your phone"}. Enter your 4-digit M-Pesa PIN to
-              approve payment of {formatKES(order.total)}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-center py-2">
-            <InputOTP maxLength={4} value={pin} onChange={setPin} aria-label="M-Pesa PIN">
-              <InputOTPGroup>
-                {[0, 1, 2, 3].map((i) => (
-                  <InputOTPSlot key={i} index={i} />
-                ))}
-              </InputOTPGroup>
-            </InputOTP>
-          </div>
-          <p className="text-center text-xs text-muted-foreground">
-            Demo: any PIN approves the payment — 1234 or 0000 simulates a wrong PIN.
-          </p>
-          {payError ? (
-            <p className="text-center text-sm text-destructive" role="alert">
-              {payError}
-            </p>
-          ) : null}
-          <DialogFooter className="flex-row gap-2 sm:justify-between">
-            <Button variant="outline" onClick={() => setPinOpen(false)} disabled={paying}>
-              Close
-            </Button>
-            <Button onClick={() => void confirmPin()} disabled={pin.length !== 4 || paying}>
-              {paying ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-              Approve payment
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* ---------- cancel dialog ---------- */}
       <Dialog
         open={cancelOpen}
@@ -1072,8 +916,7 @@ export function OrderDetailView() {
           <DialogHeader>
             <DialogTitle>Cancel this order?</DialogTitle>
             <DialogDescription>
-              This can't be undone. Items go back to the shelf and any payment already made is
-              refunded automatically.
+              This can&apos;t be undone. Reserved items return to stock. Orders with a captured payment must use the separate provider-refund process.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
