@@ -51,3 +51,11 @@ test("product image library is lazy and progressively rendered", () => {
   assert.match(catalogue, /visibleImages\.map/)
   assert.match(catalogue, /added to the reusable gallery/)
 })
+
+test("catalogue category labels hide image paths and products support useful sorting", () => {
+  const catalogue = read("src/components/views/admin/sections/catalogue-section.tsx")
+  assert.doesNotMatch(catalogue, /c\.icon \? `\$\{c\.icon\}/)
+  assert.match(catalogue, /Name: A to Z/)
+  assert.match(catalogue, /Date: newest first/)
+  assert.match(catalogue, /Stock: highest first/)
+})

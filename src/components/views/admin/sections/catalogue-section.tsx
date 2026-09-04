@@ -31,7 +31,7 @@ import { useAuthStore } from "@/store/use-auth-store"
 import { toast } from "sonner"
 import { apiErrorMessage, downloadCsv, useDebounced, type SectionProps } from "../admin-shared"
 import {
-  Search, Pill, Loader2, Plus, Minus, Upload, Download, FileUp, Trash2, Pencil, Package, Dices, Images, ImagePlus, Check,
+  Search, Pill, Loader2, Plus, Minus, Upload, Download, FileUp, Trash2, Pencil, Package, Dices, Images, ImagePlus, Check, ArrowUpDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -51,6 +51,7 @@ const CSV_TEMPLATE_ROWS: string[][] = [
 ]
 
 const LOW_STOCK_THRESHOLD = 10
+type CatalogueSort = "NEWEST" | "OLDEST" | "NAME_ASC" | "NAME_DESC" | "STOCK_DESC" | "STOCK_ASC"
 
 function stockStatusForQty(qty: number): StockStatus {
   if (qty <= 0) return "OUT_OF_STOCK"
@@ -71,6 +72,7 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
   const search = useDebounced(searchInput.trim(), 300)
   const [categoryFilter, setCategoryFilter] = useState("ALL")
   const [stockFilter, setStockFilter] = useState("ANY")
+  const [sortBy, setSortBy] = useState<CatalogueSort>("NAME_ASC")
 
   const [editor, setEditor] = useState<{ mode: "create" | "edit"; product?: ProductDTO } | null>(null)
   const [csvOpen, setCsvOpen] = useState(false)
@@ -103,14 +105,19 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
       .catch(() => setCategories([]))
   }, [refreshKey])
 
-  const visible = useMemo(
-    () =>
-      products
+  const visible = useMemo(() => {
+    const filtered = products
         .filter((p) => (categoryFilter === "ALL" ? true : p.categoryId === categoryFilter))
         .filter((p) => (stockFilter === "ANY" ? true : p.stockStatus === stockFilter))
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [products, categoryFilter, stockFilter]
-  )
+    return filtered.sort((a, b) => {
+      if (sortBy === "NEWEST") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() || a.name.localeCompare(b.name)
+      if (sortBy === "OLDEST") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() || a.name.localeCompare(b.name)
+      if (sortBy === "NAME_DESC") return b.name.localeCompare(a.name)
+      if (sortBy === "STOCK_DESC") return b.stockQty - a.stockQty || a.name.localeCompare(b.name)
+      if (sortBy === "STOCK_ASC") return a.stockQty - b.stockQty || a.name.localeCompare(b.name)
+      return a.name.localeCompare(b.name)
+    })
+  }, [products, categoryFilter, stockFilter, sortBy])
 
   const lowCount = products.filter((p) => p.stockStatus === "LOW_STOCK").length
   const outCount = products.filter((p) => p.stockStatus === "OUT_OF_STOCK").length
@@ -206,7 +213,7 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
               <SelectItem value="ALL">All categories</SelectItem>
               {categories.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
-                  {c.icon ? `${c.icon} ` : ""}{c.name} ({c.productCount})
+                  {c.name} ({c.productCount})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -225,6 +232,20 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
                   {s === "DISCONTINUED" && discontinuedCount > 0 ? ` (${discontinuedCount})` : ""}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={sortBy} onValueChange={(value) => setSortBy(value as CatalogueSort)}>
+            <SelectTrigger className="sm:w-52" aria-label="Sort catalogue">
+              <ArrowUpDown className="h-4 w-4" aria-hidden />
+              <SelectValue placeholder="Sort products" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="NAME_ASC">Name: A to Z</SelectItem>
+              <SelectItem value="NAME_DESC">Name: Z to A</SelectItem>
+              <SelectItem value="NEWEST">Date: newest first</SelectItem>
+              <SelectItem value="OLDEST">Date: oldest first</SelectItem>
+              <SelectItem value="STOCK_DESC">Stock: highest first</SelectItem>
+              <SelectItem value="STOCK_ASC">Stock: lowest first</SelectItem>
             </SelectContent>
           </Select>
         </CardContent>

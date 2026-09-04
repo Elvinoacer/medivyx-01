@@ -25,6 +25,7 @@ type DbProduct = {
   categoryName?: string | null; categorySlug?: string | null;
   category?: { name: string; slug: string } | null;
   avgRating?: number | null; reviewCount?: number;
+  createdAt: Date; updatedAt: Date;
 }
 
 export function toProductDTO(p: DbProduct): ProductDTO {
@@ -49,6 +50,8 @@ export function toProductDTO(p: DbProduct): ProductDTO {
     categorySlug: p.category?.slug ?? p.categorySlug ?? null,
     avgRating: p.avgRating ?? null,
     reviewCount: p.reviewCount ?? 0,
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
   }
 }
 

@@ -42,6 +42,8 @@ export interface ProductDTO {
   categorySlug?: string | null
   avgRating?: number | null
   reviewCount?: number
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ReviewDTO {
