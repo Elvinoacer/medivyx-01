@@ -11,7 +11,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
@@ -358,19 +357,19 @@ function PromotionEditorDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
-      <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden p-0 sm:max-w-xl">
-        <DialogHeader className="border-b p-4 pb-3">
+      <DialogContent className="flex h-[calc(100dvh-1rem)] max-h-[46rem] w-[calc(100%-1rem)] max-w-xl flex-col gap-0 overflow-hidden p-0 sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:w-full">
+        <DialogHeader className="shrink-0 border-b p-4 pb-3 pr-12 text-left">
           <DialogTitle>{mode === "create" ? "New promotion" : `Edit “${promo?.title}”`}</DialogTitle>
           <DialogDescription>
             Banners show on the storefront homepage; codes apply at checkout once the backend promo engine lands.
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="scroll-slim min-h-0 flex-1">
-          <div className="space-y-4 p-4">
+        <div className="scroll-slim min-h-0 flex-1 overflow-y-auto overscroll-contain" tabIndex={0} aria-label="Promotion details">
+          <div className="space-y-4 p-3 sm:p-4">
             {/* live preview */}
-            <div className={cn("rounded-lg p-3.5", bannerClass[form.color])} aria-label="Live storefront preview">
-              <div className="flex items-center gap-2">
+            <div className={cn("min-w-0 rounded-lg p-3.5", bannerClass[form.color])} aria-label="Live storefront preview">
+              <div className="flex flex-wrap items-center gap-2">
                 {form.badge ? (
                   <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">{form.badge}</span>
                 ) : null}
@@ -378,8 +377,8 @@ function PromotionEditorDialog({
                   <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-slate-900">-{Number(form.discountPct)}%</span>
                 ) : null}
               </div>
-              <p className="text-sm font-bold">{form.title || "Your promotion title"}</p>
-              <p className="text-xs opacity-90">{form.description || "A short customer-facing description of the offer."}</p>
+              <p className="break-words text-sm font-bold">{form.title || "Your promotion title"}</p>
+              <p className="break-words text-xs opacity-90">{form.description || "A short customer-facing description of the offer."}</p>
               {form.code ? (
                 <p className="mt-1 text-xs font-semibold">Code: <span className="rounded bg-white/25 px-1.5 py-0.5 font-mono tracking-wider">{form.code.toUpperCase()}</span></p>
               ) : null}
@@ -417,7 +416,7 @@ function PromotionEditorDialog({
                       aria-pressed={form.color === c}
                       onClick={() => setForm((f) => ({ ...f, color: c }))}
                       className={cn(
-                        "flex h-9 w-9 items-center justify-center rounded-full border-2 transition-transform hover:scale-110",
+                        "flex h-11 w-11 items-center justify-center rounded-full border-2 transition-transform hover:scale-105 sm:h-9 sm:w-9 sm:hover:scale-110",
                         form.color === c ? "border-foreground" : "border-transparent"
                       )}
                     >
@@ -443,11 +442,11 @@ function PromotionEditorDialog({
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
-        <DialogFooter className="gap-2 border-t bg-muted/30 p-4">
-          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button onClick={() => void save()} disabled={busy || !valid}>
+        <DialogFooter className="shrink-0 gap-2 border-t bg-background p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] sm:bg-muted/30 sm:p-4">
+          <Button className="w-full sm:w-auto" variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button className="w-full sm:w-auto" onClick={() => void save()} disabled={busy || !valid}>
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
             {mode === "create" ? "Create promotion" : "Save changes"}
           </Button>

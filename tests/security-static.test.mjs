@@ -98,3 +98,12 @@ test("medicine listings use server-side pagination", () => {
   assert.match(route, /adminView/)
   assert.match(route, /Staff access required/)
 })
+
+test("promotion editor remains usable on short and mobile viewports", () => {
+  const promotions = read("src/components/views/admin/sections/promotions-section.tsx")
+  assert.match(promotions, /h-\[calc\(100dvh-1rem\)\]/)
+  assert.match(promotions, /min-h-0 flex-1 overflow-y-auto overscroll-contain/)
+  assert.match(promotions, /shrink-0[^"\n]*border-t/)
+  assert.match(promotions, /pb-\[max\(\.75rem,env\(safe-area-inset-bottom\)\)\]/)
+  assert.match(promotions, /w-full sm:w-auto/)
+})
