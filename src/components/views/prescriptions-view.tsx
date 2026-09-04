@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
@@ -126,6 +127,8 @@ export function PrescriptionsView() {
   const [notes, setNotes] = useState("")
   const [dragOver, setDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadStage, setUploadStage] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
   // revoke the object URL when the view unmounts
@@ -175,6 +178,8 @@ export function PrescriptionsView() {
   async function submitUpload() {
     if (!file || uploading) return
     setUploading(true)
+    setUploadProgress(0)
+    setUploadStage("Preparing your file…")
     setUploadError(null)
     try {
       let fileUrl: string | undefined
@@ -182,14 +187,19 @@ export function PrescriptionsView() {
       let base64: string | undefined
 
       try {
-        const r2Res = await storageApi.uploadFile(file, "prescriptions")
+        const r2Res = await storageApi.uploadFile(file, "prescriptions", (percent) => {
+          setUploadProgress(percent)
+          setUploadStage(percent < 100 ? `Uploading file… ${percent}%` : "Securing your prescription…")
+        })
         fileUrl = r2Res.url
         storageKey = r2Res.key
       } catch (uploadErr) {
         console.warn("[R2 direct upload fallback]:", uploadErr)
+        setUploadStage("Preparing secure fallback upload…")
         base64 = await fileToBase64(file)
       }
 
+      setUploadStage("Creating your prescription record…")
       await prescriptionsApi.upload({
         fileName: file.name,
         fileType: file.type,
@@ -209,6 +219,8 @@ export function PrescriptionsView() {
       toast.error(msg)
     } finally {
       setUploading(false)
+      setUploadStage(null)
+      setUploadProgress(0)
     }
   }
 
@@ -447,6 +459,17 @@ export function PrescriptionsView() {
               </p>
             ) : null}
 
+            {uploading && uploadStage ? (
+              <div className="space-y-2 rounded-lg border bg-muted/30 p-3" role="status" aria-live="polite">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-medium">{uploadStage}</span>
+                  {uploadProgress > 0 ? <span className="tabular-nums text-muted-foreground">{uploadProgress}%</span> : null}
+                </div>
+                <Progress value={uploadProgress} aria-label={`Prescription upload ${uploadProgress}% complete`} />
+                <p className="text-xs text-muted-foreground">Keep this page open until the upload is confirmed.</p>
+              </div>
+            ) : null}
+
             <Button
               className="w-full"
               onClick={() => void submitUpload()}
@@ -630,7 +653,7 @@ function PrescriptionFileDialog({ rx, onClose }: { rx: PrescriptionDTO; onClose:
 
   function download() {
     if (detail?.fileUrl) {
-      window.open(detail.fileUrl, "_blank")
+      window.location.assign(`/api/prescriptions/${encodeURIComponent(rx.id)}?download=1`)
       return
     }
     if (!detail?.fileData) return
@@ -691,13 +714,19 @@ function PrescriptionFileDialog({ rx, onClose }: { rx: PrescriptionDTO; onClose:
               alt={`Prescription file: ${rx.fileName}`}
               className="mx-auto max-h-[60dvh] rounded-lg border object-contain"
             />
+          ) : detail?.fileType === "application/pdf" && imageSrc ? (
+            <iframe
+              src={imageSrc}
+              title={`Prescription PDF: ${rx.fileName}`}
+              className="h-[60dvh] w-full rounded-lg border bg-white"
+            />
           ) : (
             <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-12 text-center">
               <FileText className="h-12 w-12 text-muted-foreground" aria-hidden />
               <div>
                 <p className="text-sm font-medium">{detail?.fileName}</p>
                 <p className="text-xs text-muted-foreground">
-                  PDF document — download to view on your device.
+                  Preview is unavailable for this file type. Download it to view on your device.
                 </p>
               </div>
             </div>

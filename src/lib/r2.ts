@@ -56,9 +56,18 @@ export async function uploadBase64ToR2(base64Data: string, key: string, contentT
   return uploadToR2({ key, body: Buffer.from(rawBase64, "base64"), contentType, metadata, access })
 }
 
-export async function getPresignedDownloadUrl(key: string, expiresInSeconds = 300): Promise<string> {
+export async function getPresignedDownloadUrl(key: string, expiresInSeconds = 300, downloadName?: string): Promise<string> {
   const { client, bucket } = config()
-  return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key, ResponseCacheControl: "private, no-store, max-age=0" }), { expiresIn: Math.min(300, Math.max(30, expiresInSeconds)) })
+  const safeName = downloadName?.replace(/["\\\r\n]/g, "_")
+  const disposition = safeName
+    ? `attachment; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`
+    : undefined
+  return getSignedUrl(client, new GetObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    ResponseCacheControl: "private, no-store, max-age=0",
+    ResponseContentDisposition: disposition,
+  }), { expiresIn: Math.min(300, Math.max(30, expiresInSeconds)) })
 }
 
 export async function getPresignedUploadUrl(key: string, contentType: string, contentLength: number, metadata: Record<string, string>, expiresInSeconds = 300): Promise<{ uploadUrl: string; key: string }> {

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
+import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -18,7 +19,7 @@ import { useAppStore } from "@/store/use-app-store"
 import { useCartStore } from "@/store/use-cart-store"
 import { useAuthStore } from "@/store/use-auth-store"
 import {
-  ordersApi, paymentsApi, prescriptionsApi, settingsApi, addressesApi, promotionsApi,
+  ordersApi, paymentsApi, prescriptionsApi, settingsApi, addressesApi, promotionsApi, storageApi,
   type CreateOrderPayload,
 } from "@/lib/api-client"
 import type { AddressDTO, DeliverySettings, OrderDTO } from "@/lib/types"
@@ -41,10 +42,10 @@ type Step = 1 | 2 | 3 | 4
 
 interface StagedRx {
   key: string
+  file: File
   fileName: string
   fileType: string
   dataUrl: string
-  base64: string
   notes: string
 }
 
@@ -241,6 +242,8 @@ export function CheckoutView() {
   const [staged, setStaged] = useState<StagedRx[]>([])
   const [uploaded, setUploaded] = useState<UploadedRx[]>([])
   const [uploading, setUploading] = useState(false)
+  const [rxUploadProgress, setRxUploadProgress] = useState(0)
+  const [rxUploadStage, setRxUploadStage] = useState<string | null>(null)
   const [rxError, setRxError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -263,10 +266,10 @@ export function CheckoutView() {
           ...prev,
           {
             key: `${f.name}-${Date.now()}-${prev.length}`,
+            file: f,
             fileName: f.name,
             fileType: f.type,
             dataUrl,
-            base64: dataUrl.split(",")[1] ?? "",
             notes: "",
           },
         ])
@@ -279,16 +282,22 @@ export function CheckoutView() {
   async function uploadStaged() {
     if (staged.length === 0) return
     setUploading(true)
+    setRxUploadProgress(0)
     setRxError(null)
     try {
       const results: UploadedRx[] = []
       const failed: StagedRx[] = []
-      for (const s of staged) {
+      for (const [index, s] of staged.entries()) {
         try {
+          setRxUploadStage(`Uploading ${s.fileName} (${index + 1} of ${staged.length})…`)
+          const stored = await storageApi.uploadFile(s.file, "prescriptions", (filePercent) => {
+            setRxUploadProgress(Math.round(((index + filePercent / 100) / staged.length) * 100))
+          })
+          setRxUploadStage(`Securing ${s.fileName}…`)
           const rx = await prescriptionsApi.upload({
             fileName: s.fileName,
             fileType: s.fileType,
-            fileData: s.base64,
+            storageKey: stored.key,
             notes: s.notes.trim() || undefined,
           })
           results.push({ id: rx.id, fileName: s.fileName, notes: s.notes })
@@ -310,6 +319,8 @@ export function CheckoutView() {
       toast.error(msg)
     } finally {
       setUploading(false)
+      setRxUploadProgress(0)
+      setRxUploadStage(null)
     }
   }
 
@@ -1088,6 +1099,17 @@ export function CheckoutView() {
                       ) : null}
 
                       {rxError ? <p className="text-xs font-medium text-rose-600" role="alert">{rxError}</p> : null}
+
+                      {uploading && rxUploadStage ? (
+                        <div className="space-y-2 rounded-lg border bg-card p-3" role="status" aria-live="polite">
+                          <div className="flex items-center justify-between gap-3 text-xs">
+                            <span className="truncate font-medium">{rxUploadStage}</span>
+                            <span className="tabular-nums text-muted-foreground">{rxUploadProgress}%</span>
+                          </div>
+                          <Progress value={rxUploadProgress} aria-label={`Prescription upload ${rxUploadProgress}% complete`} />
+                          <p className="text-[11px] text-muted-foreground">Keep this page open until every file is confirmed.</p>
+                        </div>
+                      ) : null}
 
                       <div className="flex flex-wrap gap-2">
                         <input

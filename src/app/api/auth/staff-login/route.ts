@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { hashPassword, verifyPassword } from "@/lib/hash"
+import { hashPassword, validatePassword, verifyPassword } from "@/lib/hash"
 import { createSession, toStaffDTO } from "@/lib/session"
 import { enforceRateLimit, rejectOversizedRequest } from "@/lib/security/request"
 
@@ -23,10 +23,16 @@ export async function POST(request: Request) {
     if (!staff.active) {
       return NextResponse.json({ error: "This staff account is deactivated. Contact your admin." }, { status: 403 })
     }
-    if (!staff.passwordHash.startsWith("scrypt$")) await db.staffUser.update({ where: { id: staff.id }, data: { passwordHash: await hashPassword(password) } })
+    // Legacy demo accounts can have passwords that predate the current policy.
+    // Authentication must not fail merely because an opportunistic hash upgrade
+    // cannot accept that old password. Admins can rotate it through staff management.
+    if (!staff.passwordHash.startsWith("scrypt$") && !validatePassword(password)) {
+      await db.staffUser.update({ where: { id: staff.id }, data: { passwordHash: await hashPassword(password) } })
+    }
     await createSession({ staffId: staff.id })
     return NextResponse.json({ role: staff.role, staff: toStaffDTO(staff) })
-  } catch {
+  } catch (error) {
+    console.error("[staff login failed]", error instanceof Error ? error.message : "Unknown error")
     return NextResponse.json({ error: "Could not sign you in. Please try again." }, { status: 500 })
   }
 }

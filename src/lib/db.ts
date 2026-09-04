@@ -16,10 +16,29 @@ if (!databaseUrl) {
   )
 }
 
+/**
+ * Neon pooled endpoints use PgBouncer. Disabling Prisma's client-side prepared
+ * statement cache prevents stale plans from surviving a schema change and
+ * failing with PostgreSQL error 0A000 ("cached plan must not change result
+ * type"). Keep an explicitly configured cache size untouched.
+ */
+function databaseUrlForPrisma(value: string) {
+  try {
+    const url = new URL(value)
+    if (url.hostname.includes("-pooler.") && !url.searchParams.has("statement_cache_size")) {
+      url.searchParams.set("statement_cache_size", "0")
+    }
+    return url.toString()
+  } catch {
+    // Let Prisma report malformed connection strings with its normal error.
+    return value
+  }
+}
+
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
-    datasourceUrl: databaseUrl,
+    datasourceUrl: databaseUrlForPrisma(databaseUrl),
     log: ["warn", "error"],
   })
 

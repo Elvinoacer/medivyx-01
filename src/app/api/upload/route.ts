@@ -56,7 +56,7 @@ export async function POST(request: Request) {
         if (folder !== "prescriptions") return NextResponse.json({ error: "Direct upload is available only for private prescription files." }, { status: 400 })
         const fileSize = Number(body.fileSize)
         if (!Number.isSafeInteger(fileSize) || fileSize < 1 || fileSize > MAX_BYTES) return NextResponse.json({ error: "Invalid file size." }, { status: 400 })
-        return NextResponse.json(await getPresignedUploadUrl(key, declaredType, fileSize, { ownerid: ownerId, originalname: fileName, category: "prescription" }))
+        return NextResponse.json(await getPresignedUploadUrl(key, declaredType, fileSize, { ownerid: ownerId, originalname: fileName, category: "prescriptions" }))
       }
 
       const raw = typeof body.fileData === "string" ? body.fileData.slice(body.fileData.indexOf(",") + 1).replace(/\s/g, "") : ""

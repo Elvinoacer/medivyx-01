@@ -132,9 +132,25 @@ export async function POST(request: Request) {
         if (promotion.maxUses != null && await tx.promotionRedemption.count({ where: { promotionId: promotion.id } }) >= promotion.maxUses) throw new Error("PROMOTION_LIMIT")
         if (userId && promotion.perUserLimit != null && await tx.promotionRedemption.count({ where: { promotionId: promotion.id, userId } }) >= promotion.perUserLimit) throw new Error("PROMOTION_LIMIT")
       }
-      for (const { product, qty } of lines) {
-        const reserved = await tx.product.updateMany({ where: { id: product.id, active: true, stockQty: { gte: qty } }, data: { stockQty: { decrement: qty } } })
-        if (reserved.count !== 1) throw new Error(`OUT_OF_STOCK:${product.name}`)
+      // Reserve every cart line in one database round-trip. Performing one
+      // update per product made larger carts exceed Prisma's default 5-second
+      // interactive-transaction timeout on a remote/pooled database.
+      const requestedStock = Prisma.join(
+        lines.map(({ product, qty }) => Prisma.sql`(${product.id}::text, ${qty}::integer)`)
+      )
+      const reservedProducts = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        UPDATE "Product" AS product
+        SET "stockQty" = product."stockQty" - requested.qty
+        FROM (VALUES ${requestedStock}) AS requested(id, qty)
+        WHERE product.id = requested.id
+          AND product.active = true
+          AND product."stockQty" >= requested.qty
+        RETURNING product.id
+      `)
+      if (reservedProducts.length !== lines.length) {
+        const reservedIds = new Set(reservedProducts.map(({ id }) => id))
+        const unavailable = lines.find(({ product }) => !reservedIds.has(product.id))
+        throw new Error(`OUT_OF_STOCK:${unavailable?.product.name ?? "A product"}`)
       }
       if (pointsRedeemed && userId) {
         const debited = await tx.user.updateMany({ where: { id: userId, loyaltyPoints: { gte: pointsRedeemed } }, data: { loyaltyPoints: { decrement: pointsRedeemed } } })
@@ -157,7 +173,11 @@ export async function POST(request: Request) {
       if (promotion) await tx.promotionRedemption.create({ data: { promotionId: promotion.id, orderId: created.id, userId } })
       if (pointsRedeemed && userId) await tx.loyaltyLedger.create({ data: { eventKey: `redeem:${created.id}`, userId, orderId: created.id, delta: -pointsRedeemed, reason: "ORDER_REDEMPTION" } })
       return created
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      maxWait: 10_000,
+      timeout: 30_000,
+    })
 
     const orderLink = `/orders/${order.id}${guestAccessToken ? `#access=${guestAccessToken}` : ""}`
     await notifyCustomer(userId, "ORDER_STATUS", `Order ${order.reference} received`, `We received your order ${order.reference} (KSh ${total.toLocaleString()}).`, "IN_APP", { link: orderLink, metadata: { orderId: order.id }, email: (userId ? (await db.user.findUnique({ where: { id: userId }, select: { email: true } }))?.email : guestEmail) ? { to: (userId ? (await db.user.findUnique({ where: { id: userId }, select: { email: true } }))?.email : guestEmail)!, subject: `Order ${order.reference} received`, html: `<p>Your order <strong>${order.reference}</strong> has been received.</p><p><a href="${orderLink}">Track your order</a></p>`, text: `Order ${order.reference} received. Track: ${orderLink}` } : undefined })

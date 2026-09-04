@@ -15,7 +15,7 @@ const RX_INCLUDE = {
 } as const
 
 // GET — owner customer or staff; includes fileData (restricted access per FR-5.6)
-export async function GET(_request: Request, { params }: Params) {
+export async function GET(request: Request, { params }: Params) {
   const { id } = await params
   const session = await getSession()
   if (!session) return NextResponse.json({ error: "Sign in to view this prescription." }, { status: 401 })
@@ -29,17 +29,20 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "You do not have access to this prescription." }, { status: 403 })
   }
 
+  const download = new URL(request.url).searchParams.get("download") === "1"
   let presignedUrl: string | null = null
   if (rx.storageKey) {
     try {
-      presignedUrl = await getPresignedDownloadUrl(rx.storageKey, 300)
+      presignedUrl = await getPresignedDownloadUrl(rx.storageKey, 300, download ? rx.fileName : undefined)
     } catch {
       return NextResponse.json({ error: "The prescription file is temporarily unavailable." }, { status: 503 })
     }
   }
 
+  await db.prescriptionAccessLog.create({ data: { prescriptionId: rx.id, actorId: session.userId || session.staffId!, actorRole: session.staffRole || "CUSTOMER", action: download ? "DOWNLOAD" : "VIEW" } })
+  if (download && presignedUrl) return NextResponse.redirect(presignedUrl)
+
   const dto = toPrescriptionDTOFull(rx, true)
-  await db.prescriptionAccessLog.create({ data: { prescriptionId: rx.id, actorId: session.userId || session.staffId!, actorRole: session.staffRole || "CUSTOMER", action: "VIEW" } })
   return NextResponse.json({
     ...dto,
     fileData: "",

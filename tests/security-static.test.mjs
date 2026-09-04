@@ -30,3 +30,9 @@ test("popular product card has no nested interactive controls", () => {
   const card = read("src/components/shared/premium-popular-card.tsx")
   assert.doesNotMatch(card, /className="block w-full text-left"/)
 })
+
+test("legacy staff password migration cannot block a valid login", () => {
+  const route = read("src/app/api/auth/staff-login/route.ts")
+  assert.match(route, /!validatePassword\(password\)/)
+  assert.match(route, /await createSession/)
+})

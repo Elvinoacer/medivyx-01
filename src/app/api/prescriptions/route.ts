@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server"
+import { after, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { toPrescriptionDTOFull } from "@/lib/dto"
 import { addStatusEvent, notifyCustomer } from "@/lib/notify"
 import { requireCustomer, requireStaff } from "@/lib/session"
-import { getObjectFromR2, uploadBase64ToR2 } from "@/lib/r2"
+import { objectMetadataInR2, uploadBase64ToR2 } from "@/lib/r2"
 import { validateFile } from "@/lib/security/file"
 import { enforceRateLimit, publicError, rejectOversizedRequest } from "@/lib/security/request"
 import { randomUUID } from "crypto"
@@ -70,12 +70,11 @@ export async function POST(request: Request) {
       if (!storageKey!.startsWith(expectedPrefix)) {
         return NextResponse.json({ error: "Invalid prescription storage reference." }, { status: 400 })
       }
-      const uploaded = await getObjectFromR2(storageKey!)
-      if (uploaded.metadata.ownerid !== session.userId || uploaded.metadata.category !== "prescriptions" || uploaded.contentType !== fileType) {
+      const uploaded = await objectMetadataInR2(storageKey!)
+      if (!uploaded || uploaded.metadata.ownerid !== session.userId || uploaded.metadata.category !== "prescriptions" || uploaded.contentType !== fileType) {
         return NextResponse.json({ error: "Prescription upload ownership or metadata is invalid." }, { status: 400 })
       }
-      const invalid = validateFile(uploaded.body, fileType, fileName, MAX_FILE_BYTES)
-      if (invalid) return NextResponse.json({ error: invalid }, { status: 400 })
+      if (uploaded.size < 1 || uploaded.size > MAX_FILE_BYTES) return NextResponse.json({ error: "File is too large — 10MB maximum." }, { status: 400 })
       fileData = ""
     } else {
       // Accept both raw base64 and data URLs for the database/R2 fallback path.
@@ -137,39 +136,45 @@ export async function POST(request: Request) {
     const customerUser = await db.user.findUnique({ where: { id: session.userId! }, select: { name: true, email: true } })
     const customerName = customerUser?.name || "Customer"
 
-    await notifyCustomer(
-      session.userId,
-      "PRESCRIPTION",
-      "Prescription received",
-      "We received your prescription. Our pharmacist is reviewing it — usually within 2 working hours.",
-      "IN_APP",
-      {
-        link: `${appUrl}/#prescriptions`,
-        metadata: { prescriptionId: rx.id, orderId },
-        email: customerUser?.email
-          ? {
-              to: customerUser.email,
-              subject: "Prescription Received — Sphere Pharmacy",
-              html: `<p>Hello ${customerName},</p><p>We have safely received your uploaded prescription (<strong>${fileName}</strong>). Our licensed pharmacist will review it shortly (usually within 2 working hours).</p><p>You will receive another update once verification is complete.</p>`,
-              text: `Hello ${customerName},\nWe received your prescription (${fileName}). Our pharmacist will review it shortly.`,
-            }
-          : undefined,
+    // The prescription is safely stored at this point. Notifications are
+    // follow-up work and should not keep the upload UI waiting.
+    after(async () => {
+      try {
+        await notifyCustomer(
+          session.userId,
+          "PRESCRIPTION",
+          "Prescription received",
+          "We received your prescription. Our pharmacist is reviewing it — usually within 2 working hours.",
+          "IN_APP",
+          {
+            link: `${appUrl}/#prescriptions`,
+            metadata: { prescriptionId: rx.id, orderId },
+            email: customerUser?.email
+              ? {
+                  to: customerUser.email,
+                  subject: "Prescription Received — Sphere Pharmacy",
+                  html: `<p>Hello ${customerName},</p><p>We have safely received your uploaded prescription (<strong>${fileName}</strong>). Our licensed pharmacist will review it shortly (usually within 2 working hours).</p><p>You will receive another update once verification is complete.</p>`,
+                  text: `Hello ${customerName},\nWe received your prescription (${fileName}). Our pharmacist will review it shortly.`,
+                }
+              : undefined,
+          }
+        )
+        const { notifyStaff } = await import("@/lib/notify")
+        await notifyStaff({
+          roles: ["PHARMACIST", "ADMIN"],
+          event: "NEW_PRESCRIPTION",
+          title: "New Prescription Uploaded",
+          message: `Prescription uploaded by ${customerName} awaiting pharmacist review.`,
+          link: `${appUrl}/#admin-prescriptions`,
+          details: {
+            Customer: customerName,
+            File: fileName,
+            LinkedOrder: rx.order?.reference || "None",
+          },
+        })
+      } catch (notificationError) {
+        console.error("[prescription notification failed]", notificationError)
       }
-    )
-
-    // Alert pharmacists and admins
-    const { notifyStaff } = await import("@/lib/notify")
-    await notifyStaff({
-      roles: ["PHARMACIST", "ADMIN"],
-      event: "NEW_PRESCRIPTION",
-      title: "New Prescription Uploaded",
-      message: `Prescription uploaded by ${customerName} awaiting pharmacist review.`,
-      link: `${appUrl}/#admin-prescriptions`,
-      details: {
-        Customer: customerName,
-        File: fileName,
-        LinkedOrder: rx.order?.reference || "None",
-      },
     })
     return NextResponse.json(toPrescriptionDTOFull(rx, true))
   } catch {

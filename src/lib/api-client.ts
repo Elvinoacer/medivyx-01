@@ -256,25 +256,41 @@ export const assistantApi = {
 export const storageApi = {
   uploadFile: async (
     file: File,
-    folder: "products" | "prescriptions" | "avatars" | "services" | "general"
+    folder: "products" | "prescriptions" | "avatars" | "services" | "general",
+    onProgress?: (percent: number) => void
   ): Promise<UploadResponse> => {
     const form = new FormData()
     form.append("file", file)
     form.append("folder", folder)
-    const res = await fetch("/api/upload", { method: "POST", body: form, cache: "no-store" })
-    let body: unknown = null
-    try {
-      body = await res.json()
-    } catch {
-      /* no body */
-    }
-    if (!res.ok) {
-      const msg = body && typeof body === "object" && "error" in body && typeof body.error === "string"
-        ? body.error
-        : `Upload failed (${res.status})`
-      throw new ApiError(msg, res.status)
-    }
-    return body as UploadResponse
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open("POST", "/api/upload")
+      xhr.responseType = "json"
+      xhr.timeout = 120_000
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) onProgress?.(Math.round((event.loaded / event.total) * 100))
+      }
+      xhr.onerror = () => reject(new ApiError("Upload interrupted. Check your connection and try again.", 0))
+      xhr.ontimeout = () => reject(new ApiError("Upload took too long. Check your connection and try again.", 408))
+      xhr.onload = () => {
+        const body = xhr.response as unknown
+        if (xhr.status < 200 || xhr.status >= 300) {
+          const message = body && typeof body === "object" && "error" in body && typeof body.error === "string"
+            ? body.error
+            : `Upload failed (${xhr.status})`
+          reject(new ApiError(message, xhr.status))
+          return
+        }
+        onProgress?.(100)
+        const upload = body as Partial<UploadResponse>
+        if (!upload.key) {
+          reject(new ApiError("The server did not confirm the stored file. Please try again.", xhr.status))
+          return
+        }
+        resolve({ key: upload.key, url: upload.url ?? "" })
+      }
+      xhr.send(form)
+    })
   },
   uploadBase64: (data: {
     fileData: string
