@@ -30,7 +30,7 @@ import { apiErrorMessage, telHref, waHref, type SectionProps } from "../admin-sh
 import {
   ShieldAlert, Loader2, FileText, Download, Phone, MessageCircle, Eye,
   CheckCircle2, XCircle, HelpCircle, ListChecks, History, Clock,
-  ZoomIn, ZoomOut, RotateCw, RefreshCw, Maximize2, ExternalLink, ArrowRight, X, User,
+  ZoomIn, ZoomOut, RotateCw, RefreshCw, Maximize2, ExternalLink, ArrowRight, ArrowLeft, X, User,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -433,7 +433,7 @@ function ReviewDialog({
   return (
     <>
       <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
-        <DialogContent className="flex h-[95dvh] max-h-[95dvh] w-[calc(100%-1rem)] max-w-6xl flex-col overflow-hidden p-0 sm:h-[90dvh] sm:max-h-[90dvh] sm:w-[96vw]">
+        <DialogContent className="flex h-[94dvh] max-h-[94dvh] w-[96vw] max-w-[96vw] sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl flex-col overflow-hidden p-0 gap-0">
           {/* Header */}
           <DialogHeader className="border-b px-4 py-3 shrink-0">
             <div className="flex flex-wrap items-center justify-between gap-2 pr-6">
@@ -505,16 +505,16 @@ function ReviewDialog({
             >
               {/* Document Toolbar */}
               <div className="flex items-center justify-between border-b bg-muted/30 px-3 py-1.5 text-xs shrink-0">
-                <span className="text-muted-foreground font-mono truncate max-w-[140px] sm:max-w-[220px]">
+                <span className="text-muted-foreground font-mono truncate max-w-[120px] sm:max-w-[200px]">
                   {detail?.fileName ?? "Document preview"}
                 </span>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5 sm:gap-1">
                   {isImage && imageSrc ? (
                     <>
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleZoomOut} title="Zoom out">
                         <ZoomOut className="h-3.5 w-3.5" />
                       </Button>
-                      <span className="text-[11px] font-mono text-muted-foreground w-10 text-center select-none">
+                      <span className="text-[11px] font-mono text-muted-foreground w-9 text-center select-none">
                         {Math.round(zoom * 100)}%
                       </span>
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleZoomIn} title="Zoom in">
@@ -523,7 +523,7 @@ function ReviewDialog({
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleRotate} title="Rotate 90°">
                         <RotateCw className="h-3.5 w-3.5" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleResetView} title="Reset zoom & rotation">
+                      <Button size="icon" variant="ghost" className="h-7 w-7 hidden sm:inline-flex" onClick={handleResetView} title="Reset zoom & rotation">
                         <RefreshCw className="h-3.5 w-3.5" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setLightboxOpen(true)} title="Fullscreen zoom">
@@ -531,8 +531,9 @@ function ReviewDialog({
                       </Button>
                     </>
                   ) : null}
-                  <Button size="sm" variant="outline" className="h-7 gap-1 text-xs ml-1" onClick={download}>
-                    <Download className="h-3.5 w-3.5" /> Download
+                  <Button size="sm" variant="outline" className="h-7 px-2 gap-1 text-xs ml-1" onClick={download} title="Download file">
+                    <Download className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Download</span>
                   </Button>
                 </div>
               </div>
@@ -601,16 +602,31 @@ function ReviewDialog({
                 mobileTab === "review" ? "flex" : "hidden md:flex"
               )}
             >
+              {/* Mobile quick banner to switch back to document */}
+              <div className="md:hidden flex items-center justify-between px-3 py-2 border-b bg-muted/25 shrink-0 text-xs">
+                <span className="text-muted-foreground truncate max-w-[200px]">
+                  {detail?.fileName ?? "Document"}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs gap-1 text-primary hover:text-primary font-medium"
+                  onClick={() => setMobileTab("doc")}
+                >
+                  <Eye className="h-3.5 w-3.5" /> View document
+                </Button>
+              </div>
+
               <ScrollArea className="scroll-slim flex-1 min-h-0">
                 <div className="space-y-4 p-4">
                   {/* Customer / Patient Card */}
                   {detail ? (
                     <div className="rounded-lg border p-3 bg-muted/20 space-y-2.5">
                       <div className="flex items-start justify-between gap-2">
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Customer / Patient</p>
-                          <p className="text-sm font-bold text-foreground mt-0.5">{detail.customerName ?? "Standalone upload"}</p>
-                          <p className="text-xs font-mono text-muted-foreground">{detail.customerPhone ?? "No phone on file"}</p>
+                          <p className="text-sm font-bold text-foreground mt-0.5 truncate">{detail.customerName ?? "Standalone upload"}</p>
+                          <p className="text-xs font-mono text-muted-foreground truncate">{detail.customerPhone ?? "No phone on file"}</p>
                         </div>
                         <RxStatusBadge status={detail.status} />
                       </div>
@@ -811,24 +827,53 @@ function ReviewDialog({
 
           {/* Solid Opaque Footer */}
           <div className="border-t bg-background shrink-0 px-4 py-3 flex items-center justify-between gap-3 shadow-sm z-10">
-            <Button variant="outline" size="sm" onClick={onClose} disabled={busy} className="h-8 text-xs">
-              Close
-            </Button>
-
-            {canReview && detail && detail.status !== "APPROVED" ? (
-              <Button
-                size="sm"
-                onClick={() => void submit()}
-                disabled={busy || (notesRequired && !notesValid) || !partialValid}
-                className={cn("h-8 text-xs font-semibold transition-colors", submitButtonClass)}
-              >
-                {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-                {action === "APPROVED" ? "Approve prescription"
-                  : action === "REJECTED" ? "Reject prescription"
-                    : action === "CLARIFICATION_REQUESTED" ? "Send clarification request"
-                      : "Save partial approval"}
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={onClose} disabled={busy} className="h-8 text-xs">
+                Close
               </Button>
-            ) : null}
+              {mobileTab === "review" ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMobileTab("doc")}
+                  className="h-8 text-xs gap-1 md:hidden"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" /> Document
+                </Button>
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {mobileTab === "doc" ? (
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => setMobileTab("review")}
+                  className="h-8 text-xs gap-1 font-semibold md:hidden"
+                >
+                  Review prescription <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              ) : null}
+
+              {canReview && detail && detail.status !== "APPROVED" ? (
+                <Button
+                  size="sm"
+                  onClick={() => void submit()}
+                  disabled={busy || (notesRequired && !notesValid) || !partialValid}
+                  className={cn(
+                    "h-8 text-xs font-semibold transition-colors",
+                    submitButtonClass,
+                    mobileTab === "doc" ? "hidden md:inline-flex" : "inline-flex"
+                  )}
+                >
+                  {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                  {action === "APPROVED" ? "Approve prescription"
+                    : action === "REJECTED" ? "Reject prescription"
+                      : action === "CLARIFICATION_REQUESTED" ? "Send clarification request"
+                        : "Save partial approval"}
+                </Button>
+              ) : null}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -923,18 +968,16 @@ function ReviewChoice({
   return (
     <label
       className={cn(
-        "flex cursor-pointer items-start gap-2.5 rounded-lg border p-2.5 transition-all text-left",
+        "flex cursor-pointer items-start gap-2.5 rounded-lg border p-2.5 transition-all text-left min-w-0 select-none",
         colorClasses
       )}
     >
       <RadioGroupItem value={value} className="mt-0.5 shrink-0" aria-label={title} />
-      <span className="flex min-w-0 items-start gap-2">
-        <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", iconColor)} aria-hidden />
-        <span className="min-w-0">
-          <span className="block text-xs font-semibold leading-tight">{title}</span>
-          <span className="block text-[11px] text-muted-foreground leading-snug mt-0.5">{desc}</span>
-        </span>
-      </span>
+      <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", iconColor)} aria-hidden />
+      <div className="min-w-0 flex-1">
+        <div className="text-xs font-semibold leading-tight text-foreground">{title}</div>
+        <div className="text-[11px] text-muted-foreground leading-snug mt-0.5 break-normal">{desc}</div>
+      </div>
     </label>
   )
 }
