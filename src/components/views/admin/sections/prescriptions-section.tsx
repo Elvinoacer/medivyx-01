@@ -30,6 +30,7 @@ import { apiErrorMessage, telHref, waHref, type SectionProps } from "../admin-sh
 import {
   ShieldAlert, Loader2, FileText, Download, Phone, MessageCircle, Eye,
   CheckCircle2, XCircle, HelpCircle, ListChecks, History, Clock,
+  ZoomIn, ZoomOut, RotateCw, RefreshCw, Maximize2, ExternalLink, ArrowRight, X, User,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -311,6 +312,26 @@ function ReviewDialog({
   const [validDays, setValidDays] = useState<string>("30")
   const [busy, setBusy] = useState(false)
 
+  // Document viewer controls
+  const [zoom, setZoom] = useState(1)
+  const [rotation, setRotation] = useState(0)
+  const [mobileTab, setMobileTab] = useState<"doc" | "review">("doc")
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+
+  function handleZoomIn() {
+    setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)))
+  }
+  function handleZoomOut() {
+    setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))
+  }
+  function handleRotate() {
+    setRotation((r) => (r + 90) % 360)
+  }
+  function handleResetView() {
+    setZoom(1)
+    setRotation(0)
+  }
+
   useEffect(() => {
     let cancelled = false
     setLoading(true)
@@ -402,215 +423,463 @@ function ReviewDialog({
   const wa = detail ? waHref(detail.customerPhone, `Hello ${detail.customerName ?? "there"}, this is Sphere Pharmacy regarding your prescription upload (${detail.fileName}).`) : null
   const tel = detail ? telHref(detail.customerPhone) : null
 
-  return (
-    <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
-      <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden p-0 sm:max-w-2xl">
-        <DialogHeader className="border-b p-4 pb-3">
-          <DialogTitle className="flex flex-wrap items-center gap-2 text-base">
-            <FileText className="h-4 w-4 text-muted-foreground" aria-hidden />
-            {detail?.fileName ?? "Prescription"}
-            {detail ? <RxStatusBadge status={detail.status} /> : null}
-          </DialogTitle>
-          <DialogDescription className="text-xs">
-            {detail
-              ? `${detail.customerName ?? "Standalone upload"}${detail.customerPhone ? ` · ${detail.customerPhone}` : ""} · uploaded ${timeAgo(detail.createdAt)}`
-              : "Loading prescription…"}
-          </DialogDescription>
-        </DialogHeader>
+  const submitButtonClass = {
+    APPROVED: "bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-600 dark:hover:bg-emerald-700",
+    PARTIALLY_APPROVED: "bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-600 dark:hover:bg-amber-700",
+    CLARIFICATION_REQUESTED: "bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700",
+    REJECTED: "bg-rose-600 hover:bg-rose-700 text-white dark:bg-rose-600 dark:hover:bg-rose-700",
+  }[action]
 
-        <ScrollArea className="scroll-slim min-h-0 flex-1">
-          <div className="space-y-4 p-4">
-            {loading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-64 w-full rounded-lg" />
-                <Skeleton className="h-4 w-1/2" />
+  return (
+    <>
+      <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
+        <DialogContent className="flex h-[95dvh] max-h-[95dvh] w-[calc(100%-1rem)] max-w-6xl flex-col overflow-hidden p-0 sm:h-[90dvh] sm:max-h-[90dvh] sm:w-[96vw]">
+          {/* Header */}
+          <DialogHeader className="border-b px-4 py-3 shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 pr-6">
+              <DialogTitle className="flex flex-wrap items-center gap-2 text-sm sm:text-base font-bold">
+                <FileText className="h-4 w-4 text-primary shrink-0" aria-hidden />
+                <span className="truncate max-w-[220px] sm:max-w-md">{detail?.fileName ?? "Prescription Review"}</span>
+                {detail ? <RxStatusBadge status={detail.status} /> : null}
+              </DialogTitle>
+              {detail?.orderReference ? (
+                <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground">
+                  Order #{detail.orderReference}
+                </span>
+              ) : null}
+            </div>
+            <DialogDescription className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+              {detail ? (
+                <>
+                  <span className="font-medium text-foreground">{detail.customerName ?? "Standalone upload"}</span>
+                  {detail.customerPhone ? <span>· {detail.customerPhone}</span> : null}
+                  <span>· uploaded {timeAgo(detail.createdAt)}</span>
+                </>
+              ) : (
+                "Loading prescription details…"
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Mobile Tab Switcher (Visible on small screens only) */}
+          <div className="flex border-b bg-muted/40 md:hidden shrink-0">
+            <button
+              type="button"
+              onClick={() => setMobileTab("doc")}
+              className={cn(
+                "flex-1 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors",
+                mobileTab === "doc"
+                  ? "border-primary text-primary bg-background shadow-xs"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Prescription Document
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab("review")}
+              className={cn(
+                "flex-1 py-2 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors",
+                mobileTab === "review"
+                  ? "border-primary text-primary bg-background shadow-xs"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <ListChecks className="h-3.5 w-3.5" />
+              Review & Order Details
+              {canReview && detail?.status !== "APPROVED" ? (
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              ) : null}
+            </button>
+          </div>
+
+          {/* Main Body: Responsive 2-column split on desktop, tabbed on mobile */}
+          <div className="flex-1 min-h-0 grid md:grid-cols-12 divide-y md:divide-y-0 md:divide-x overflow-hidden">
+            {/* Left Column: Document Viewer */}
+            <div
+              className={cn(
+                "md:col-span-6 lg:col-span-7 flex flex-col min-h-0 bg-muted/15 overflow-hidden",
+                mobileTab === "doc" ? "flex" : "hidden md:flex"
+              )}
+            >
+              {/* Document Toolbar */}
+              <div className="flex items-center justify-between border-b bg-muted/30 px-3 py-1.5 text-xs shrink-0">
+                <span className="text-muted-foreground font-mono truncate max-w-[140px] sm:max-w-[220px]">
+                  {detail?.fileName ?? "Document preview"}
+                </span>
+                <div className="flex items-center gap-1">
+                  {isImage && imageSrc ? (
+                    <>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleZoomOut} title="Zoom out">
+                        <ZoomOut className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="text-[11px] font-mono text-muted-foreground w-10 text-center select-none">
+                        {Math.round(zoom * 100)}%
+                      </span>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleZoomIn} title="Zoom in">
+                        <ZoomIn className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleRotate} title="Rotate 90°">
+                        <RotateCw className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleResetView} title="Reset zoom & rotation">
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setLightboxOpen(true)} title="Fullscreen zoom">
+                        <Maximize2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
+                  ) : null}
+                  <Button size="sm" variant="outline" className="h-7 gap-1 text-xs ml-1" onClick={download}>
+                    <Download className="h-3.5 w-3.5" /> Download
+                  </Button>
+                </div>
               </div>
-            ) : detailError ? (
-              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300" role="alert">
-                {detailError}
-              </div>
-            ) : detail ? (
-              <>
-                {/* document */}
-                {imageSrc ? (
-                  <figure className="overflow-hidden rounded-lg border bg-muted/30">
+
+              {/* Document Viewport Canvas */}
+              <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center p-3 sm:p-6 bg-slate-900/[0.03] dark:bg-slate-950/40 select-none">
+                {loading ? (
+                  <div className="flex flex-col items-center gap-3 p-8 text-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">Loading prescription file…</p>
+                  </div>
+                ) : detailError ? (
+                  <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
+                    {detailError}
+                  </div>
+                ) : isImage && imageSrc ? (
+                  <div
+                    className="relative transition-transform duration-150 ease-out cursor-zoom-in max-w-full"
+                    style={{
+                      transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                      transformOrigin: "center center",
+                    }}
+                    onClick={() => setLightboxOpen(true)}
+                    title="Click to view full screen"
+                  >
                     <img
                       src={imageSrc}
-                      alt={`Uploaded prescription: ${detail.fileName}`}
-                      className="max-h-80 w-full object-contain"
+                      alt={`Prescription ${detail?.fileName}`}
+                      className="max-h-[56dvh] md:max-h-[68dvh] w-auto max-w-full rounded-md shadow-sm object-contain border bg-background"
                     />
-                    <figcaption className="flex items-center justify-between gap-2 border-t bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                      <span>{detail.fileName}</span>
-                      <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={download}>
-                        <Download className="h-3.5 w-3.5" aria-hidden /> Download
-                      </Button>
-                    </figcaption>
-                  </figure>
+                  </div>
                 ) : (
-                  <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-muted/30 p-8 text-center">
-                    <FileText className="h-10 w-10 text-muted-foreground" aria-hidden />
+                  <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-background p-8 text-center max-w-sm shadow-xs">
+                    <FileText className="h-12 w-12 text-primary" />
                     <div>
-                      <p className="text-sm font-medium">PDF document</p>
-                      <p className="text-xs text-muted-foreground">
-                        {detail.fileName} · {detail.fileType || "application/pdf"}
-                      </p>
+                      <p className="text-sm font-semibold">{detail?.fileName}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{detail?.fileType || "application/pdf"}</p>
                     </div>
-                    <Button size="sm" variant="outline" className="gap-1.5" onClick={download}>
-                      <Download className="h-3.5 w-3.5" aria-hidden /> Download to view
-                    </Button>
+                    <div className="flex items-center gap-2 mt-2">
+                      {detail?.fileUrl ? (
+                        <Button size="sm" className="gap-1.5 text-xs" onClick={() => { if (detail?.fileUrl) window.open(detail.fileUrl, "_blank") }}>
+                          <ExternalLink className="h-3.5 w-3.5" /> Open in new tab
+                        </Button>
+                      ) : null}
+                      <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={download}>
+                        <Download className="h-3.5 w-3.5" /> Download
+                      </Button>
+                    </div>
                   </div>
                 )}
+              </div>
 
-                {/* customer notes + contact */}
-                {detail.notes ? (
-                  <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer notes</p>
-                    <p className="rounded-lg border p-3 text-sm">“{detail.notes}”</p>
-                  </div>
-                ) : null}
-                {tel || wa ? (
-                  <div className="flex flex-wrap gap-2">
-                    {tel ? (
-                      <Button size="sm" variant="outline" className="gap-1.5" asChild>
-                        <a href={tel}><Phone className="h-3.5 w-3.5" /> Call customer</a>
-                      </Button>
-                    ) : null}
-                    {wa ? (
-                      <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700" asChild>
-                        <a href={wa} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</a>
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : null}
+              {/* Mobile helper bar to switch to review */}
+              <div className="p-2.5 border-t bg-background flex items-center justify-between md:hidden shrink-0">
+                <span className="text-xs text-muted-foreground">Done checking document?</span>
+                <Button size="sm" className="gap-1 text-xs" onClick={() => setMobileTab("review")}>
+                  Proceed to review <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
 
-                {/* linked order */}
-                {detail.orderId ? (
-                  <div>
-                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Linked order {detail.orderReference ? `· ${detail.orderReference}` : ""}
-                    </p>
-                    {linkedOrder ? (
-                      <ul className="divide-y rounded-lg border">
-                        {linkedOrder.items.map((item) => (
-                          <li key={item.id} className="flex items-center justify-between gap-3 p-2.5">
-                            <span className="min-w-0 truncate text-sm">
-                              {item.name} <span className="text-xs text-muted-foreground">× {item.qty}</span>
-                              {item.requiresPrescription ? <span className="ml-1.5 text-rose-600" aria-label="prescription item">℞</span> : null}
-                            </span>
-                            <span className="text-xs tabular-nums text-muted-foreground">{formatKES(item.lineTotal)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-                        Linked order details unavailable{detail.orderReference ? ` (${detail.orderReference})` : ""}.
-                      </p>
-                    )}
-                    <p className="mt-1.5 text-xs text-muted-foreground">
-                      Approving will let the linked order continue automatically — refill it from the Orders tab.
-                    </p>
-                  </div>
-                ) : null}
-
-                {/* review form */}
-                {canReview && detail.status !== "APPROVED" ? (
-                  <div className="space-y-3 rounded-lg border p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your review</p>
-                    <RadioGroup value={action} onValueChange={(v) => setAction(v as ReviewAction)} className="gap-2">
-                      <ReviewChoice value="APPROVED" icon={CheckCircle2} title="Approve" desc="Prescription is valid — allow dispensing." />
-                      <ReviewChoice value="PARTIALLY_APPROVED" icon={ListChecks} title="Partially approve" desc="Some items can be dispensed; others unavailable." />
-                      <ReviewChoice value="CLARIFICATION_REQUESTED" icon={HelpCircle} title="Request clarification" desc="Message the customer for missing details." />
-                      <ReviewChoice value="REJECTED" icon={XCircle} title="Reject" desc="Prescription cannot be dispensed." />
-                    </RadioGroup>
-
-                    {action === "APPROVED" || action === "PARTIALLY_APPROVED" ? (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                          <Label htmlFor="rx-refills">Refills allowed (0–6)</Label>
-                          <Input
-                            id="rx-refills"
-                            type="number"
-                            min={0}
-                            max={6}
-                            value={refills}
-                            onChange={(e) => setRefills(e.target.value)}
-                          />
+            {/* Right Column: Review Form & Prescription Details */}
+            <div
+              className={cn(
+                "md:col-span-6 lg:col-span-5 flex flex-col min-h-0 bg-background overflow-hidden",
+                mobileTab === "review" ? "flex" : "hidden md:flex"
+              )}
+            >
+              <ScrollArea className="scroll-slim flex-1 min-h-0">
+                <div className="space-y-4 p-4">
+                  {/* Customer / Patient Card */}
+                  {detail ? (
+                    <div className="rounded-lg border p-3 bg-muted/20 space-y-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Customer / Patient</p>
+                          <p className="text-sm font-bold text-foreground mt-0.5">{detail.customerName ?? "Standalone upload"}</p>
+                          <p className="text-xs font-mono text-muted-foreground">{detail.customerPhone ?? "No phone on file"}</p>
                         </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="rx-valid">Valid for</Label>
-                          <Select value={validDays} onValueChange={setValidDays}>
-                            <SelectTrigger id="rx-valid" aria-label="Prescription validity period">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {VALID_DAYS_OPTIONS.map((d) => (
-                                <SelectItem key={d} value={String(d)}>{d} days</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        <RxStatusBadge status={detail.status} />
+                      </div>
+
+                      {tel || wa ? (
+                        <div className="flex flex-wrap items-center gap-2 pt-1 border-t">
+                          {tel ? (
+                            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs flex-1" asChild>
+                              <a href={tel}><Phone className="h-3.5 w-3.5 text-primary" /> Call</a>
+                            </Button>
+                          ) : null}
+                          {wa ? (
+                            <Button size="sm" className="h-8 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex-1" asChild>
+                              <a href={wa} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</a>
+                            </Button>
+                          ) : null}
                         </div>
-                      </div>
-                    ) : null}
-
-                    {action === "PARTIALLY_APPROVED" ? (
-                      <div className="space-y-1.5">
-                        <Label htmlFor="rx-unavailable">Unavailable items (required)</Label>
-                        <Input
-                          id="rx-unavailable"
-                          value={unavailable}
-                          onChange={(e) => setUnavailable(e.target.value)}
-                          placeholder="e.g. Ventolin inhaler 100mcg (out of stock)"
-                        />
-                      </div>
-                    ) : null}
-
-                    <div className="space-y-1.5">
-                      <Label htmlFor="rx-notes">
-                        {action === "CLARIFICATION_REQUESTED"
-                          ? "Message to customer (required)"
-                          : action === "REJECTED"
-                            ? "Reason for rejection (required)"
-                            : "Review notes (optional)"}
-                      </Label>
-                      <Textarea
-                        id="rx-notes"
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        rows={3}
-                        placeholder={
-                          action === "CLARIFICATION_REQUESTED"
-                            ? "e.g. Please send a clearer photo of the prescription — the dosage is unreadable."
-                            : action === "REJECTED"
-                              ? "e.g. Prescription is expired (issued 2023)."
-                              : "e.g. Verified against patient record; 1 refill authorised."
-                        }
-                        aria-invalid={notesRequired && !notesValid && notes.length > 0}
-                      />
-                      {notesRequired && !notesValid && notes.length > 0 ? (
-                        <p className="text-xs text-rose-600">This field is required (min 3 characters).</p>
                       ) : null}
                     </div>
-                  </div>
-                ) : null}
-              </>
+                  ) : null}
+
+                  {/* Customer notes */}
+                  {detail?.notes ? (
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Customer notes</p>
+                      <p className="rounded-lg border bg-muted/10 p-2.5 text-xs italic text-foreground">“{detail.notes}”</p>
+                    </div>
+                  ) : null}
+
+                  {/* Linked order items */}
+                  {detail?.orderId ? (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Linked order {detail.orderReference ? `· #${detail.orderReference}` : ""}
+                        </p>
+                        {linkedOrder ? (
+                          <span className="text-xs font-semibold text-primary">{formatKES(linkedOrder.total)}</span>
+                        ) : null}
+                      </div>
+                      {linkedOrder ? (
+                        <ul className="divide-y rounded-lg border text-xs max-h-36 overflow-y-auto">
+                          {linkedOrder.items.map((item) => (
+                            <li key={item.id} className="flex items-center justify-between gap-2 p-2">
+                              <span className="min-w-0 truncate font-medium">
+                                {item.name} <span className="text-muted-foreground font-normal">× {item.qty}</span>
+                                {item.requiresPrescription ? (
+                                  <span className="ml-1.5 rounded bg-rose-100 px-1 py-0.2 text-[10px] font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                                    ℞
+                                  </span>
+                                ) : null}
+                              </span>
+                              <span className="tabular-nums text-muted-foreground">{formatKES(item.lineTotal)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="rounded-lg border border-dashed p-2.5 text-xs text-muted-foreground">
+                          Linked order details unavailable.
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {/* Pharmacist Review Form */}
+                  {canReview && detail && detail.status !== "APPROVED" ? (
+                    <div className="space-y-3 rounded-lg border p-3.5 bg-card shadow-xs">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold uppercase tracking-wider text-foreground">Pharmacist Decision</p>
+                        <span className="text-[10px] text-muted-foreground">Select decision</span>
+                      </div>
+
+                      <RadioGroup
+                        value={action}
+                        onValueChange={(v) => setAction(v as ReviewAction)}
+                        className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+                      >
+                        <ReviewChoice
+                          value="APPROVED"
+                          icon={CheckCircle2}
+                          title="Approve"
+                          desc="Valid prescription — authorize"
+                          selected={action === "APPROVED"}
+                          colorScheme="emerald"
+                        />
+                        <ReviewChoice
+                          value="PARTIALLY_APPROVED"
+                          icon={ListChecks}
+                          title="Partial approval"
+                          desc="Some items in stock only"
+                          selected={action === "PARTIALLY_APPROVED"}
+                          colorScheme="amber"
+                        />
+                        <ReviewChoice
+                          value="CLARIFICATION_REQUESTED"
+                          icon={HelpCircle}
+                          title="Clarify"
+                          desc="Request clearer photo / info"
+                          selected={action === "CLARIFICATION_REQUESTED"}
+                          colorScheme="blue"
+                        />
+                        <ReviewChoice
+                          value="REJECTED"
+                          icon={XCircle}
+                          title="Reject"
+                          desc="Invalid, expired or unreadable"
+                          selected={action === "REJECTED"}
+                          colorScheme="rose"
+                        />
+                      </RadioGroup>
+
+                      {/* Conditional inputs based on decision */}
+                      {action === "APPROVED" || action === "PARTIALLY_APPROVED" ? (
+                        <div className="grid grid-cols-2 gap-2.5 pt-1">
+                          <div className="space-y-1">
+                            <Label htmlFor="rx-refills" className="text-xs font-medium">Refills allowed (0–6)</Label>
+                            <Input
+                              id="rx-refills"
+                              type="number"
+                              min={0}
+                              max={6}
+                              value={refills}
+                              onChange={(e) => setRefills(e.target.value)}
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="rx-valid" className="text-xs font-medium">Validity period</Label>
+                            <Select value={validDays} onValueChange={setValidDays}>
+                              <SelectTrigger id="rx-valid" className="h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {VALID_DAYS_OPTIONS.map((d) => (
+                                  <SelectItem key={d} value={String(d)} className="text-xs">
+                                    {d} days
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {action === "PARTIALLY_APPROVED" ? (
+                        <div className="space-y-1 pt-1">
+                          <Label htmlFor="rx-unavailable" className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                            Unavailable items (required)
+                          </Label>
+                          <Input
+                            id="rx-unavailable"
+                            value={unavailable}
+                            onChange={(e) => setUnavailable(e.target.value)}
+                            placeholder="e.g. Augmentin 625mg out of stock"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      ) : null}
+
+                      <div className="space-y-1 pt-1">
+                        <Label htmlFor="rx-notes" className="text-xs font-medium">
+                          {action === "CLARIFICATION_REQUESTED"
+                            ? "Message to customer (required)"
+                            : action === "REJECTED"
+                              ? "Reason for rejection (required)"
+                              : "Pharmacist review notes (optional)"}
+                        </Label>
+                        <Textarea
+                          id="rx-notes"
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          rows={2}
+                          placeholder={
+                            action === "CLARIFICATION_REQUESTED"
+                              ? "e.g. Please upload a clearer photo showing the doctor signature and dosage."
+                              : action === "REJECTED"
+                                ? "e.g. Prescription expired or illegible doctor handwriting."
+                                : "e.g. Verified against patient records; authorized."
+                          }
+                          className="text-xs resize-none"
+                          aria-invalid={notesRequired && !notesValid && notes.length > 0}
+                        />
+                        {notesRequired && !notesValid && notes.length > 0 ? (
+                          <p className="text-[11px] text-rose-600 font-medium">At least 3 characters required.</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : detail?.status === "APPROVED" ? (
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+                      <p className="font-semibold">✓ Prescription already verified and approved.</p>
+                      {detail.reviewNotes ? <p className="mt-1 italic">“{detail.reviewNotes}”</p> : null}
+                    </div>
+                  ) : null}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+
+          {/* Solid Opaque Footer */}
+          <div className="border-t bg-background shrink-0 px-4 py-3 flex items-center justify-between gap-3 shadow-sm z-10">
+            <Button variant="outline" size="sm" onClick={onClose} disabled={busy} className="h-8 text-xs">
+              Close
+            </Button>
+
+            {canReview && detail && detail.status !== "APPROVED" ? (
+              <Button
+                size="sm"
+                onClick={() => void submit()}
+                disabled={busy || (notesRequired && !notesValid) || !partialValid}
+                className={cn("h-8 text-xs font-semibold transition-colors", submitButtonClass)}
+              >
+                {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                {action === "APPROVED" ? "Approve prescription"
+                  : action === "REJECTED" ? "Reject prescription"
+                    : action === "CLARIFICATION_REQUESTED" ? "Send clarification request"
+                      : "Save partial approval"}
+              </Button>
             ) : null}
           </div>
-        </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
-        <div className="flex items-center justify-end gap-2 border-t bg-muted/30 p-4">
-          <Button variant="outline" onClick={onClose} disabled={busy}>Close</Button>
-          {canReview && detail && detail.status !== "APPROVED" ? (
-            <Button onClick={() => void submit()} disabled={busy || (notesRequired && !notesValid) || !partialValid}>
-              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
-              {action === "APPROVED" ? "Approve prescription"
-                : action === "REJECTED" ? "Reject prescription"
-                  : action === "CLARIFICATION_REQUESTED" ? "Send request"
-                    : "Save partial approval"}
-            </Button>
-          ) : null}
+      {/* Fullscreen Lightbox Modal */}
+      {lightboxOpen && isImage && imageSrc ? (
+        <div
+          className="fixed inset-0 z-[120] bg-black/95 flex flex-col p-4 animate-in fade-in-0 duration-150"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <div
+            className="flex items-center justify-between text-white pb-3 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-sm font-medium truncate max-w-sm">{detail?.fileName}</span>
+            <div className="flex items-center gap-2">
+              <Button size="icon" variant="ghost" className="text-white hover:bg-white/20 h-8 w-8" onClick={handleZoomOut} title="Zoom out">
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <span className="text-xs font-mono">{Math.round(zoom * 100)}%</span>
+              <Button size="icon" variant="ghost" className="text-white hover:bg-white/20 h-8 w-8" onClick={handleZoomIn} title="Zoom in">
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" className="text-white hover:bg-white/20 h-8 w-8" onClick={handleRotate} title="Rotate">
+                <RotateCw className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" className="text-white hover:bg-white/20 h-8 w-8" onClick={download} title="Download">
+                <Download className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" className="text-white hover:bg-white/20 h-8 w-8" onClick={() => setLightboxOpen(false)} title="Close">
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+          <div
+            className="flex-1 overflow-auto flex items-center justify-center p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={imageSrc}
+              alt={detail?.fileName ?? "Prescription"}
+              style={{
+                transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                transformOrigin: "center center",
+              }}
+              className="max-h-[85vh] max-w-[90vw] object-contain transition-transform duration-150 select-none"
+            />
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      ) : null}
+    </>
   )
 }
 
@@ -619,25 +888,51 @@ function ReviewChoice({
   icon: Icon,
   title,
   desc,
+  selected,
+  colorScheme,
 }: {
   value: ReviewAction
   icon: typeof CheckCircle2
   title: string
   desc: string
+  selected: boolean
+  colorScheme: "emerald" | "amber" | "blue" | "rose"
 }) {
+  const colorClasses = {
+    emerald: selected
+      ? "border-emerald-500 bg-emerald-50/70 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-200 dark:border-emerald-600 shadow-xs ring-1 ring-emerald-500/20"
+      : "hover:border-emerald-200 hover:bg-muted/40",
+    amber: selected
+      ? "border-amber-500 bg-amber-50/70 text-amber-950 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-600 shadow-xs ring-1 ring-amber-500/20"
+      : "hover:border-amber-200 hover:bg-muted/40",
+    blue: selected
+      ? "border-blue-500 bg-blue-50/70 text-blue-950 dark:bg-blue-950/30 dark:text-blue-200 dark:border-blue-600 shadow-xs ring-1 ring-blue-500/20"
+      : "hover:border-blue-200 hover:bg-muted/40",
+    rose: selected
+      ? "border-rose-500 bg-rose-50/70 text-rose-950 dark:bg-rose-950/30 dark:text-rose-200 dark:border-rose-600 shadow-xs ring-1 ring-rose-500/20"
+      : "hover:border-rose-200 hover:bg-muted/40",
+  }[colorScheme]
+
+  const iconColor = {
+    emerald: selected ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
+    amber: selected ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground",
+    blue: selected ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground",
+    rose: selected ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground",
+  }[colorScheme]
+
   return (
     <label
       className={cn(
-        "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
-        "has-[button[data-state=checked]]:border-primary has-[button[data-state=checked]]:bg-primary/5"
+        "flex cursor-pointer items-start gap-2.5 rounded-lg border p-2.5 transition-all text-left",
+        colorClasses
       )}
     >
-      <RadioGroupItem value={value} className="mt-0.5" aria-label={title} />
-      <span className="flex items-start gap-2.5">
-        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-        <span>
-          <span className="block text-sm font-medium">{title}</span>
-          <span className="block text-xs text-muted-foreground">{desc}</span>
+      <RadioGroupItem value={value} className="mt-0.5 shrink-0" aria-label={title} />
+      <span className="flex min-w-0 items-start gap-2">
+        <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", iconColor)} aria-hidden />
+        <span className="min-w-0">
+          <span className="block text-xs font-semibold leading-tight">{title}</span>
+          <span className="block text-[11px] text-muted-foreground leading-snug mt-0.5">{desc}</span>
         </span>
       </span>
     </label>
