@@ -78,10 +78,10 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
         body: JSON.stringify({ type }),
       })
       const data = await res.json()
-      if (res.ok) {
-        toast.success(`Test ${type.toLowerCase()} triggered successfully!`)
+      if (res.ok && data.ok) {
+        toast.success(data.message || `Test ${type.toLowerCase()} delivered successfully.`)
       } else {
-        toast.error(data.error || "Failed to trigger test notification.")
+        toast.error(data.message || data.error || "The notification provider rejected the test.")
       }
     } catch {
       toast.error("Failed to connect to notification service.")

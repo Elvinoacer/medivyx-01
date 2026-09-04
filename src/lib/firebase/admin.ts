@@ -20,6 +20,7 @@ export interface PushResult {
   success: boolean
   sentCount: number
   failedCount: number
+  error?: string
   simulated?: boolean
   invalidTokens?: string[]
 }
@@ -147,6 +148,7 @@ export async function sendPushNotification(
       success: false,
       sentCount: 0,
       failedCount: uniqueTokens.length,
+      error: "Firebase server credentials are not configured.",
     }
   }
 
@@ -156,6 +158,7 @@ export async function sendPushNotification(
       success: false,
       sentCount: 0,
       failedCount: uniqueTokens.length,
+      error: "Firebase authentication failed. Check the service-account credentials and Cloud Messaging API access.",
     }
   }
 
@@ -250,6 +253,7 @@ export async function sendPushNotification(
     success: sentCount > 0 || failedCount === 0,
     sentCount,
     failedCount,
+    error: failedCount > 0 && sentCount === 0 ? "Firebase rejected every registered device token." : undefined,
     invalidTokens,
   }
 }

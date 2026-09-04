@@ -116,3 +116,15 @@ test("order detail drawer exposes all content on mobile", () => {
   assert.match(orders, /safe-area-inset-bottom/)
   assert.match(orders, /break-all text-sm font-medium/)
 })
+
+test("notification integration tests report real provider outcomes", () => {
+  const route = read("src/app/api/notifications/dispatch-test/route.ts")
+  assert.doesNotMatch(route, /ENABLE_NOTIFICATION_TESTS/)
+  assert.match(route, /No push-enabled device is registered/)
+  assert.match(route, /status: ok \? 200 : 422/)
+  assert.match(route, /push\.success === true/)
+
+  const settings = read("src/components/views/admin/sections/settings-section.tsx")
+  assert.match(settings, /res\.ok && data\.ok/)
+  assert.match(settings, /data\.message \|\| data\.error/)
+})
