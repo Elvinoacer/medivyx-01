@@ -513,6 +513,7 @@ function ProductEditorDialog({
 }) {
   const [form, setForm] = useState<ProductForm>(() => formFromProduct(product, categories))
   const [busy, setBusy] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const imageUploadRef = useRef<HTMLInputElement>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
 
@@ -533,20 +534,36 @@ function ProductEditorDialog({
   }
 
   useEffect(() => {
-    if (mode === "create") {
-      setForm((f) => ({ ...f, sku: suggestSku(categories, f.categoryId) }))
-    }
-  }, [form.categoryId])
+    if (mode !== "create") return
+    setForm((current) => {
+      const categoryId = current.categoryId || categories[0]?.id || ""
+      return { ...current, categoryId, sku: current.sku || suggestSku(categories, categoryId) }
+    })
+  }, [categories, mode])
 
   function set<K extends keyof ProductForm>(key: K, value: ProductForm[K]) {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
   const priceNum = Number(form.price)
-  const valid = form.name.trim().length >= 2 && Number.isFinite(priceNum) && priceNum > 0
+  const compareAtPriceNum = form.compareAtPrice.trim() ? Number(form.compareAtPrice) : null
+  const stockQtyNum = Number(form.stockQty)
+  const nameError = form.name.trim().length < 2 ? "Enter at least 2 characters." : null
+  const categoryError = !form.categoryId ? "Choose a category." : null
+  const priceError = !Number.isFinite(priceNum) || priceNum <= 0 ? "Enter a price greater than zero." : null
+  const compareError = compareAtPriceNum != null && (!Number.isFinite(compareAtPriceNum) || compareAtPriceNum <= priceNum)
+    ? "Compare-at price must be greater than the selling price."
+    : null
+  const stockError = !Number.isSafeInteger(stockQtyNum) || stockQtyNum < 0 ? "Stock must be a non-negative whole number." : null
+  const valid = !nameError && !categoryError && !priceError && !compareError && !stockError
 
   async function save() {
+    if (!valid) {
+      setSaveError(nameError || categoryError || priceError || compareError || stockError || "Check the highlighted fields.")
+      return
+    }
     setBusy(true)
+    setSaveError(null)
     try {
       const payload = {
         name: form.name.trim(),
@@ -555,8 +572,8 @@ function ProductEditorDialog({
         brand: form.brand.trim() || null,
         packSize: form.packSize.trim() || null,
         price: priceNum,
-        compareAtPrice: form.compareAtPrice.trim() ? Number(form.compareAtPrice) : null,
-        stockQty: Math.max(0, Math.floor(Number(form.stockQty) || 0)),
+        compareAtPrice: compareAtPriceNum,
+        stockQty: stockQtyNum,
         stockStatus: form.stockStatus,
         description: form.description.trim(),
         usageInfo: form.usageInfo.trim() || null,
@@ -571,7 +588,9 @@ function ProductEditorDialog({
       toast.success(mode === "create" ? `${saved.name} added to the catalogue.` : `${saved.name} updated.`)
       onSaved(saved)
     } catch (err) {
-      toast.error(apiErrorMessage(err))
+      const message = apiErrorMessage(err)
+      setSaveError(message)
+      toast.error(message)
     } finally {
       setBusy(false)
     }
@@ -579,8 +598,8 @@ function ProductEditorDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
-      <DialogContent className="flex w-[calc(100vw-1rem)] max-w-2xl max-h-[92dvh] flex-col overflow-hidden rounded-xl p-0 sm:w-full">
-        <DialogHeader className="border-b p-3 pr-12 pb-3 sm:p-4 sm:pr-12">
+      <DialogContent className="flex h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-2xl flex-col gap-0 overflow-hidden rounded-xl p-0 sm:h-[min(92dvh,52rem)] sm:w-full">
+        <DialogHeader className="shrink-0 border-b p-3 pr-12 pb-3 sm:p-4 sm:pr-12">
           <DialogTitle className="pr-2 text-base leading-snug sm:text-lg">{mode === "create" ? "Add product" : `Edit ${product?.name ?? "product"}`}</DialogTitle>
           <DialogDescription>
             {mode === "create"
@@ -589,17 +608,18 @@ function ProductEditorDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="min-h-0 flex-1">
+        <div className="scroll-slim min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="grid min-w-0 gap-3 p-3 sm:gap-4 sm:p-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="p-name">Name *</Label>
-              <Input id="p-name" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Paracetamol 500mg Tablets" />
+              <Input id="p-name" value={form.name} onChange={(e) => { set("name", e.target.value); setSaveError(null) }} placeholder="e.g. Paracetamol 500mg Tablets" aria-invalid={Boolean(nameError)} />
+              {nameError && form.name.length > 0 ? <p className="text-xs text-destructive">{nameError}</p> : null}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="p-sku" className="flex items-center justify-between">
                 SKU
                 {mode === "create" ? (
-                  <button className="flex items-center gap-1 text-xs font-normal text-primary hover:underline" onClick={() => set("sku", suggestSku(categories, form.categoryId))}>
+                  <button type="button" className="flex items-center gap-1 text-xs font-normal text-primary hover:underline" onClick={() => set("sku", suggestSku(categories, form.categoryId))}>
                     <Dices className="h-3 w-3" aria-hidden /> Regenerate
                   </button>
                 ) : null}
@@ -608,8 +628,19 @@ function ProductEditorDialog({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="p-category">Category</Label>
-              <Select value={form.categoryId} onValueChange={(v) => set("categoryId", v)}>
-                <SelectTrigger id="p-category" aria-label="Product category">
+              <Select
+                value={form.categoryId}
+                onValueChange={(categoryId) => {
+                  setForm((current) => ({
+                    ...current,
+                    categoryId,
+                    ...(mode === "create" ? { sku: suggestSku(categories, categoryId) } : {}),
+                  }))
+                  setSaveError(null)
+                }}
+                disabled={categories.length === 0}
+              >
+                <SelectTrigger id="p-category" aria-label="Product category" aria-invalid={Boolean(categoryError)} className="w-full">
                   <SelectValue placeholder="Choose category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -618,6 +649,7 @@ function ProductEditorDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {categories.length === 0 ? <p className="text-xs text-destructive">Categories could not be loaded. Close the form and retry.</p> : null}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="p-brand">Brand</Label>
@@ -629,15 +661,17 @@ function ProductEditorDialog({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="p-price">Price (KSh) *</Label>
-              <Input id="p-price" type="number" min={1} value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="150" />
+              <Input id="p-price" type="number" min={1} step="0.01" value={form.price} onChange={(e) => { set("price", e.target.value); setSaveError(null) }} placeholder="150" aria-invalid={Boolean(priceError)} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="p-compare">Compare-at price (KSh)</Label>
-              <Input id="p-compare" type="number" min={0} value={form.compareAtPrice} onChange={(e) => set("compareAtPrice", e.target.value)} placeholder="180 (optional, shows a discount)" />
+              <Input id="p-compare" type="number" min={0} step="0.01" value={form.compareAtPrice} onChange={(e) => { set("compareAtPrice", e.target.value); setSaveError(null) }} placeholder="180 (optional, shows a discount)" aria-invalid={Boolean(compareError)} />
+              {compareError ? <p className="text-xs text-destructive">{compareError}</p> : null}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="p-stock">Stock quantity</Label>
-              <Input id="p-stock" type="number" min={0} value={form.stockQty} onChange={(e) => set("stockQty", e.target.value)} />
+              <Input id="p-stock" type="number" min={0} step={1} value={form.stockQty} onChange={(e) => { set("stockQty", e.target.value); setSaveError(null) }} aria-invalid={Boolean(stockError)} />
+              {stockError ? <p className="text-xs text-destructive">{stockError}</p> : null}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="p-stockstatus">Stock status</Label>
@@ -725,11 +759,12 @@ function ProductEditorDialog({
               <Switch id="p-rx" checked={form.requiresPrescription} onCheckedChange={(v) => set("requiresPrescription", v)} />
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
-        <DialogFooter className="gap-2 border-t bg-muted/30 p-3 sm:p-4 [&>button]:w-full sm:[&>button]:w-auto">
+        <DialogFooter className="shrink-0 gap-2 border-t bg-muted/30 p-3 sm:p-4 [&>button]:w-full sm:[&>button]:w-auto">
+          {saveError ? <p className="mr-auto self-center text-sm text-destructive" role="alert">{saveError}</p> : null}
           <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button onClick={() => void save()} disabled={busy || !valid}>
+          <Button onClick={() => void save()} disabled={busy}>
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
             {mode === "create" ? "Add product" : "Save changes"}
           </Button>
@@ -743,12 +778,18 @@ function ProductEditorDialog({
 
 function CsvImportDialog({ onClose, onImported }: { onClose: () => void; onImported: () => void }) {
   const [csv, setCsv] = useState("")
+  const [fileName, setFileName] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ created: number; updated: number; errors: string[] } | null>(null)
 
   async function runImport() {
-    if (!csv.trim()) return
+    if (!csv.trim()) {
+      setFormError("Paste CSV data or choose a CSV file first.")
+      return
+    }
     setBusy(true)
+    setFormError(null)
     try {
       const res = await adminApi.importCsv(csv)
       setResult(res)
@@ -760,24 +801,38 @@ function CsvImportDialog({ onClose, onImported }: { onClose: () => void; onImpor
         onImported()
       }
     } catch (err) {
-      toast.error(apiErrorMessage(err))
+      const message = apiErrorMessage(err)
+      setFormError(message)
+      toast.error(message)
     } finally {
       setBusy(false)
     }
   }
 
   function readFile(file: File) {
+    setResult(null)
+    setFormError(null)
+    if (!file.name.toLowerCase().endsWith(".csv") && file.type !== "text/csv") {
+      setFormError("Choose a .csv file.")
+      return
+    }
+    if (file.size > 2_000_000) {
+      setFormError("CSV files must be 2 MB or smaller.")
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
       setCsv(String(reader.result ?? ""))
+      setFileName(file.name)
     }
+    reader.onerror = () => setFormError("The CSV file could not be read. Try choosing it again.")
     reader.readAsText(file)
   }
 
   return (
     <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
-      <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden p-0 sm:max-w-2xl">
-        <DialogHeader className="border-b p-4 pb-3">
+      <DialogContent className="flex h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:h-auto sm:max-h-[92dvh]">
+        <DialogHeader className="shrink-0 border-b p-4 pb-3 pr-12">
           <DialogTitle className="flex items-center gap-2">
             <FileUp className="h-4 w-4 text-muted-foreground" aria-hidden /> Bulk CSV import
           </DialogTitle>
@@ -786,11 +841,11 @@ function CsvImportDialog({ onClose, onImported }: { onClose: () => void; onImpor
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="scroll-slim min-h-0 flex-1">
+        <div className="scroll-slim min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="space-y-4 p-4">
             <div className="rounded-lg border border-dashed bg-muted/30 p-3">
               <p className="text-xs font-semibold">Expected columns (in order)</p>
-              <p className="mt-1 font-mono text-[11px] leading-relaxed text-muted-foreground">
+              <p className="mt-1 break-words font-mono text-[11px] leading-relaxed text-muted-foreground">
                 {[...CSV_COLUMNS].join(", ")}
               </p>
               <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
@@ -813,10 +868,10 @@ function CsvImportDialog({ onClose, onImported }: { onClose: () => void; onImpor
               <Textarea
                 id="csv-text"
                 value={csv}
-                onChange={(e) => setCsv(e.target.value)}
+                onChange={(e) => { setCsv(e.target.value); setResult(null); setFormError(null); setFileName(null) }}
                 rows={6}
                 placeholder="name,sku,category,brand,packSize,price,compareAtPrice,stockQty,stockStatus,requiresPrescription,description,image"
-                className="font-mono text-xs"
+                className="field-sizing-fixed min-h-36 resize-y whitespace-pre font-mono text-xs"
               />
             </div>
 
@@ -829,9 +884,13 @@ function CsvImportDialog({ onClose, onImported }: { onClose: () => void; onImpor
                 onChange={(e) => {
                   const file = e.target.files?.[0]
                   if (file) readFile(file)
+                  e.target.value = ""
                 }}
               />
+              {fileName ? <p className="text-xs text-emerald-700 dark:text-emerald-400">Loaded {fileName}</p> : null}
             </div>
+
+            {formError ? <p className="text-sm text-destructive" role="alert">{formError}</p> : null}
 
             {result ? (
               <div
@@ -857,14 +916,14 @@ function CsvImportDialog({ onClose, onImported }: { onClose: () => void; onImpor
               </div>
             ) : null}
           </div>
-        </ScrollArea>
+        </div>
 
-        <div className="flex items-center justify-end gap-2 border-t bg-muted/30 p-4">
-          <p className="mr-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+        <div className="flex shrink-0 flex-col gap-2 border-t bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-end sm:p-4">
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground sm:mr-auto">
             <Package className="h-3.5 w-3.5" aria-hidden /> Imports are audit-logged.
           </p>
-          <Button variant="outline" onClick={onClose} disabled={busy}>Close</Button>
-          <Button onClick={() => void runImport()} disabled={busy || !csv.trim()}>
+          <Button className="w-full sm:w-auto" variant="outline" onClick={onClose} disabled={busy}>Close</Button>
+          <Button className="w-full sm:w-auto" onClick={() => void runImport()} disabled={busy}>
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : <Upload className="mr-2 h-4 w-4" aria-hidden />}
             Import CSV
           </Button>

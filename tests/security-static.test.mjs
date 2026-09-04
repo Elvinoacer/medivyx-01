@@ -36,3 +36,10 @@ test("legacy staff password migration cannot block a valid login", () => {
   assert.match(route, /!validatePassword\(password\)/)
   assert.match(route, /await createSession/)
 })
+
+test("admin product selects render above dialogs and forms remain scrollable", () => {
+  assert.match(read("src/components/ui/select.tsx"), /z-\[100\]/)
+  const catalogue = read("src/components/views/admin/sections/catalogue-section.tsx")
+  assert.match(catalogue, /overflow-y-auto overscroll-contain/)
+  assert.match(catalogue, /Choose a category\./)
+})
