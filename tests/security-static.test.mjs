@@ -73,14 +73,15 @@ test("browser push obtains and stores a real Firebase registration token", () =>
   assert.match(worker, /showNotification/)
 })
 
-test("authenticated navigation stays in document flow while scrolling", () => {
+test("authenticated navigation sticks flush to the viewport top", () => {
   const admin = read("src/components/views/admin/admin-view.tsx")
-  assert.doesNotMatch(admin, /admin-sidebar sticky/)
+  assert.match(admin, /admin-sidebar sticky top-0/)
+  assert.doesNotMatch(admin, /admin-sidebar sticky top-32/)
 
   const experience = read("src/app/app-experience.css")
-  assert.match(experience, /\.admin-topbar\s*\{[^}]*position: relative;/)
-  assert.doesNotMatch(experience, /\.admin-topbar\s*\{[^}]*position: sticky;/)
+  assert.match(experience, /\.admin-topbar\s*\{[^}]*position: sticky;[^}]*top: 0;/)
+  assert.doesNotMatch(experience, /\.admin-topbar\s*\{[^}]*top: (?:4\.25rem|4\.5rem|7\.125rem);/)
 
   const globals = read("src/app/globals.css")
-  assert.match(globals, /\.customer-hub\s*\{[^}]*position: relative;/)
+  assert.match(globals, /\.customer-hub\s*\{[^}]*position: sticky;[^}]*top: 0;/)
 })

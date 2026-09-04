@@ -146,7 +146,7 @@ main[data-view]:not([data-view="home"]) .experience-view {
 
 .mobile-primary-nav-safe-area { display: none; }
 
-/* The account hub remains in normal document flow below the storefront header. */
+/* The account hub sticks flush to the viewport once it reaches the top. */
 .customer-hub {
   border-block: 1px solid color-mix(in oklab, var(--border) 68%, transparent);
   box-shadow: 0 14px 34px -30px rgb(3 50 35 / 44%);
@@ -365,7 +365,7 @@ main[data-view]:not([data-view="home"]) .experience-view {
   width: 100%;
 }
 
-/* Admin: readable dense data and responsive tools. */
+/* Admin: top-aligned sticky navigation, readable dense data, responsive tools. */
 main[data-view="admin"] {
   background: color-mix(in oklab, var(--background) 96%, var(--primary) 4%);
 }
@@ -385,7 +385,8 @@ main[data-view="admin"] + footer { display: none; }
 }
 
 .admin-topbar {
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 25;
   background: color-mix(in oklab, var(--background) 91%, transparent);
   box-shadow: 0 16px 30px -30px rgb(3 45 31 / 65%);
