@@ -30,7 +30,7 @@ async function finalizeRefund(paymentId: string, refundReference: string, actor:
       }
     }
     return { payment, changed: true }
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000, maxWait: 5000 })
 }
 
 export async function POST(request: Request) {

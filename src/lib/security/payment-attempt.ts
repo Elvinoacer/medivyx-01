@@ -28,5 +28,5 @@ export async function reservePaymentAttempt(input: {
     return input.kind === "order"
       ? tx.payment.create({ data: { ...data, orderId: input.entityId } })
       : tx.servicePayment.create({ data: { ...data, bookingId: input.entityId } })
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000, maxWait: 5000 })
 }

@@ -50,7 +50,7 @@ export async function POST(request: Request) {
           const failedPayment = await tx.payment.updateMany({ where: { id: payment.id, status: { in: ["PENDING", "PROCESSING", "FAILED"] } }, data: { status: "FAILED", failureReason: "Card payment was not completed" } })
           if (failedPayment.count) await notifyPaymentOutcome(tx, { paymentId: payment.id, orderId: payment.orderId, success: false })
         }
-      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000, maxWait: 5000 })
       return NextResponse.json({ ok: true })
     }
 
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       const failedPayment = await tx.servicePayment.updateMany({ where: { id: servicePayment.id, status: { in: ["PENDING", "PROCESSING", "FAILED"] } }, data: { status: "FAILED", failureReason: "Card payment was not completed" } })
       if (failedPayment.count) await notifyPaymentOutcome(tx, { paymentId: servicePayment.id, bookingId: servicePayment.bookingId, success: false })
       }
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000, maxWait: 5000 })
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ error: "Webhook verification is temporarily unavailable." }, { status: 503 })

@@ -55,7 +55,7 @@ export async function POST(request: Request, { params }: Params) {
         await tx.loyaltyLedger.create({ data: { eventKey: `earn:${order.id}`, userId: order.userId, orderId: order.id, delta: earned, reason: "PAYMENT_CAPTURED" } })
         await tx.user.update({ where: { id: order.userId }, data: { loyaltyPoints: { increment: earned } } })
       }
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000, maxWait: 5000 })
 
     await audit(actor, session.staffRole, "CASH_CONFIRMED", "Order", order.reference, `KSh ${Number(order.total).toFixed(2)} received in cash`)
     const updated = await db.order.findUnique({ where: { id: order.id }, include: ORDER_INCLUDE })

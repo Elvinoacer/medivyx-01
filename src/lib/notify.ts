@@ -32,31 +32,67 @@ async function enqueue(tx: Prisma.TransactionClient, input: {
   const link = notificationUrl(extra?.link || (staffId ? "/admin" : "/account"))
   const key = extra?.dedupeKey || randomUUID()
   const owner = userId ? { userId } : staffId ? { staffId } : {}
+
+  const recipientPromise = !extra?.email?.to && userId
+    ? tx.user.findUnique({ where: { id: userId }, select: { email: true } })
+    : !extra?.email?.to && staffId
+    ? tx.staffUser.findUnique({ where: { id: staffId }, select: { email: true } })
+    : Promise.resolve(null)
+
+  const tokensPromise = userId || staffId
+    ? tx.pushToken.findMany({ where: owner, select: { id: true, token: true } })
+    : Promise.resolve([])
+
+  const [recipient, tokens] = await Promise.all([recipientPromise, tokensPromise])
+  const to = extra?.email?.to || recipient?.email
+
+  const notifications: Prisma.NotificationCreateManyInput[] = []
   if (userId || staffId) {
-    // Stable inbox ID makes retries idempotent when the caller supplies an event key.
-    await tx.notification.upsert({ where: { id: `notice:${key}` }, update: {}, create: {
-      id: `notice:${key}`, ...owner, channel: "IN_APP", event, title, message,
+    notifications.push({
+      id: `notice:${key}`,
+      ...owner,
+      channel: "IN_APP",
+      event,
+      title,
+      message,
       metadata: JSON.stringify({ ...extra?.metadata, link }),
-    } })
+    })
   }
-  const recipient = userId
-    ? await tx.user.findUnique({ where: { id: userId }, select: { email: true } })
-    : staffId ? await tx.staffUser.findUnique({ where: { id: staffId }, select: { email: true } }) : null
-  const to = recipient?.email || extra?.email?.to
+
   const jobs: Prisma.NotificationDeliveryCreateManyInput[] = []
-  if (to) jobs.push({ ...owner, dedupeKey: `${key}:email`, channel: "EMAIL", payload: {
-    to, subject: extra?.email?.subject || title,
-    html: extra?.email?.html || `<p>${escapeHtml(message)}</p><p><a href="${escapeHtml(link)}">View your update</a></p>`,
-    text: extra?.email?.text || `${message}\n\n${link}`,
-  } })
-  if (userId || staffId) {
-    const tokens = await tx.pushToken.findMany({ where: owner, select: { id: true, token: true } })
-    for (const token of tokens) jobs.push({ ...owner, dedupeKey: `${key}:push:${token.id}`, channel: "PUSH", payload: {
-      token: token.token, title: "Sphere Pharmacy", body: "You have a new update. Open Sphere to view it securely.",
-      link, data: { event, notificationId: `notice:${key}` },
-    } })
+  if (to) {
+    jobs.push({
+      ...owner,
+      dedupeKey: `${key}:email`,
+      channel: "EMAIL",
+      payload: {
+        to,
+        subject: extra?.email?.subject || title,
+        html: extra?.email?.html || `<p>${escapeHtml(message)}</p><p><a href="${escapeHtml(link)}">View your update</a></p>`,
+        text: extra?.email?.text || `${message}\n\n${link}`,
+      },
+    })
   }
-  if (jobs.length) await tx.notificationDelivery.createMany({ data: jobs, skipDuplicates: true })
+
+  for (const token of tokens) {
+    jobs.push({
+      ...owner,
+      dedupeKey: `${key}:push:${token.id}`,
+      channel: "PUSH",
+      payload: {
+        token: token.token,
+        title: "Sphere Pharmacy",
+        body: "You have a new update. Open Sphere to view it securely.",
+        link,
+        data: { event, notificationId: `notice:${key}` },
+      },
+    })
+  }
+
+  await Promise.all([
+    notifications.length ? tx.notification.createMany({ data: notifications, skipDuplicates: true }) : Promise.resolve(),
+    jobs.length ? tx.notificationDelivery.createMany({ data: jobs, skipDuplicates: true }) : Promise.resolve(),
+  ])
 }
 
 export async function notifyCustomer(userId: string | null, event: string, title: string, message: string,
@@ -64,7 +100,7 @@ export async function notifyCustomer(userId: string | null, event: string, title
   if (!userId && !extra?.email?.to) return
   const run = (tx: Prisma.TransactionClient) => enqueue(tx, { userId, event, title, message, extra })
   if (extra?.transaction) await run(extra.transaction)
-  else await db.$transaction(run)
+  else await db.$transaction(run, { timeout: 15000, maxWait: 5000 })
 }
 
 export interface NotifyStaffOptions {
@@ -74,17 +110,84 @@ export interface NotifyStaffOptions {
 }
 export async function notifyStaff(opts: NotifyStaffOptions): Promise<void> {
   const run = async (tx: Prisma.TransactionClient) => {
-    const staff = await tx.staffUser.findMany({ where: { active: true,
-      ...(opts.staffId ? { id: opts.staffId } : { role: { in: opts.roles || ["ADMIN"] } }),
-    }, select: { id: true } })
-    for (const member of staff) await enqueue(tx, { staffId: member.id, event: opts.event, title: opts.title, message: opts.message, extra: {
-      link: opts.link || "/admin", metadata: opts.metadata,
-      dedupeKey: opts.dedupeKey ? `${opts.dedupeKey}:${member.id}` : undefined,
-      email: opts.emailHtml ? { subject: opts.emailSubject || opts.title, html: opts.emailHtml, text: opts.emailText } : undefined,
-    } })
+    const staff = await tx.staffUser.findMany({
+      where: {
+        active: true,
+        ...(opts.staffId ? { id: opts.staffId } : { role: { in: opts.roles || ["ADMIN"] } }),
+      },
+      select: { id: true, email: true },
+    })
+    if (staff.length === 0) return
+
+    const staffIds = staff.map((s) => s.id)
+    const tokens = await tx.pushToken.findMany({
+      where: { staffId: { in: staffIds } },
+      select: { id: true, token: true, staffId: true },
+    })
+
+    const tokensByStaff = new Map<string, Array<{ id: string; token: string }>>()
+    for (const token of tokens) {
+      if (!token.staffId) continue
+      const list = tokensByStaff.get(token.staffId) || []
+      list.push(token)
+      tokensByStaff.set(token.staffId, list)
+    }
+
+    const link = notificationUrl(opts.link || "/admin")
+    const notifications: Prisma.NotificationCreateManyInput[] = []
+    const deliveryJobs: Prisma.NotificationDeliveryCreateManyInput[] = []
+
+    for (const member of staff) {
+      const key = opts.dedupeKey ? `${opts.dedupeKey}:${member.id}` : randomUUID()
+      notifications.push({
+        id: `notice:${key}`,
+        staffId: member.id,
+        channel: "IN_APP",
+        event: opts.event,
+        title: opts.title,
+        message: opts.message,
+        metadata: JSON.stringify({ ...opts.metadata, link }),
+      })
+
+      const to = member.email
+      if (to && opts.emailHtml) {
+        deliveryJobs.push({
+          staffId: member.id,
+          dedupeKey: `${key}:email`,
+          channel: "EMAIL",
+          payload: {
+            to,
+            subject: opts.emailSubject || opts.title,
+            html: opts.emailHtml,
+            text: opts.emailText || `${opts.message}\n\n${link}`,
+          },
+        })
+      }
+
+      const memberTokens = tokensByStaff.get(member.id) || []
+      for (const token of memberTokens) {
+        deliveryJobs.push({
+          staffId: member.id,
+          dedupeKey: `${key}:push:${token.id}`,
+          channel: "PUSH",
+          payload: {
+            token: token.token,
+            title: "Sphere Pharmacy",
+            body: "You have a new update. Open Sphere to view it securely.",
+            link,
+            data: { event: opts.event, notificationId: `notice:${key}` },
+          },
+        })
+      }
+    }
+
+    await Promise.all([
+      notifications.length ? tx.notification.createMany({ data: notifications, skipDuplicates: true }) : Promise.resolve(),
+      deliveryJobs.length ? tx.notificationDelivery.createMany({ data: deliveryJobs, skipDuplicates: true }) : Promise.resolve(),
+    ])
   }
   if (opts.transaction) await run(opts.transaction)
-  else await db.$transaction(run)
+  else await db.$transaction(run, { timeout: 15000, maxWait: 5000 })
 }
 
 /** Append a status-history event to an order. */

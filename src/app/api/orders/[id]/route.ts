@@ -74,7 +74,7 @@ export async function PATCH(request: Request, { params }: Params) {
       })
       if (changed.count !== 1) throw new Error("ORDER_CONFLICT")
       await tx.orderStatusHistory.create({ data: { orderId: order.id, status, actor, note } })
-    })
+    }, { timeout: 15000, maxWait: 5000 })
     await audit(actor, role, `ORDER_STATUS_${status}`, "Order", order.reference, note)
 
     const { title, message } = statusNotification(status, order.reference)

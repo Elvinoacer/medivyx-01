@@ -18,7 +18,7 @@ export async function POST(_request: Request, ctx: { params: Promise<{ id: strin
       await tx.servicePayment.upsert({ where: { idempotencyKey: `service:${id}:pay-at-pharmacy` }, create: { bookingId: id, provider: "IN_STORE", method: "PAY_AT_PHARMACY", status: "PENDING", amount: booking.price || 0, currency: "KES", idempotencyKey: `service:${id}:pay-at-pharmacy` }, update: {} })
       await notifyCustomer(booking.userId, "SERVICE_PAYMENT", "Pay at the pharmacy", `You’ve chosen to pay at the pharmacy for appointment ${booking.reference}. No payment has been collected.`, "IN_APP", { transaction: tx, dedupeKey: `in-store:${id}`, link: "/services?tab=bookings" })
       await notifyStaff({ transaction: tx, dedupeKey: `in-store:${id}`, roles: ["ADMIN", "STAFF"], event: "SERVICE_PAY_AT_PHARMACY", title: "Payment due at pharmacy", message: `Appointment ${booking.reference} will be paid in store. Payment is still outstanding.`, link: "/admin/services" })
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000, maxWait: 5000 })
     return NextResponse.json({ ok: true, paymentStatus: "PAY_AT_PHARMACY" })
   } catch (error) {
     const missing = error instanceof Error && error.message === "NOT_FOUND"

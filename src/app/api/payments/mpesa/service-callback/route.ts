@@ -56,7 +56,7 @@ export async function POST(request: Request) {
         const failedPayment = await tx.servicePayment.updateMany({ where: { id: payment.id, status: { in: ["PENDING", "PROCESSING", "FAILED"] } }, data: { status: "FAILED", failureReason: `M-Pesa request failed (${resultCode})` } })
         if (failedPayment.count) await notifyPaymentOutcome(tx, { paymentId: payment.id, bookingId: payment.bookingId, success: false })
       }
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000, maxWait: 5000 })
 
     return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" })
   } catch {

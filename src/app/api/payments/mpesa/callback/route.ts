@@ -61,7 +61,7 @@ export async function POST(request: Request) {
             await tx.order.update({ where: { id: payment.orderId }, data: { pointsEarned: awarded } })
           }
         }
-      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000, maxWait: 5000 })
       return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" })
     }
 
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       await tx.paymentWebhookEvent.create({ data: { provider: "MPESA", eventId, payloadHash, paymentId: payment.id } })
       const failedPayment = await tx.payment.updateMany({ where: { id: payment.id, status: { in: ["PENDING", "PROCESSING", "FAILED"] } }, data: { status: "FAILED", failureReason: `M-Pesa request failed (${resultCode})` } })
       if (failedPayment.count) await notifyPaymentOutcome(tx, { paymentId: payment.id, orderId: payment.orderId, success: false })
-    })
+    }, { timeout: 15000, maxWait: 5000 })
     return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" })
   } catch {
     return NextResponse.json({ error: "Callback processing failed." }, { status: 503 })

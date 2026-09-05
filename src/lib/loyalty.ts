@@ -29,7 +29,7 @@ export async function awardPointsForOrder(orderId: string): Promise<number> {
     await tx.loyaltyLedger.create({ data: { eventKey: `earn:${order.id}`, userId: order.userId, orderId: order.id, delta: points, reason: "ORDER_PAID" } })
     await tx.user.update({ where: { id: order.userId }, data: { loyaltyPoints: { increment: points } } })
     return points
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000, maxWait: 5000 })
 }
 
 /** Refund/claw back points when an order is cancelled or refunded. */
@@ -43,7 +43,7 @@ export async function reversePointsForOrder(orderId: string, actor: string): Pro
     await tx.loyaltyLedger.create({ data: { eventKey: `reverse:${orderId}`, userId: order.userId, orderId, delta, reason: "ORDER_REFUNDED" } })
     if (delta !== 0) await tx.user.update({ where: { id: order.userId }, data: { loyaltyPoints: { increment: delta } } })
     if (order.pointsEarned > 0 || order.pointsRedeemed > 0) await tx.auditLog.create({ data: { actor, actorRole: "SYSTEM", action: "LOYALTY_REVERSAL", entity: "Order", entityId: order.reference, details: `Clawed back ${clawback} earned pts, returned ${order.pointsRedeemed} redeemed pts` } })
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000, maxWait: 5000 })
 }
 
 /** Redemption quote for a customer + subtotal (post-promo). */
