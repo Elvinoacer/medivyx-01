@@ -343,20 +343,20 @@ export function CatalogView() {
 
       {/* page heading banner */}
       <div className="mx-auto max-w-7xl px-4 pb-2 pt-6 sm:pt-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="sphere-catalog-heading flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
               <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-primary">
-                Sphere Dispensary
+                THE EVERYDAY CARE SHOP
               </span>
               <span className="text-xs text-muted-foreground">Lumumba Drive, Roysambu</span>
             </div>
             <h1 className="text-3xl font-black tracking-tight sm:text-4xl text-foreground">
-              {activeCategory ? activeCategory.name : "Pharmaceutical & Wellness Catalog"}
+              {activeCategory ? activeCategory.name : <>Your everyday.<br /><em>A little better.</em></>}
             </h1>
             <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
               {activeCategory?.description ??
-                "Browse clinical medicines, vitamins, diagnostic devices and health essentials with live stock status."}
+                "Find your medicines, daily rituals, and feel-good essentials. Check live availability and choose delivery or pickup."}
             </p>
           </div>
         </div>

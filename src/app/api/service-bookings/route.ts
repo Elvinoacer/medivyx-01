@@ -32,6 +32,7 @@ export async function POST(request:Request){
  const body=await request.json()
  const service=await db.service.findUnique({where:{id:String(body.serviceId)},include:{availability:{where:{enabled:true}}}})
  if(!service||!service.active)return NextResponse.json({error:"Service is not available."},{status:404})
+ if(Object.prototype.hasOwnProperty.call(body,"expectedPrice") && (body.expectedPrice === null ? service.price !== null : !Number.isFinite(body.expectedPrice) || Number(service.price) !== body.expectedPrice))return NextResponse.json({error:"The service price changed. Review the updated price before booking."},{status:409})
  const start=new Date(String(body.start))
  const end=new Date(String(body.end))
  if(Number.isNaN(start.getTime())||Number.isNaN(end.getTime())||end<=start)return NextResponse.json({error:"Invalid appointment time."},{status:400})

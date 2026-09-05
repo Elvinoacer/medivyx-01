@@ -14,6 +14,7 @@ const destinations: { label: string; view: ViewName; icon: typeof LayoutDashboar
 ]
 
 export function CustomerHubNav() {
+  const params = useAppStore((s) => s.params)
   const view = useAppStore((s) => s.view)
   const navigate = useAppStore((s) => s.navigate)
   const session = useAuthStore((s) => s.session)
@@ -31,7 +32,7 @@ export function CustomerHubNav() {
         </div>
         <nav className="customer-hub-links" aria-label="My Sphere">
           {destinations.map((item) => {
-            const active = item.matches.includes(view)
+            const active = item.matches.includes(view) || (item.view === "services" && view === "services" && params.tab === "bookings")
             return (
               <button key={item.label} onClick={() => navigate(item.view, item.params)} aria-current={active ? "page" : undefined} className={cn("customer-hub-link", active && "is-active")}>
                 <item.icon className="h-4 w-4" aria-hidden />

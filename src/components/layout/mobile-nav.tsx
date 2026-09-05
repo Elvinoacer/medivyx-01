@@ -8,13 +8,13 @@
 import { useAppStore, type ViewName } from "@/store/use-app-store"
 import { useCartStore } from "@/store/use-cart-store"
 import { cn } from "@/lib/utils"
-import { Home, Pill, Upload, ShoppingCart, User } from "lucide-react"
+import { Home, Pill, HeartPulse, ShoppingCart, User } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 const TABS: { label: string; icon: typeof Home; view: ViewName; match: ViewName[] }[] = [
   { label: "Home", icon: Home, view: "home", match: ["home"] },
   { label: "Shop", icon: Pill, view: "catalog", match: ["catalog", "product"] },
-  { label: "Rx", icon: Upload, view: "prescriptions", match: ["prescriptions"] },
+  { label: "Services", icon: HeartPulse, view: "services", match: ["services"] },
   { label: "Cart", icon: ShoppingCart, view: "cart", match: ["cart"] },
   { label: "Account", icon: User, view: "account", match: ["account", "orders", "order", "auth"] },
 ]

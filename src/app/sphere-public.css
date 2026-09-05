@@ -1,0 +1,512 @@
+/* Shared public storefront identity. Admin retains its operational theme. */
+.sphere-public {
+  --background: #f7f7ed;
+  --foreground: #153d32;
+  --primary: #153d32;
+  --primary-foreground: #f7f7ed;
+  --card: #fffef8;
+  --card-foreground: #153d32;
+  --muted: #e8eddd;
+  --muted-foreground: #596b5d;
+  --accent: #e6edce;
+  --accent-foreground: #153d32;
+  --border: #153d3229;
+  --input: #153d3238;
+  --ring: #718c44;
+  --secondary: #e4ebd7;
+  --secondary-foreground: #153d32;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+.sphere-public::before,
+.sphere-public::after {
+  display: none;
+}
+.sphere-site-header {
+  position: relative;
+  z-index: 41;
+  background: #f7f7ed;
+  color: #153d32;
+  border-bottom: 1px solid #153d3225;
+}
+.sphere-header-row {
+  max-width: 1440px;
+  margin: auto;
+  padding: 0 5%;
+  min-height: 106px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+}
+.sphere-original-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 150px;
+  height: 100px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.sphere-original-logo img {
+  width: 190px !important;
+  height: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+  flex-shrink: 0;
+}
+.sphere-desktop-links,
+.sphere-header-actions {
+  display: flex;
+  gap: 28px;
+  align-items: center;
+}
+.sphere-desktop-links button {
+  font-size: 13px;
+  min-height: 48px;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+.sphere-desktop-links button:hover,
+.sphere-desktop-links button[aria-current] {
+  border-color: #6f8f46;
+}
+.sphere-header-actions button {
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.sphere-bag span {
+  font-size: 11px;
+  background: #e4ebd5;
+  border-radius: 50%;
+  min-width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+}
+.sphere-talk {
+  padding: 13px 20px;
+  border: 1px solid #153d3240;
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 12px;
+}
+.sphere-header-actions .sphere-menu-toggle {
+  display: none;
+}
+.sphere-expanded-menu {
+  padding: 12px 5% 22px;
+  border-top: 1px solid #153d3220;
+  display: grid;
+  gap: 5px;
+}
+.sphere-expanded-menu button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  text-align: left;
+  font-size: 14px;
+}
+.sphere-expanded-menu button svg:last-child {
+  margin-left: auto;
+}
+.sphere-public main[data-view]:not([data-view="home"]) .experience-view {
+  background: #f7f7ed;
+  animation: sphere-page-enter 0.5s ease both;
+}
+.sphere-public .app-page {
+  padding-top: 35px;
+}
+.sphere-public .app-page h1 {
+  font-weight: 500;
+  font-size: clamp(32px, 4vw, 58px);
+  line-height: 1.08;
+  letter-spacing: -1.8px;
+}
+.sphere-public .app-page h1 em {
+  font-family: Georgia, serif;
+  font-weight: 400;
+}
+.sphere-public .app-page h2 {
+  letter-spacing: -0.7px;
+}
+.sphere-public .app-page [data-slot="card"] {
+  background: #fffef8;
+  border-radius: 20px;
+  border-color: #153d3226;
+  box-shadow: 0 10px 30px -25px #153d3240;
+}
+.sphere-public .app-page [data-slot="button"] {
+  border-radius: 28px;
+  min-height: 44px;
+  transition:
+    transform 0.2s,
+    background 0.2s;
+}
+.sphere-public .app-page [data-slot="button"]:active {
+  transform: scale(0.97);
+}
+.sphere-public .app-page [data-slot="input"],
+.sphere-public .app-page textarea {
+  background: #fffef9;
+  border-radius: 14px;
+  min-height: 46px;
+}
+.sphere-public .app-page [data-slot="tabs-list"] {
+  background: #e6ebd8;
+  border-radius: 24px;
+  padding: 5px;
+}
+.sphere-public .app-page [data-slot="tabs-trigger"] {
+  border-radius: 20px;
+}
+.sphere-public .app-page [data-slot="tabs-trigger"][data-state="active"] {
+  background: #153d32;
+  color: #f7f7ed;
+}
+.sphere-public .customer-hub {
+  background: #eef0df;
+  border-color: #153d3225;
+}
+.sphere-public .app-page-auth,
+.sphere-public .gradient-hero {
+  background:
+    radial-gradient(ellipse at 12% 20%, #e0e9c9, transparent 50%), #f7f7ed;
+}
+.sphere-public .app-page-auth h1 {
+  font-size: 36px;
+}
+.sphere-public .app-page-product h1 {
+  font-size: clamp(29px, 3vw, 44px);
+}
+.sphere-public .app-page-product [data-slot="card"] {
+  overflow: hidden;
+}
+.sphere-catalog-heading {
+  position: relative;
+  padding: 38px !important;
+  margin-bottom: 24px;
+  background: #e6ebd8;
+  border-radius: 24px;
+  overflow: hidden;
+}
+.sphere-catalog-heading::after {
+  content: "✳";
+  position: absolute;
+  right: 34px;
+  top: 15px;
+  font-size: 145px;
+  color: #758e4340;
+  line-height: 1;
+  pointer-events: none;
+  animation: sphere-turn 24s linear infinite;
+}
+.sphere-catalog-heading > div {
+  position: relative;
+  z-index: 1;
+}
+.sphere-catalog-heading h1 {
+  max-width: 780px;
+}
+.sphere-public .app-page-catalog .sticky {
+  background: #f7f7edf5;
+}
+.sphere-public .sphere-services-hero {
+  background: #153d32;
+  border-radius: 24px;
+  border: 0;
+  box-shadow: none;
+}
+.sphere-public .sphere-services-hero h1 {
+  color: #fffef4;
+}
+.sphere-public .sphere-services-hero h1 em {
+  color: #d9ee83;
+}
+.sphere-services-hero:after {
+  content: "✳";
+  position: absolute;
+  right: 6%;
+  top: 14%;
+  color: #d9ee8330;
+  font-size: 230px;
+  line-height: 1;
+  pointer-events: none;
+  animation: sphere-turn 24s linear infinite;
+}
+.sphere-public .premium-footer {
+  background: #e4e9d6;
+  border-top: 1px solid #153d3225;
+  color: #153d32;
+}
+.sphere-public .premium-footer-line {
+  background: #a5ba75;
+  height: 2px;
+}
+.sphere-public .premium-footer h4 {
+  font-family: Georgia, serif;
+  font-size: 20px;
+  font-weight: 400;
+}
+.sphere-public .assistant-launcher {
+  background: #153d32;
+  color: #e3f2a5;
+  box-shadow: 0 8px 30px #153d3238;
+  border: 1px solid #d9ee8380;
+  width: 60px;
+  height: 60px;
+}
+.sphere-public .assistant-launcher > span {
+  background: #d9ee83;
+  color: #153d32;
+}
+.sphere-public .sphere-assistant-panel {
+  background: #fffef8;
+  border: 1px solid #153d3233;
+}
+.sphere-public .mobile-primary-nav {
+  padding: 0 12px calc(12px + env(safe-area-inset-bottom));
+}
+.sphere-public .mobile-primary-nav-list {
+  max-width: 440px;
+  background: #153d32;
+  color: #fffef4;
+  padding: 6px;
+  gap: 2px;
+  border-radius: 25px;
+  border: 1px solid #456957;
+  box-shadow: 0 12px 35px #102c333d;
+  backdrop-filter: none;
+}
+.sphere-public .mobile-primary-nav-action {
+  min-height: 58px;
+  padding: 6px 2px;
+  gap: 4px;
+  color: #dbe5d4;
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: 19px;
+  transition:
+    background 0.25s,
+    color 0.25s,
+    transform 0.2s;
+}
+.sphere-public .mobile-primary-nav-icon {
+  height: 24px;
+  width: 32px;
+  border-radius: 0;
+  transition: transform 0.2s;
+}
+.sphere-public .mobile-primary-nav-action.is-active {
+  background: #d9ee83;
+  color: #153d32;
+}
+.sphere-public .mobile-primary-nav-action.is-active .mobile-primary-nav-icon {
+  width: 32px;
+  color: inherit;
+  background: none;
+  transform: translateY(-1px);
+}
+.sphere-public .mobile-primary-nav-action:active {
+  transform: scale(0.93);
+}
+.sphere-public :is(button, a, summary):focus-visible {
+  outline: 3px solid #90a85d;
+  outline-offset: 4px;
+}
+@keyframes sphere-page-enter {
+  from {
+    opacity: 0.4;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes sphere-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 900px) {
+  .sphere-desktop-links,
+  .sphere-account {
+    display: none !important;
+  }
+  .sphere-header-actions {
+    gap: 9px;
+  }
+  .sphere-header-actions .sphere-menu-toggle {
+    display: flex;
+  }
+  .sphere-header-row {
+    min-height: 92px;
+    gap: 10px;
+    padding: 0 4%;
+  }
+  .sphere-original-logo {
+    width: 115px;
+    height: 90px;
+  }
+  .sphere-original-logo img {
+    width: 160px !important;
+  }
+}
+@media (max-width: 767px) {
+  .sphere-public .app-page {
+    padding-top: 20px;
+  }
+  .sphere-public .app-page h1 {
+    letter-spacing: -1px;
+  }
+  .sphere-talk {
+    padding: 10px 12px;
+    gap: 6px;
+    font-size: 11px;
+  }
+  .sphere-header-actions {
+    gap: 2px;
+  }
+  .sphere-header-actions button {
+    min-width: 38px;
+  }
+  .sphere-catalog-heading {
+    padding: 24px 20px !important;
+    border-radius: 18px;
+  }
+  .sphere-catalog-heading::after {
+    font-size: 100px;
+    right: 8px;
+    opacity: 0.5;
+  }
+  .sphere-catalog-heading h1 {
+    max-width: 280px;
+  }
+  .sphere-public .app-page-catalog .sticky {
+    top: 0;
+  }
+  .sphere-services-hero:after {
+    font-size: 140px;
+    right: -30px;
+    top: 15px;
+  }
+  .sphere-public .assistant-launcher {
+    width: 49px;
+    height: 49px;
+    right: 17px;
+    bottom: calc(100px + env(safe-area-inset-bottom));
+  }
+  .sphere-public .sphere-assistant-panel {
+    bottom: calc(98px + env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 120px);
+  }
+  .sphere-public main[data-view="product"] ~ .assistant-launcher,
+  .sphere-public main[data-view="cart"] ~ .assistant-launcher {
+    bottom: calc(174px + env(safe-area-inset-bottom));
+  }
+  .sphere-public .premium-footer {
+    padding-bottom: 95px;
+  }
+}
+@media (max-width: 360px) {
+  .sphere-talk {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sphere-public *,
+  .sphere-public *::before,
+  .sphere-public *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+.sphere-public .premium-footer img[alt="Sphere Pharmacy"] { max-height:110px; width:175px; object-fit:contain; }
+.sphere-public .mobile-primary-nav { background:transparent; border:0; box-shadow:none; backdrop-filter:none; }
+.sphere-public .premium-empty { border:1px solid #153d3225; border-radius:24px; background:radial-gradient(circle at 50% 0%,#e0e8c7,transparent 65%),#f0f2e5; padding-block:60px; }
+.sphere-public .premium-empty>div:first-child { width:84px; height:84px; border-radius:50%; background:#d9ee83; margin-bottom:24px; }
+.sphere-public .premium-empty h3 { font-family:Georgia,serif; font-size:34px; line-height:1.15; font-weight:400; letter-spacing:-1px; }
+.sphere-public .premium-empty p { line-height:1.8; margin-top:16px; }
+.sphere-public .premium-empty button { border-radius:30px; min-height:48px; padding-inline:24px; }
+
+/* Footer: explicit high-contrast colours, readable legal copy and full hit areas. */
+.sphere-public .premium-footer { background:#e4e9d6!important; color:#153d32!important; }
+.sphere-public .premium-footer :is(p,small,a,button,.text-muted-foreground) { color:#324b3c!important; opacity:1; }
+.sphere-public .premium-footer :is(a,button) { min-height:44px; padding-block:10px; font-size:14px; }
+.sphere-public .premium-footer a:hover,.sphere-public .premium-footer button:hover { color:#102b22!important; text-decoration:underline; text-underline-offset:4px; }
+.sphere-public .premium-footer :is(.text-xs,.text-\[11px\]) { font-size:12px; line-height:1.75; }
+.sphere-public .premium-footer [data-slot="separator"] { background:#667859; }
+.sphere-public .sphere-assistant-panel { width:min(440px,calc(100vw - 24px)); height:min(740px,calc(100dvh - 120px)); max-height:calc(100dvh - 120px); backdrop-filter:none; color:#153d32; background:#fcfcf4; border-radius:26px; box-shadow:0 20px 80px #13392940; animation:sphere-chat-arrive .25s ease both; }
+.sphere-ai-header { background:#153d32!important; flex-shrink:0; }
+.sphere-ai-avatar { border-radius:50%!important; background:#d9ee83!important; color:#153d32; animation:sphere-avatar-float 4s ease-in-out infinite; }
+.sphere-ai-name-tag { display:block; font-size:8px; font-weight:500; letter-spacing:1.8px; color:#d9ee83; margin-top:3px; }
+.sphere-ai-header p,.sphere-ai-header span { opacity:1; }
+.sphere-ai-conversation { background:radial-gradient(circle at 10% 0%,#edf2db,transparent 60%),#fcfcf4; overscroll-behavior:contain; }
+.sphere-ai-message { animation:sphere-message-arrive .25s ease both; }
+.sphere-ai-message>div { max-width:95%; box-shadow:none; }
+.sphere-ai-action { padding:13px; margin-top:13px; border-radius:15px; background:#fffef8; border:1px solid #9ead89; color:#153d32; }
+.sphere-ai-action-title { display:flex; gap:9px; align-items:start; font-size:13px; line-height:1.5; }
+.sphere-ai-action-title svg { flex-shrink:0; margin-top:2px; }
+.sphere-ai-action p { font-size:11px; line-height:1.7; margin-top:8px; color:#41543e; }
+.sphere-ai-action-buttons { display:flex; gap:7px; flex-wrap:wrap; margin-top:11px; }
+.sphere-ai-action-buttons button,.sphere-ai-confirm { border-radius:24px; min-height:42px; padding:10px 13px; background:#153d32; color:#fffef4; display:flex; align-items:center; justify-content:center; gap:8px; font-size:12px; }
+.sphere-ai-action-buttons button+button { background:#d9ee83; color:#153d32; }
+.sphere-ai-action-buttons button:disabled,.sphere-ai-confirm:disabled { opacity:.55; cursor:not-allowed; }
+.sphere-ai-action-workspace { overflow-y:auto; overscroll-behavior:contain; min-height:150px; max-height:65%; flex-shrink:0; background:#e7edd9; border-top:2px solid #8caa55; }
+.sphere-ai-private { padding:20px; position:relative; font-size:13px; }
+.sphere-ai-private-label { font-size:9px; letter-spacing:1.5px; color:#4a603f; }
+.sphere-ai-private h3 { font-family:Georgia,serif; font-size:23px; margin:12px 30px 12px 0; line-height:1.2; display:flex; gap:8px; }
+.sphere-ai-private p { line-height:1.7; font-size:12px; margin:10px 0; }
+.sphere-ai-panel-close { position:absolute; right:8px; top:8px; display:grid; place-items:center; width:40px; height:40px; }
+.sphere-ai-private label { display:grid; gap:7px; margin:13px 0; font-size:12px; font-weight:600; }
+.sphere-ai-private input,.sphere-ai-private select { width:100%; min-width:0; max-width:100%; min-height:44px; border:1px solid #9cab87; border-radius:10px; background:#fffef8; padding:10px; font-size:14px; color:#153d32; }
+.sphere-ai-review { padding:12px; border:1px solid #9cab87; border-radius:12px; background:#f5f7e9; }
+.sphere-ai-private [role="alert"] { color:#8c271d; }
+.sphere-ai-other-option { display:flex; align-items:center; gap:8px; margin-top:12px; min-height:44px; font-size:11px; text-decoration:underline; }
+.sphere-ai-composer { flex-shrink:0; }
+.sphere-ai-composer textarea { font-size:14px; }
+@keyframes sphere-chat-arrive { from { opacity:0; transform:translateY(20px) scale(.97); } to { opacity:1; transform:none; } }
+@keyframes sphere-message-arrive { from { opacity:0; transform:translateY(9px); } to { opacity:1; transform:none; } }
+@keyframes sphere-avatar-float { 50% { transform:translateY(-3px) rotate(-8deg); } }
+@media(max-width:767px) { .sphere-public .sphere-assistant-panel { width:auto; height:calc(100dvh - 118px); bottom:calc(98px + env(safe-area-inset-bottom)); max-height:calc(100dvh - 118px - env(safe-area-inset-bottom)); } .sphere-ai-header { padding:13px; } .sphere-ai-action-workspace { max-height:66%; } }
+@media(prefers-reduced-motion:reduce) { .sphere-public .sphere-assistant-panel,.sphere-ai-message,.sphere-ai-avatar { animation:none!important; } }
+
+/* Member pages: personal editorial welcomes and practical care shortcuts. */
+.sphere-member-intro { display:grid; grid-template-columns:1fr 180px; gap:20px; padding:38px; border-radius:24px; background:#153d32; color:#f7f7ed; position:relative; overflow:hidden; margin-bottom:26px; }
+.sphere-member-copy>p:first-child { font-size:9px; letter-spacing:1.7px; color:#d9ee83; }
+.sphere-public .sphere-member-intro h1 { font-size:clamp(32px,3.8vw,54px); margin:18px 0; letter-spacing:-1.5px; color:#f7f7ed; font-weight:400; }
+.sphere-member-intro h1 em { color:#d9ee83; }
+.sphere-member-description { color:#e2e9d9; max-width:490px; line-height:1.8; font-size:13px; }
+.sphere-member-copy>button { min-height:44px; border-bottom:1px solid #d9ee8380; display:flex; align-items:center; gap:9px; font-size:11px; margin-top:18px; }
+.sphere-member-art { position:relative; display:flex; align-items:center; justify-content:center; align-self:center; aspect-ratio:1; }
+.sphere-member-art>div { position:absolute; inset:-10%; border:1px solid #d9ee8340; border-radius:50%; transform:rotate(-25deg) scaleY(.7); }
+.sphere-member-art>span { display:grid; place-items:center; width:130px; height:130px; font-family:Georgia,serif; font-size:70px; border-radius:50%; color:#eaf2bf; background:radial-gradient(circle at 28% 22%,#9bb870,#486e44 55%,#214734); box-shadow:8px 15px 20px #0e2b2450; animation:sphere-avatar-float 6s ease-in-out infinite; }
+.sphere-member-art svg { width:49px; height:49px; stroke-width:1; }
+.sphere-member-art small { position:absolute; bottom:-17px; font-size:8px; letter-spacing:1.6px; color:#d9ee83; }
+.sphere-member-shortcuts { display:grid; grid-template-columns:repeat(3,1fr); gap:13px; margin-bottom:30px; }
+.sphere-member-shortcuts button { display:flex; align-items:center; gap:14px; border:1px solid #9dad8960; border-radius:17px; background:#e9eddb; padding:22px 17px; text-align:left; transition:transform .2s,background .2s; }
+.sphere-member-shortcuts button:hover { background:#dee7c4; transform:translateY(-4px); }
+.sphere-member-shortcuts span { flex:1; }
+.sphere-member-shortcuts strong { display:block; font-size:14px; font-weight:500; }
+.sphere-member-shortcuts small { display:block; margin-top:6px; font-size:10px; color:#43553c; }
+.sphere-public .customer-hub { background:#edf0df; border-bottom:1px solid #8c9d77; }
+.sphere-public .customer-hub-link { min-height:44px; border-radius:25px; color:#43583c; }
+.sphere-public .customer-hub-link.is-active { background:#153d32; color:#f7f7ed; }
+.sphere-public .customer-hub-avatar { background:#d9ee83; color:#153d32; }
+.sphere-public .app-page-account [data-slot="card-header"],.sphere-public .app-page-prescriptions [data-slot="card-header"] { padding:22px; border-bottom:1px solid #153d3215; margin-bottom:18px; }
+.sphere-public .app-page-account [data-slot="card-title"],.sphere-public .app-page-prescriptions [data-slot="card-title"] { font-family:Georgia,serif; font-size:23px; font-weight:400; }
+.sphere-public .app-page-order [data-slot="card"] { border-left:3px solid #9caf6d; }
+@media(max-width:700px) { .sphere-member-intro { padding:26px; grid-template-columns:1fr; } .sphere-member-art { display:none; } .sphere-member-shortcuts { grid-template-columns:1fr; gap:9px; } .sphere-member-shortcuts button { padding:17px 20px; } .sphere-member-shortcuts small { font-size:12px; } .sphere-public .customer-hub-identity { display:none; } .sphere-public .customer-hub-links { width:100%; } }
+.sphere-assistant-panel[data-active-action="true"] .sphere-ai-conversation,.sphere-assistant-panel[data-active-action="true"] .sphere-ai-composer { display:none; }
+.sphere-assistant-panel[data-active-action="true"] .sphere-ai-action-workspace { flex:1 1 auto; min-height:0; max-height:none; }
+.sphere-public .premium-footer h4 { color:#153d32!important; opacity:1; }
+.sphere-public .premium-footer svg { color:currentColor; opacity:1; }

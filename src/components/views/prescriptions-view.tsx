@@ -1,5 +1,7 @@
 "use client"
 
+import { MemberIntro } from "@/components/member/member-intro"
+
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -17,7 +19,7 @@ import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
+import { EmptyState } from "@/components/shared/empty-state"
 import { RxStatusBadge } from "@/components/shared/status-badges"
 import { useAppStore } from "@/store/use-app-store"
 import { useAuthStore } from "@/store/use-auth-store"
@@ -320,10 +322,7 @@ export function PrescriptionsView() {
   return (
     <div className="app-page app-page-prescriptions mx-auto max-w-3xl px-4 py-8 pb-12">
 
-      <SectionHeader
-        title="My prescriptions"
-        subtitle="Upload, track reviews and request refills — all reviewed by our pharmacist."
-      />
+      <MemberIntro kind="prescriptions" />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as PrescriptionsTab)} className="mb-5">
         <TabsList className="grid w-full grid-cols-2">

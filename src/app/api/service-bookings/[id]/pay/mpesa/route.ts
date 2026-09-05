@@ -26,6 +26,8 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   const key = `service:${id}:mpesa:${idempotency}`
   const previous = await db.servicePayment.findUnique({ where: { idempotencyKey: key } })
   if (previous?.checkoutRequestId) return NextResponse.json({ paymentId: previous.id, checkoutRequestId: previous.checkoutRequestId, message: "Payment request already sent." })
+  const inFlight = await db.servicePayment.findFirst({ where: { bookingId: id, status: "PROCESSING", checkoutRequestId: { not: null }, createdAt: { gte: new Date(Date.now() - 15 * 60_000) } } })
+  if (inFlight) return NextResponse.json({ error: "A payment request is already awaiting confirmation. Check its status before starting another." }, { status: 409 })
   let payment = previous
   if (!payment) try { payment = await db.servicePayment.create({ data: { bookingId: id, provider: "MPESA", method: "STK_PUSH", status: "PENDING", amount: booking.price!, currency: "KES", phone: `+${phone}`, idempotencyKey: key } }) }
   catch (createError) { if (!isUniqueConstraintError(createError)) throw createError; payment = await db.servicePayment.findUnique({ where: { idempotencyKey: key } }) }

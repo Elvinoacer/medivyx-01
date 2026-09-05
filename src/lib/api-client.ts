@@ -37,6 +37,7 @@ export interface AssistantMessage {
   role: "user" | "assistant"
   content: string
   escalated?: boolean
+  actions?: import("./assistant/contracts").AssistantAction[]
 }
 
 export class ApiError extends Error {
@@ -245,7 +246,7 @@ export const notificationsApi = {
 
 export const assistantApi = {
   chat: (messages: AssistantMessage[]) =>
-    req<{ reply: string; escalated: boolean }>("/api/assistant", {
+    req<{ reply: string; escalated: boolean; actions?: import("./assistant/contracts").AssistantAction[] }>("/api/assistant", {
       method: "POST",
       body: JSON.stringify({
         messages: messages.map(({ role, content }) => ({ role, content })),
@@ -431,7 +432,7 @@ export const serviceBookingsApi = {
   slots: (serviceId: string, date: string) =>
     req<import("./types").ServiceSlotDTO[]>(`/api/services/${serviceId}/slots?date=${encodeURIComponent(date)}`),
   mine: () => req<import("./types").ServiceBookingDTO[]>("/api/service-bookings/mine"),
-  create: (payload: { serviceId: string; start: string; end: string; customerNotes?: string }) =>
+  create: (payload: { serviceId: string; start: string; end: string; customerNotes?: string; expectedPrice?: number | null }) =>
     req<import("./types").ServiceBookingDTO>("/api/service-bookings", { method: "POST", body: JSON.stringify(payload) }),
 }
 
@@ -448,8 +449,8 @@ export const adminServiceBookingsApi = {
 }
 
 export const servicePaymentsApi = {
-  mpesa: (bookingId: string, phone: string) =>
-    req<{ paymentId: string; checkoutRequestId: string; message: string }>(`/api/service-bookings/${bookingId}/pay/mpesa`, { method: "POST", body: JSON.stringify({ phone, idempotencyKey: crypto.randomUUID() }) }),
+  mpesa: (bookingId: string, phone: string, idempotencyKey = crypto.randomUUID()) =>
+    req<{ paymentId: string; checkoutRequestId: string; message: string }>(`/api/service-bookings/${bookingId}/pay/mpesa`, { method: "POST", body: JSON.stringify({ phone, idempotencyKey }) }),
   card: (bookingId: string) =>
     req<{ paymentId: string; checkoutUrl: string; status: string }>(`/api/service-bookings/${bookingId}/pay/card`, { method: "POST", body: JSON.stringify({ idempotencyKey: crypto.randomUUID() }) }),
   status: (bookingId: string) =>

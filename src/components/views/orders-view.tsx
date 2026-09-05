@@ -1,5 +1,7 @@
 "use client"
 
+import { MemberIntro } from "@/components/member/member-intro"
+
 import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -209,13 +211,9 @@ export function OrdersView() {
 
   return (
     <div className="app-page app-page-orders mx-auto max-w-3xl px-4 py-8 pb-12">
+      <MemberIntro kind="orders" />
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">My orders</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Track, pay for and reorder from your purchase history.
-          </p>
-        </div>
+
         <Button
           variant="outline"
           size="sm"

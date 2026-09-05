@@ -1,5 +1,7 @@
 "use client"
 
+import { MemberIntro } from "@/components/member/member-intro"
+
 import { useEffect, useMemo, useState } from "react"
 import {
   ArrowRight,
@@ -336,7 +338,7 @@ export function ServicesView() {
       {/* ========================================================================= */}
       {/* 1. HERO BANNER WITH PHOTOREALISTIC BACKGROUND IMAGE & HIGH-CONTRAST OVERLAY */}
       {/* ========================================================================= */}
-      <section className="relative overflow-hidden rounded-3xl border shadow-xl min-h-[360px] md:min-h-[420px] flex items-center bg-teal-950">
+      {activeTab === "bookings" && session?.user ? <MemberIntro kind="appointments" /> : <section className="sphere-services-hero relative overflow-hidden rounded-3xl border shadow-xl min-h-[360px] md:min-h-[420px] flex items-center bg-teal-950">
         {/* Background Image Layer */}
         <div className="absolute inset-0 z-0">
           <img
@@ -358,10 +360,8 @@ export function ServicesView() {
           </span>
 
           <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
-            Healthcare support, <br className="hidden sm:inline" />
-            <span className="bg-gradient-to-r from-emerald-300 to-teal-100 bg-clip-text text-transparent">
-              not just medicine.
-            </span>
+            A little time for you.<br />
+            <em>Care beyond the counter.</em>
           </h1>
 
           <p className="mt-3.5 max-w-xl text-sm sm:text-base leading-relaxed text-white/80">
@@ -424,7 +424,7 @@ export function ServicesView() {
             </Button>
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* ========================================================================= */}
       {/* 2. DEDICATED SEPARATED TABS (SERVICES CATALOG vs. MY BOOKINGS HUB) */}

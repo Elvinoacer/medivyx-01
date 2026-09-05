@@ -1,5 +1,7 @@
 "use client"
 
+import { MemberIntro } from "@/components/member/member-intro"
+
 import { useEffect, useRef, useState } from "react"
 import {
   AlertDialog,
@@ -38,7 +40,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { SectionHeader } from "@/components/shared/empty-state"
+
 import { useAppStore } from "@/store/use-app-store"
 import { useAuthStore } from "@/store/use-auth-store"
 import { addressesApi, authApi, catalogApi, notificationsApi, ordersApi, storageApi } from "@/lib/api-client"
@@ -604,10 +606,7 @@ export function AccountView() {
   return (
     <div className="app-page app-page-account mx-auto max-w-6xl px-4 py-8 pb-12">
 
-      <SectionHeader
-        title="Your health, orders and preferences"
-        subtitle="Manage the details that make every Sphere Pharmacy visit faster and more personal."
-      />
+      <MemberIntro kind="account" />
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* ---------- profile ---------- */}
@@ -652,7 +651,7 @@ export function AccountView() {
                       ) : (
                         <Camera className="h-3.5 w-3.5" />
                       )}
-                      {uploadingAvatar ? "Uploading to Cloudflare R2…" : "Upload photo to R2"}
+                      {uploadingAvatar ? "Uploading your photo…" : "Upload profile photo"}
                     </Button>
                     <input
                       ref={avatarInputRef}
@@ -662,7 +661,7 @@ export function AccountView() {
                       onChange={handleAvatarUpload}
                     />
                     <p className="mt-1 text-[11px] text-muted-foreground">
-                      Stored in Cloudflare R2 cloud storage.
+                      Choose a clear photo to personalise your account.
                     </p>
                   </div>
                 </div>
