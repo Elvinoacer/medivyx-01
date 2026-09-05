@@ -175,7 +175,8 @@ export function setupForegroundNotificationListener(onNotification?: (data: unkn
           ? {
               label: "View",
               onClick: () => {
-                window.location.href = url
+                const target = new URL(url, window.location.origin)
+                if (target.origin === window.location.origin) window.location.href = target.href
               },
             }
           : undefined,

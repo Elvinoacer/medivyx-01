@@ -1,10 +1,10 @@
+import { notifyPaymentOutcome } from "@/lib/notifications/payment"
 import { createHash, timingSafeEqual } from "crypto"
 import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { pointsForAmount } from "@/lib/constants"
 import { db } from "@/lib/db"
 import { queryStkPush } from "@/lib/mpesa/daraja"
-import { notifyCustomer } from "@/lib/notify"
 import { paymentMatchesExpected } from "@/lib/security/payment"
 
 interface CallbackItem { Name: string; Value?: string | number }
@@ -37,21 +37,20 @@ export async function POST(request: Request) {
   const eventId = `mpesa:${checkoutRequestId}:${resultCode}:${receipt || "none"}`
   const payloadHash = createHash("sha256").update(raw).digest("hex")
   const priorEvent = await db.paymentWebhookEvent.findUnique({ where: { eventId } })
-  if (priorEvent && (priorEvent.payloadHash !== payloadHash || priorEvent.paymentId !== payment.id)) return NextResponse.json({ error: "Conflicting callback replay." }, { status: 409 })
+  if (priorEvent && (priorEvent.paymentId !== payment.id)) return NextResponse.json({ error: "Conflicting callback replay." }, { status: 409 })
   if (priorEvent) return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" })
 
   try {
     let awarded = 0
-    let completed = false
     if (resultCode === 0) {
       const providerStatus = await queryStkPush(checkoutRequestId)
       if (providerStatus.status !== "SUCCESS" || !paymentMatchesExpected({ expectedAmount: payment.amount, actualAmount: amount, expectedCurrency: payment.currency, actualCurrency: "KES", expectedPhone: payment.phone, actualPhone: phone, receipt })) return NextResponse.json({ error: "Payment verification mismatch." }, { status: 409 })
       await db.$transaction(async (tx) => {
         if (await tx.paymentWebhookEvent.findUnique({ where: { eventId } })) return
         await tx.paymentWebhookEvent.create({ data: { provider: "MPESA", eventId, payloadHash, paymentId: payment.id } })
-        const changed = await tx.payment.updateMany({ where: { id: payment.id, status: { not: "SUCCESS" } }, data: { status: "SUCCESS", providerReference: receipt, failureReason: null } })
+        const changed = await tx.payment.updateMany({ where: { id: payment.id, status: { in: ["PENDING", "PROCESSING", "FAILED"] } }, data: { status: "SUCCESS", providerReference: receipt, failureReason: null } })
         if (changed.count === 0) return
-        completed = true
+        await notifyPaymentOutcome(tx, { paymentId: payment.id, orderId: payment.orderId, success: true })
         const moved = await tx.order.updateMany({ where: { id: payment.orderId, status: { in: ["AWAITING_PAYMENT", "AVAILABILITY_CONFIRMED", "PRESCRIPTION_VERIFIED"] } }, data: { status: "PAID", version: { increment: 1 } } })
         if (moved.count) await tx.orderStatusHistory.create({ data: { orderId: payment.orderId, status: "PAID", actor: "System", note: `M-Pesa payment confirmed (${receipt})` } })
         if (payment.order.userId) {
@@ -63,14 +62,14 @@ export async function POST(request: Request) {
           }
         }
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
-      if (completed) await notifyCustomer(payment.order.userId, "PAYMENT", `Payment received — order ${payment.order.reference}`, `M-Pesa payment of KSh ${Number(payment.amount).toLocaleString()} confirmed. Ref: ${receipt}.${awarded ? ` You earned ${awarded} Sphere Points.` : ""}`, "IN_APP", { link: `/orders/${payment.orderId}`, metadata: { orderId: payment.orderId, providerReference: receipt } })
       return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" })
     }
 
     await db.$transaction(async (tx) => {
       if (await tx.paymentWebhookEvent.findUnique({ where: { eventId } })) return
       await tx.paymentWebhookEvent.create({ data: { provider: "MPESA", eventId, payloadHash, paymentId: payment.id } })
-      await tx.payment.updateMany({ where: { id: payment.id, status: { not: "SUCCESS" } }, data: { status: "FAILED", failureReason: `M-Pesa request failed (${resultCode})` } })
+      const failedPayment = await tx.payment.updateMany({ where: { id: payment.id, status: { in: ["PENDING", "PROCESSING", "FAILED"] } }, data: { status: "FAILED", failureReason: `M-Pesa request failed (${resultCode})` } })
+      if (failedPayment.count) await notifyPaymentOutcome(tx, { paymentId: payment.id, orderId: payment.orderId, success: false })
     })
     return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" })
   } catch {

@@ -103,6 +103,7 @@ async function getGoogleAccessToken(creds: {
 
     const res = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
+      signal: AbortSignal.timeout(12_000),
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
@@ -164,7 +165,9 @@ export async function sendPushNotification(
 
   const endpoint = `https://fcm.googleapis.com/v1/projects/${creds.projectId}/messages:send`
   const defaultIcon = "/favicon.ico"
-  const clickAction = link || process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+  const origin = new URL(process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke")
+  const target = new URL(link || "/account", origin)
+  const clickAction = target.origin === origin.origin ? target.href : origin.href
 
   const invalidTokens: string[] = []
   let sentCount = 0
@@ -207,6 +210,7 @@ export async function sendPushNotification(
 
         const res = await fetch(endpoint, {
           method: "POST",
+      signal: AbortSignal.timeout(12_000),
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
@@ -221,9 +225,7 @@ export async function sendPushNotification(
           const resText = await res.text()
           // Check if token is expired, unregistered, or invalid
           if (
-            res.status === 404 ||
             resText.includes("UNREGISTERED") ||
-            resText.includes("INVALID_ARGUMENT") ||
             resText.includes("registration-token-not-registered")
           ) {
             invalidTokens.push(token)
@@ -250,7 +252,7 @@ export async function sendPushNotification(
   }
 
   return {
-    success: sentCount > 0 || failedCount === 0,
+    success: failedCount === 0,
     sentCount,
     failedCount,
     error: failedCount > 0 && sentCount === 0 ? "Firebase rejected every registered device token." : undefined,

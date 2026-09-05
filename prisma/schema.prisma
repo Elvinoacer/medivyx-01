@@ -569,3 +569,40 @@ model ScheduledJobDelivery {
   sentAt    DateTime?
   createdAt DateTime @default(now())
 }
+
+// Durable, independently retried provider deliveries. SENT means provider accepted.
+model NotificationDelivery {
+  id          String   @id @default(cuid())
+  dedupeKey   String   @unique
+  userId      String?
+  staffId     String?
+  channel     String
+  payload     Json
+  status      String   @default("PENDING")
+  attempts    Int      @default(0)
+  availableAt DateTime @default(now())
+  lockedUntil DateTime?
+  lockToken   String?
+  providerId  String?
+  lastError   String?
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, availableAt])
+}
+
+model EmailSuppression {
+  email String @id
+  reason String
+  createdAt DateTime @default(now())
+}
+
+model EmailDeliveryEvent {
+  id String @id
+  providerId String
+  status String
+  processed Boolean @default(false)
+  createdAt DateTime @default(now())
+  @@index([processed, createdAt])
+}

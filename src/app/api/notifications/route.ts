@@ -24,7 +24,7 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     take: 100,
   })
-  return NextResponse.json(rows.map(toNotificationDTO))
+  return NextResponse.json(rows.map(toNotificationDTO), { headers: { "Cache-Control": "private, no-store" } })
 }
 
 export async function PATCH(request: Request) {

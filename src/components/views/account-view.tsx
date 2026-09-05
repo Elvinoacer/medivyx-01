@@ -971,7 +971,7 @@ export function AccountView() {
               <>
                 {(
                   [
-                    { key: "email", label: "Email", icon: Mail, text: "Order confirmations and receipts via Resend" },
+                    { key: "email", label: "Email", icon: Mail, text: "Order confirmations, appointment updates, and receipts" },
                   ] as const
                 ).map((ch) => (
                   <div key={ch.key} className="flex items-center justify-between gap-3">
@@ -995,6 +995,21 @@ export function AccountView() {
                     />
                   </div>
                 ))}
+                <div className="rounded-lg border p-3">
+                  <p className="text-sm font-medium">Push alerts on this device</p>
+                  <p className="mb-3 text-xs text-muted-foreground">Enable this browser to receive private update alerts, even when Sphere is closed.</p>
+                  <Button variant="outline" disabled={prefsSaving} onClick={async () => {
+                    setPrefsSaving(true)
+                    try {
+                      const result = await enablePushNotifications()
+                      if (!result.success) throw new Error(result.error || "Could not register this device")
+                      setPrefs(await notificationsApi.updatePrefs({ push: true }))
+                      toast.success("This device is registered for push alerts")
+                    } catch (error) { toast.error(errMessage(error, "Could not enable push alerts")) }
+                    finally { setPrefsSaving(false) }
+                  }}>Enable push on this device</Button>
+                  {prefs.push && <Button variant="ghost" disabled={prefsSaving} onClick={() => void toggleChannel("push", "Push")}>Turn push off</Button>}
+                </div>
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed bg-muted/30 p-3">
                   <div className="flex items-start gap-3">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
@@ -1254,7 +1269,7 @@ export function AccountView() {
                 <BellOff className="h-8 w-8 text-muted-foreground" aria-hidden />
                 <p className="text-sm font-medium">You're all caught up</p>
                 <p className="max-w-xs text-sm text-muted-foreground">
-                  Order updates, prescription reviews and refill reminders will appear here.
+                  Order updates, prescription reviews and refill requests will appear here.
                 </p>
               </div>
             ) : (

@@ -8,6 +8,7 @@ export interface SendEmailOptions {
   text?: string
   from?: string
   replyTo?: string
+  idempotencyKey?: string
 }
 
 export interface EmailResult {
@@ -38,6 +39,9 @@ export async function sendEmail(opts: SendEmailOptions): Promise<EmailResult> {
     return { success: false, error: "Email delivery is not configured" }
   }
 
+  if (process.env.NODE_ENV === "production" && (!process.env.RESEND_FROM_EMAIL || defaultFrom.includes("@resend.dev"))) {
+    return { success: false, error: "A verified sender domain is required in production" }
+  }
   try {
     const payload: Record<string, unknown> = {
       from: opts.from || defaultFrom,
@@ -50,9 +54,11 @@ export async function sendEmail(opts: SendEmailOptions): Promise<EmailResult> {
 
     const response = await fetch(RESEND_ENDPOINT, {
       method: "POST",
+      signal: AbortSignal.timeout(12_000),
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        ...(opts.idempotencyKey ? { "Idempotency-Key": opts.idempotencyKey } : {}),
       },
       body: JSON.stringify(payload),
     })
@@ -65,7 +71,8 @@ export async function sendEmail(opts: SendEmailOptions): Promise<EmailResult> {
       return { success: false, error: errMsg }
     }
 
-    return { success: true, id: data?.id }
+    if (!data?.id) return { success: false, error: "Email provider response was incomplete" }
+    return { success: true, id: data.id }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error(JSON.stringify({ level: "error", event: "email_delivery_exception" }))

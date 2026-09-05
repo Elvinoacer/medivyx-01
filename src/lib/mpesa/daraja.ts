@@ -68,6 +68,7 @@ export async function getDarajaAccessToken(): Promise<string> {
 
   const response = await fetch(url, {
     method: "GET",
+    signal: AbortSignal.timeout(12_000),
     headers: {
       Authorization: `Basic ${credentials}`,
     },
@@ -125,7 +126,10 @@ export async function initiateStkPush(params: StkPushParams): Promise<StkPushRes
   const callbackToken = process.env.MPESA_CALLBACK_TOKEN
   if (!callbackToken || callbackToken.length < 24) throw new Error("MPESA_CALLBACK_TOKEN must contain at least 24 characters")
   const defaultCallback = `${appUrl}/api/payments/mpesa/callback?token=${encodeURIComponent(callbackToken)}`
-  const callbackUrl = params.callbackUrl || process.env.MPESA_CALLBACK_URL || defaultCallback
+  const callback = new URL(params.callbackUrl || process.env.MPESA_CALLBACK_URL || defaultCallback)
+  if (process.env.NODE_ENV === "production" && callback.protocol !== "https:") throw new Error("M-Pesa callbacks require HTTPS")
+  callback.searchParams.set("token", callbackToken)
+  const callbackUrl = callback.href
 
   const payload = {
     BusinessShortCode: shortcode,
@@ -144,6 +148,7 @@ export async function initiateStkPush(params: StkPushParams): Promise<StkPushRes
   const url = `${getBaseUrl()}/mpesa/stkpush/v1/processrequest`
   const response = await fetch(url, {
     method: "POST",
+    signal: AbortSignal.timeout(15_000),
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
@@ -197,6 +202,7 @@ export async function queryStkPush(checkoutRequestId: string): Promise<StkQueryR
   const url = `${getBaseUrl()}/mpesa/stkpushquery/v1/query`
   const response = await fetch(url, {
     method: "POST",
+    signal: AbortSignal.timeout(15_000),
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",

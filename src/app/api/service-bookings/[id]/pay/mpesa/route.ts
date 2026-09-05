@@ -1,9 +1,10 @@
+import { reservePaymentAttempt } from "@/lib/security/payment-attempt"
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getSession } from "@/lib/session"
-import { formatDarajaPhone, initiateStkPush } from "@/lib/mpesa/daraja"
+import { formatDarajaPhone, initiateStkPush, isDarajaConfigured } from "@/lib/mpesa/daraja"
 import { money } from "@/lib/security/payment"
-import { enforceRateLimit, isUniqueConstraintError, rejectOversizedRequest } from "@/lib/security/request"
+import { enforceRateLimit, rejectOversizedRequest } from "@/lib/security/request"
 
 export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
   const tooLarge = rejectOversizedRequest(request, 8_192)
@@ -23,26 +24,26 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   if (booking.paymentStatus === "PAID" || ["CANCELLED", "REJECTED", "COMPLETED"].includes(booking.status)) return NextResponse.json({ error: "This booking cannot be paid." }, { status: 409 })
   const amount = money(booking.price || 0)
   if (!Number.isSafeInteger(amount) || amount <= 0) return NextResponse.json({ error: "M-Pesa requires a positive whole-KSh amount." }, { status: 409 })
+  if (!isDarajaConfigured()) return NextResponse.json({ error: "M-Pesa is not configured for this environment." }, { status: 503 })
   const key = `service:${id}:mpesa:${idempotency}`
   const previous = await db.servicePayment.findUnique({ where: { idempotencyKey: key } })
   if (previous?.checkoutRequestId) return NextResponse.json({ paymentId: previous.id, checkoutRequestId: previous.checkoutRequestId, message: "Payment request already sent." })
   const inFlight = await db.servicePayment.findFirst({ where: { bookingId: id, status: "PROCESSING", checkoutRequestId: { not: null }, createdAt: { gte: new Date(Date.now() - 15 * 60_000) } } })
   if (inFlight) return NextResponse.json({ error: "A payment request is already awaiting confirmation. Check its status before starting another." }, { status: 409 })
-  let payment = previous
-  if (!payment) try { payment = await db.servicePayment.create({ data: { bookingId: id, provider: "MPESA", method: "STK_PUSH", status: "PENDING", amount: booking.price!, currency: "KES", phone: `+${phone}`, idempotencyKey: key } }) }
-  catch (createError) { if (!isUniqueConstraintError(createError)) throw createError; payment = await db.servicePayment.findUnique({ where: { idempotencyKey: key } }) }
+  let payment
+  try { payment = await reservePaymentAttempt({ kind: "service", entityId: id, key, provider: "MPESA", method: "STK_PUSH", amount: booking.price!, phone }) }
+  catch { return NextResponse.json({ error: "The payment is already in progress or this item is not ready for payment. Refresh its status before trying again." }, { status: 409 }) }
   if (!payment) return NextResponse.json({ error: "Could not reserve the payment request." }, { status: 503 })
   const callbackSecret = process.env.MPESA_CALLBACK_TOKEN || ""
   if (callbackSecret.length < 24) return NextResponse.json({ error: "M-Pesa is not configured." }, { status: 503 })
   try {
     const stk = await initiateStkPush({ phone, amount, reference: booking.reference, description: `Service ${booking.reference}`, callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/api/payments/mpesa/service-callback?token=${encodeURIComponent(callbackSecret)}` })
     await db.$transaction([
-      db.servicePayment.update({ where: { id: payment.id }, data: { status: "PROCESSING", checkoutRequestId: stk.checkoutRequestId } }),
-      db.servicePayment.updateMany({ where: { bookingId: id, id: { not: payment.id }, status: { in: ["PENDING", "PROCESSING"] }, method: "STK_PUSH" }, data: { status: "FAILED", failureReason: "Superseded by a new payment request" } }),
+      db.servicePayment.updateMany({ where: { id: payment.id, status: "PROCESSING" }, data: { status: "PROCESSING", checkoutRequestId: stk.checkoutRequestId } }),
     ])
     return NextResponse.json({ paymentId: payment.id, checkoutRequestId: stk.checkoutRequestId, message: stk.customerMessage })
   } catch {
-    await db.servicePayment.update({ where: { id: payment.id }, data: { status: "FAILED", failureReason: "M-Pesa request could not be started" } })
-    return NextResponse.json({ error: "M-Pesa is temporarily unavailable. No payment was taken." }, { status: 503 })
+    await db.servicePayment.updateMany({ where: { id: payment.id, status: "PROCESSING" }, data: { status: "PROCESSING", failureReason: "Provider response uncertain; reconcile before another attempt" } })
+    return NextResponse.json({ error: "We could not confirm the M-Pesa response. Check your phone and order status before trying again." }, { status: 503 })
   }
 }

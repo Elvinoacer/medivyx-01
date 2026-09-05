@@ -1,251 +1,90 @@
+import { randomUUID } from "crypto"
+import { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
 import { ORDER_STATUS_LABELS, type OrderStatus, type Role } from "@/lib/constants"
-import { sendPushNotification } from "@/lib/firebase/admin"
-import { sendEmail } from "@/lib/email/resend"
-import { adminNotificationTemplate, serviceBookingTemplate } from "@/lib/email/templates"
+import { serviceBookingTemplate } from "@/lib/email/templates"
+import { escapeHtml } from "@/lib/security/request"
 
 export type NotificationChannel = "IN_APP" | "SMS" | "WHATSAPP" | "EMAIL" | "PUSH"
-
-/** Whether the customer has opted into a notification channel (in-app is always on). */
-export async function channelAllowed(
-  userId: string,
-  channel: NotificationChannel
-): Promise<boolean> {
-  if (channel === "IN_APP") return true
+export async function channelAllowed(userId: string, channel: NotificationChannel): Promise<boolean> {
   const pref = await db.notificationPref.findUnique({ where: { userId } })
-  if (!pref) return true // default opt-ins: all enabled
-  if (channel === "SMS") return pref.sms
-  if (channel === "WHATSAPP") return pref.whatsapp
-  if (channel === "EMAIL") return pref.email
-  if (channel === "PUSH") return pref.push
+  if (channel === "PUSH") return pref?.push ?? true
+  if (channel === "EMAIL") return pref?.email ?? true
+  if (channel === "SMS") return pref?.sms ?? false
+  if (channel === "WHATSAPP") return pref?.whatsapp ?? false
   return true
 }
 
-export interface CustomerNotificationPayload {
-  userId: string | null
-  event: string
-  title: string
-  message: string
-  channel?: NotificationChannel
-  link?: string
-  metadata?: Record<string, unknown>
-  email?: {
-    to?: string
-    subject: string
-    html: string
-    text?: string
-  }
+export function notificationUrl(link?: string): string {
+  const base = new URL(process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke")
+  const url = new URL(link || "/account", base)
+  return url.origin === base.origin ? url.href : new URL("/account", base).href
 }
 
-/**
- * Send a multi-channel notification to a customer:
- * - Always records an in-app notification in the database (if userId present)
- * - Sends Firebase push notification to all registered device tokens for this user
- * - Sends an email via Resend if email payload or recipient is provided
- */
-export async function notifyCustomer(
-  userId: string | null,
-  event: string,
-  title: string,
-  message: string,
-  channel: NotificationChannel = "IN_APP",
-  extra?: {
-    link?: string
-    metadata?: Record<string, unknown>
-    email?: {
-      to?: string
-      subject: string
-      html: string
-      text?: string
-    }
-  }
-): Promise<void> {
-  if (!userId) {
-    // If no userId but email is provided (e.g., guest checkout), send the email directly
-    if (extra?.email?.to) {
-      await sendEmail({
-        to: extra.email.to,
-        subject: extra.email.subject,
-        html: extra.email.html,
-        text: extra.email.text,
-      }).catch((e) => console.warn("[Guest Email Error]", e))
-    }
-    return
-  }
+type Email = { to?: string; subject: string; html: string; text?: string }
+type Extra = { link?: string; metadata?: Record<string, unknown>; email?: Email; dedupeKey?: string; transaction?: Prisma.TransactionClient }
 
-  // 1. In-app DB notification
-  try {
-    await db.notification.create({
-      data: {
-        userId,
-        channel,
-        event,
-        title,
-        message,
-        metadata: extra?.metadata ? JSON.stringify(extra.metadata) : null,
-      },
-    })
-  } catch (err) {
-    console.error("[notifyCustomer DB error]", err)
+// Persist the inbox entry and all provider jobs together. No network I/O occurs here.
+async function enqueue(tx: Prisma.TransactionClient, input: {
+  userId?: string | null; staffId?: string; event: string; title: string; message: string; extra?: Extra
+}) {
+  const { userId, staffId, event, title, message, extra } = input
+  const link = notificationUrl(extra?.link || (staffId ? "/admin" : "/account"))
+  const key = extra?.dedupeKey || randomUUID()
+  const owner = userId ? { userId } : staffId ? { staffId } : {}
+  if (userId || staffId) {
+    // Stable inbox ID makes retries idempotent when the caller supplies an event key.
+    await tx.notification.upsert({ where: { id: `notice:${key}` }, update: {}, create: {
+      id: `notice:${key}`, ...owner, channel: "IN_APP", event, title, message,
+      metadata: JSON.stringify({ ...extra?.metadata, link }),
+    } })
   }
-
-  // 2. Firebase Push Notification (if customer has push enabled)
-  try {
-    const isPushEnabled = await channelAllowed(userId, "PUSH")
-    if (isPushEnabled) {
-      const pushRecords = await db.pushToken.findMany({
-        where: { userId },
-        select: { token: true },
-      })
-      const tokens = pushRecords.map((r) => r.token).filter(Boolean)
-      if (tokens.length > 0) {
-        await sendPushNotification({
-          tokens,
-          title,
-          body: message,
-          link: extra?.link,
-          data: {
-            event,
-            ...(extra?.metadata
-              ? Object.fromEntries(
-                  Object.entries(extra.metadata).map(([k, v]) => [k, String(v)])
-                )
-              : {}),
-          },
-        })
-      }
-    }
-  } catch (err) {
-    console.error("[notifyCustomer Push error]", err)
+  const recipient = userId
+    ? await tx.user.findUnique({ where: { id: userId }, select: { email: true } })
+    : staffId ? await tx.staffUser.findUnique({ where: { id: staffId }, select: { email: true } }) : null
+  const to = recipient?.email || extra?.email?.to
+  const jobs: Prisma.NotificationDeliveryCreateManyInput[] = []
+  if (to) jobs.push({ ...owner, dedupeKey: `${key}:email`, channel: "EMAIL", payload: {
+    to, subject: extra?.email?.subject || title,
+    html: extra?.email?.html || `<p>${escapeHtml(message)}</p><p><a href="${escapeHtml(link)}">View your update</a></p>`,
+    text: extra?.email?.text || `${message}\n\n${link}`,
+  } })
+  if (userId || staffId) {
+    const tokens = await tx.pushToken.findMany({ where: owner, select: { id: true, token: true } })
+    for (const token of tokens) jobs.push({ ...owner, dedupeKey: `${key}:push:${token.id}`, channel: "PUSH", payload: {
+      token: token.token, title: "Sphere Pharmacy", body: "You have a new update. Open Sphere to view it securely.",
+      link, data: { event, notificationId: `notice:${key}` },
+    } })
   }
+  if (jobs.length) await tx.notificationDelivery.createMany({ data: jobs, skipDuplicates: true })
+}
 
-  // 3. Resend Email Notification (if customer has email enabled)
-  try {
-    const isEmailEnabled = await channelAllowed(userId, "EMAIL")
-    if (isEmailEnabled) {
-      // Determine recipient email: from extra.email.to or lookup user record
-      let recipientEmail = extra?.email?.to
-      if (!recipientEmail) {
-        const user = await db.user.findUnique({
-          where: { id: userId },
-          select: { email: true },
-        })
-        recipientEmail = user?.email ?? undefined
-      }
-
-      if (recipientEmail && extra?.email) {
-        await sendEmail({
-          to: recipientEmail,
-          subject: extra.email.subject,
-          html: extra.email.html,
-          text: extra.email.text,
-        })
-      }
-    }
-  } catch (err) {
-    console.error("[notifyCustomer Email error]", err)
-  }
+export async function notifyCustomer(userId: string | null, event: string, title: string, message: string,
+  _channel: NotificationChannel = "IN_APP", extra?: Extra): Promise<void> {
+  if (!userId && !extra?.email?.to) return
+  const run = (tx: Prisma.TransactionClient) => enqueue(tx, { userId, event, title, message, extra })
+  if (extra?.transaction) await run(extra.transaction)
+  else await db.$transaction(run)
 }
 
 export interface NotifyStaffOptions {
-  roles?: Role[] // e.g. ["ADMIN", "PHARMACIST"]
-  staffId?: string // target specific rider or staff member
-  event: string
-  title: string
-  message: string
-  link?: string
-  metadata?: Record<string, unknown>
-  emailSubject?: string
-  emailHtml?: string
-  emailText?: string
-  details?: Record<string, string | number>
+  roles?: Role[]; staffId?: string; event: string; title: string; message: string; link?: string
+  metadata?: Record<string, unknown>; emailSubject?: string; emailHtml?: string; emailText?: string
+  details?: Record<string, string | number>; dedupeKey?: string; transaction?: Prisma.TransactionClient
 }
-
-/**
- * Send real-time multi-channel notifications to Admins, Pharmacists, Staff, or Riders:
- * - Creates in-app notifications for each targeted staff member
- * - Sends Firebase push notifications to all active staff device tokens
- * - Sends alert emails via Resend to staff member email addresses
- */
 export async function notifyStaff(opts: NotifyStaffOptions): Promise<void> {
-  const { roles, staffId, event, title, message, link, metadata, emailSubject, emailHtml, emailText, details } = opts
-
-  try {
-    // 1. Find target staff members
-    const where: Record<string, unknown> = { active: true }
-    if (staffId) {
-      where.id = staffId
-    } else if (roles && roles.length > 0) {
-      where.role = { in: roles }
-    }
-
-    const staffMembers = await db.staffUser.findMany({
-      where,
-      select: { id: true, email: true, name: true, role: true },
-    })
-
-    if (staffMembers.length === 0) return
-
-    // 2. Create in-app notifications in DB for all target staff
-    await db.notification.createMany({
-      data: staffMembers.map((staff) => ({
-        staffId: staff.id,
-        channel: "IN_APP",
-        event,
-        title,
-        message,
-        metadata: metadata ? JSON.stringify(metadata) : null,
-      })),
-    })
-
-    // 3. Collect push tokens for all target staff
-    const staffIds = staffMembers.map((s) => s.id)
-    const tokenRecords = await db.pushToken.findMany({
-      where: { staffId: { in: staffIds } },
-      select: { token: true },
-    })
-    const tokens = tokenRecords.map((t) => t.token).filter(Boolean)
-
-    // 4. Send Firebase Push Notification
-    if (tokens.length > 0) {
-      await sendPushNotification({
-        tokens,
-        title: `[Sphere Pharmacy] ${title}`,
-        body: message,
-        link: link || "/admin",
-        data: {
-          event,
-          ...(metadata
-            ? Object.fromEntries(Object.entries(metadata).map(([k, v]) => [k, String(v)]))
-            : {}),
-        },
-      })
-    }
-
-    // 5. Send Resend Email to staff
-    const staffEmails = staffMembers
-      .map((s) => s.email?.trim())
-      .filter((e): e is string => Boolean(e && e.includes("@")))
-
-    if (staffEmails.length > 0) {
-      const template = adminNotificationTemplate({
-        title,
-        message,
-        details,
-        actionUrl: link || process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke",
-        actionLabel: "Open Staff Dashboard",
-      })
-
-      await sendEmail({
-        to: staffEmails,
-        subject: emailSubject || template.subject,
-        html: emailHtml || template.html,
-        text: emailText || template.text,
-      })
-    }
-  } catch (error) {
-    console.error("[notifyStaff error]", error)
+  const run = async (tx: Prisma.TransactionClient) => {
+    const staff = await tx.staffUser.findMany({ where: { active: true,
+      ...(opts.staffId ? { id: opts.staffId } : { role: { in: opts.roles || ["ADMIN"] } }),
+    }, select: { id: true } })
+    for (const member of staff) await enqueue(tx, { staffId: member.id, event: opts.event, title: opts.title, message: opts.message, extra: {
+      link: opts.link || "/admin", metadata: opts.metadata,
+      dedupeKey: opts.dedupeKey ? `${opts.dedupeKey}:${member.id}` : undefined,
+      email: opts.emailHtml ? { subject: opts.emailSubject || opts.title, html: opts.emailHtml, text: opts.emailText } : undefined,
+    } })
   }
+  if (opts.transaction) await run(opts.transaction)
+  else await db.$transaction(run)
 }
 
 /** Append a status-history event to an order. */
@@ -309,9 +148,10 @@ export async function notifyServiceBooking(opts: {
   end: Date
   bookingId: string
   event?: string
+  dedupeKey?: string
 }): Promise<void> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
-  const bookingUrl = `${appUrl}/#services`
+  const bookingUrl = `${appUrl}/services?tab=bookings`
   const template = serviceBookingTemplate({
     customerName: opts.customerName,
     reference: opts.reference,
@@ -323,6 +163,7 @@ export async function notifyServiceBooking(opts: {
     bookingUrl,
   })
   await notifyCustomer(opts.userId, opts.event || "SERVICE_BOOKING", template.subject, opts.message, "IN_APP", {
+    dedupeKey: opts.dedupeKey,
     link: bookingUrl,
     metadata: {
       bookingId: opts.bookingId,
@@ -330,11 +171,11 @@ export async function notifyServiceBooking(opts: {
       serviceName: opts.serviceName,
       status: opts.status,
     },
-    email: opts.customerEmail ? {
-      to: opts.customerEmail,
+    email: {
+      to: opts.customerEmail || undefined,
       subject: template.subject,
       html: template.html,
       text: template.text,
-    } : undefined,
+    },
   })
 }

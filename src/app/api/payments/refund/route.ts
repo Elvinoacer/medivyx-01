@@ -6,7 +6,7 @@ import { requireStaff } from "@/lib/session"
 import { createIntaSendRefund, getIntaSendRefund } from "@/lib/intasend/client"
 import { enforceRateLimit, escapeHtml, rejectOversizedRequest, publicError } from "@/lib/security/request"
 
-const COMPLETE = new Set(["COMPLETE", "COMPLETED", "SUCCESS", "SUCCEEDED", "REFUNDED", "APPROVED"])
+const COMPLETE = new Set(["COMPLETED"])
 
 async function finalizeRefund(paymentId: string, refundReference: string, actor: string) {
   return db.$transaction(async (tx) => {

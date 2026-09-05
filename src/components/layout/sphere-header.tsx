@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useAppStore, type ViewName } from "@/store/use-app-store";
 import { useCartStore } from "@/store/use-cart-store";
 import { LogoFull } from "@/components/shared/logo";
+import { NotificationCenter } from "@/components/layout/notification-center";
 import { waLink } from "@/lib/constants";
 
 export function SphereHeader() {
@@ -51,6 +52,7 @@ export function SphereHeader() {
           ))}
         </nav>
         <div className="sphere-header-actions">
+          <NotificationCenter />
           <a className="sphere-talk" href={waLink()}>
             Let’s talk <ArrowUpRight size={17} />
           </a>

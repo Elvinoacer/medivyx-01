@@ -28,9 +28,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   logout: async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" })
-    } finally {
+      const token = localStorage.getItem("sphere_device_token")
+      const response = await fetch("/api/auth/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) })
+      if (!response.ok) throw new Error("Could not sign out. Please try again.")
+      localStorage.removeItem("sphere_device_token")
       set({ session: null })
+    } catch (error) {
+      throw error
     }
   },
 }))

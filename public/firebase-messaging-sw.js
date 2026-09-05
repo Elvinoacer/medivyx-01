@@ -35,18 +35,19 @@ self.addEventListener("push", (event) => {
   const body = notification.body || data.body || "You have a new notification from Sphere Pharmacy."
   const icon = notification.icon || data.icon || "/logo.svg"
   const badge = notification.badge || data.badge || "/logo.svg"
-  const targetUrl = data.url || notification.click_action || "/"
+  const candidate = new URL(data.url || notification.click_action || "/", self.location.origin)
+  const targetUrl = candidate.origin === self.location.origin ? candidate.href : self.location.origin
 
   const options = {
     body,
     icon,
     badge,
     data: {
-      url: targetUrl,
       ...data,
+      url: targetUrl,
     },
     vibrate: [100, 50, 100],
-    tag: data.event || "sphere-notification",
+    tag: data.notificationId || data.event || "sphere-notification",
     renotify: true,
   }
 
@@ -72,14 +73,15 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close()
 
-  const targetUrl = event.notification.data?.url || "/"
+  const candidate = new URL(event.notification.data?.url || "/", self.location.origin)
+  const targetUrl = candidate.origin === self.location.origin ? candidate.href : self.location.origin
 
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clientList) => {
         for (const client of clientList) {
-          if (client.url.includes(self.location.origin) && "focus" in client) {
+          if (new URL(client.url).origin === self.location.origin && "focus" in client) {
             if ("navigate" in client) {
               client.navigate(targetUrl)
             }

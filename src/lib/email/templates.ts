@@ -1,11 +1,12 @@
+import { escapeHtml } from "@/lib/security/request"
 // Email templates for Sphere Pharmacy
 // Compatible with all major email clients (Gmail, Apple Mail, Outlook, mobile)
 
 const BRAND = {
   name: "Sphere Pharmacy",
   location: "Lumumba Drive, Roysambu, Nairobi",
-  phone: "+254 792 411 911",
-  whatsapp: "+254 792 411 911",
+  phone: "+254 707 475 208",
+  whatsapp: "+254 707 475 208",
   color: "#0f766e",
   accent: "#0d9488",
   bg: "#f8fafc",
@@ -31,7 +32,7 @@ function baseLayout(title: string, bodyContent: string, actionButton?: { text: s
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
+  <title>${escapeHtml(String(title))}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: ${BRAND.bg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: ${BRAND.text}; line-height: 1.6;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color: ${BRAND.bg}; padding: 32px 16px;">
@@ -118,7 +119,7 @@ export function orderConfirmationTemplate(opts: {
       (item) => `
         <tr>
           <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: ${BRAND.text}; font-size: 14px;">
-            <strong>${item.name}</strong> × ${item.qty}
+            <strong>${escapeHtml(String(item.name))}</strong> × ${item.qty}
           </td>
           <td align="right" style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; color: ${BRAND.text}; font-size: 14px; font-weight: 600;">
             KSh ${item.lineTotal.toLocaleString()}
@@ -132,9 +133,9 @@ export function orderConfirmationTemplate(opts: {
     `Order Confirmation — ${orderReference}`,
     `
       <h2 style="margin: 0 0 12px; color: ${BRAND.color}; font-size: 22px; font-weight: 700;">Order Confirmed!</h2>
-      <p style="margin: 0 0 20px; font-size: 15px; color: ${BRAND.text};">${greeting}</p>
+      <p style="margin: 0 0 20px; font-size: 15px; color: ${BRAND.text};">${escapeHtml(String(greeting))}</p>
       <p style="margin: 0 0 24px; font-size: 14px; color: #475569;">
-        Thank you for ordering with ${BRAND.name}. We've received order <strong>${orderReference}</strong> and our team is preparing it now.
+        Thank you for ordering with ${BRAND.name}. We've received order <strong>${escapeHtml(String(orderReference))}</strong> and our team is preparing it now.
       </p>
 
       <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
@@ -214,14 +215,14 @@ export function orderStatusUpdateTemplate(opts: {
     `Order ${orderReference} Status Update`,
     `
       <h2 style="margin: 0 0 12px; color: ${BRAND.color}; font-size: 20px; font-weight: 700;">Order Update</h2>
-      <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text};">${greeting}</p>
+      <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text};">${escapeHtml(String(greeting))}</p>
       
       <div style="background-color: #f0fdfa; border-left: 4px solid ${BRAND.color}; padding: 16px 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
         <p style="margin: 0 0 6px; font-size: 12px; text-transform: uppercase; font-weight: 700; color: ${BRAND.color}; letter-spacing: 0.05em;">
           Current Status: ${statusLabel}
         </p>
         <p style="margin: 0; font-size: 15px; color: #134e4a; font-weight: 500;">
-          ${message}
+          ${escapeHtml(String(message))}
         </p>
       </div>
 
@@ -259,9 +260,9 @@ export function paymentReceiptTemplate(opts: {
     `Payment Receipt — ${orderReference}`,
     `
       <h2 style="margin: 0 0 12px; color: #16a34a; font-size: 20px; font-weight: 700;">Payment Confirmed</h2>
-      <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text};">${greeting}</p>
+      <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text};">${escapeHtml(String(greeting))}</p>
       <p style="margin: 0 0 20px; font-size: 14px; color: #475569;">
-        We have received your payment of <strong>KSh ${amount.toLocaleString()}</strong> via <strong>${method}</strong> for order <strong>${orderReference}</strong>.
+        We have received your payment of <strong>KSh ${amount.toLocaleString()}</strong> via <strong>${method}</strong> for order <strong>${escapeHtml(String(orderReference))}</strong>.
       </p>
 
       ${
@@ -305,7 +306,7 @@ export function prescriptionStatusTemplate(opts: {
     `Prescription Verification Update`,
     `
       <h2 style="margin: 0 0 12px; color: ${BRAND.color}; font-size: 20px; font-weight: 700;">Pharmacist Review Completed</h2>
-      <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text};">${greeting}</p>
+      <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text};">${escapeHtml(String(greeting))}</p>
       
       <div style="background-color: ${current.bg}; border-left: 4px solid ${current.border}; padding: 16px 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
         <h3 style="margin: 0 0 6px; font-size: 16px; font-weight: 700; color: ${current.color};">
@@ -313,7 +314,7 @@ export function prescriptionStatusTemplate(opts: {
         </h3>
         ${
           reviewNotes
-            ? `<p style="margin: 6px 0 0; font-size: 14px; color: ${current.color};"><strong>Pharmacist note:</strong> ${reviewNotes}</p>`
+            ? `<p style="margin: 6px 0 0; font-size: 14px; color: ${current.color};"><strong>Pharmacist note:</strong> ${escapeHtml(String(reviewNotes))}</p>`
             : ""
         }
         ${
@@ -355,7 +356,7 @@ export function backInStockTemplate(opts: {
         Great news! An item on your watchlist is back in stock at Sphere Pharmacy:
       </p>
       <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 24px; text-align: center;">
-        <h3 style="margin: 0 0 6px; font-size: 18px; font-weight: 700; color: ${BRAND.text};">${productName}</h3>
+        <h3 style="margin: 0 0 6px; font-size: 18px; font-weight: 700; color: ${BRAND.text};">${escapeHtml(String(productName))}</h3>
         <p style="margin: 0; font-size: 20px; font-weight: 800; color: ${BRAND.color};">KSh ${price.toLocaleString()}</p>
       </div>
       <p style="margin: 0; font-size: 14px; color: ${BRAND.muted}; text-align: center;">
@@ -383,8 +384,8 @@ export function adminNotificationTemplate(opts: {
         .map(
           ([k, v]) => `
           <tr>
-            <td style="padding: 6px 0; color: ${BRAND.muted}; font-size: 13px; font-weight: 600;">${k}</td>
-            <td align="right" style="padding: 6px 0; color: ${BRAND.text}; font-size: 13px; font-family: monospace;">${v}</td>
+            <td style="padding: 6px 0; color: ${BRAND.muted}; font-size: 13px; font-weight: 600;">${escapeHtml(String(k))}</td>
+            <td align="right" style="padding: 6px 0; color: ${BRAND.text}; font-size: 13px; font-family: monospace;">${escapeHtml(String(v))}</td>
           </tr>
         `
         )
@@ -397,8 +398,8 @@ export function adminNotificationTemplate(opts: {
       <div style="display: inline-block; background-color: #fef2f2; color: #991b1b; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 12px;">
         Staff Alert
       </div>
-      <h2 style="margin: 0 0 12px; color: ${BRAND.text}; font-size: 20px; font-weight: 700;">${title}</h2>
-      <p style="margin: 0 0 20px; font-size: 14px; color: #475569;">${message}</p>
+      <h2 style="margin: 0 0 12px; color: ${BRAND.text}; font-size: 20px; font-weight: 700;">${escapeHtml(String(title))}</h2>
+      <p style="margin: 0 0 20px; font-size: 14px; color: #475569;">${escapeHtml(String(message))}</p>
 
       ${
         detailsRows
@@ -446,14 +447,14 @@ export function serviceBookingTemplate(opts: {
     `Service Booking ${reference} — ${status}`,
     `
       <h2 style="margin:0 0 12px;color:${BRAND.color};font-size:22px;font-weight:700;">Care appointment update</h2>
-      <p style="margin:0 0 16px;font-size:15px;">${greeting}</p>
+      <p style="margin:0 0 16px;font-size:15px;">${escapeHtml(String(greeting))}</p>
       <div style="background:#f0fdfa;border-left:4px solid ${BRAND.color};padding:16px 20px;border-radius:0 8px 8px 0;margin-bottom:20px;">
-        <p style="margin:0 0 6px;font-size:12px;text-transform:uppercase;font-weight:700;color:${BRAND.color};letter-spacing:.05em;">${status}</p>
-        <p style="margin:0;font-size:15px;font-weight:600;color:#134e4a;">${serviceName}</p>
+        <p style="margin:0 0 6px;font-size:12px;text-transform:uppercase;font-weight:700;color:${BRAND.color};letter-spacing:.05em;">${escapeHtml(String(status))}</p>
+        <p style="margin:0;font-size:15px;font-weight:600;color:#134e4a;">${escapeHtml(String(serviceName))}</p>
         <p style="margin:6px 0 0;font-size:14px;color:#475569;">${when} – ${endTime}</p>
       </div>
-      <p style="margin:0 0 18px;font-size:14px;color:#475569;">${message}</p>
-      <p style="margin:0;font-size:13px;color:${BRAND.muted};">Booking reference: <strong>${reference}</strong></p>
+      <p style="margin:0 0 18px;font-size:14px;color:#475569;">${escapeHtml(String(message))}</p>
+      <p style="margin:0;font-size:13px;color:${BRAND.muted};">Booking reference: <strong>${escapeHtml(String(reference))}</strong></p>
     `,
     { text: "View Care Services", url: bookingUrl }
   )

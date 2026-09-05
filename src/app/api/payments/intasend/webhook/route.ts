@@ -1,10 +1,10 @@
+import { notifyPaymentOutcome } from "@/lib/notifications/payment"
 import { createHash } from "crypto"
 import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { pointsForAmount } from "@/lib/constants"
 import { db } from "@/lib/db"
 import { getIntaSendInvoice, verifyIntaSendWebhook } from "@/lib/intasend/client"
-import { notifyCustomer, notifyServiceBooking } from "@/lib/notify"
 import { paymentMatchesExpected } from "@/lib/security/payment"
 
 export async function POST(request: Request) {
@@ -19,24 +19,23 @@ export async function POST(request: Request) {
     const invoice = await getIntaSendInvoice(invoiceId)
     const eventId = `intasend:${String(body.event_id || `${invoice.id}:${invoice.state}:${invoice.trackingId || ""}`)}`
     const payloadHash = createHash("sha256").update(raw).digest("hex")
-    const payment = await db.payment.findFirst({ where: { provider: "INTASEND", OR: [{ checkoutRequestId: invoice.id }, { checkoutRequestId: invoiceId }, { providerReference: invoice.id }] }, include: { order: true } })
+    const payment = await db.payment.findFirst({ where: { provider: "INTASEND", OR: [{ id: invoice.apiRef }, { checkoutRequestId: invoice.id }, { checkoutRequestId: invoiceId }, { providerReference: invoice.id }] }, include: { order: true } })
     if (payment) {
-      if (invoice.apiRef !== payment.order.reference || !paymentMatchesExpected({ expectedAmount: payment.amount, actualAmount: invoice.amount, expectedCurrency: payment.currency, actualCurrency: invoice.currency, receipt: invoice.id })) {
+      if ((invoice.apiRef !== payment.id && invoice.apiRef !== payment.order.reference) || !paymentMatchesExpected({ expectedAmount: payment.amount, actualAmount: invoice.amount, expectedCurrency: payment.currency, actualCurrency: invoice.currency, receipt: invoice.id })) {
         return NextResponse.json({ error: "Payment verification mismatch." }, { status: 409 })
       }
       const priorEvent = await db.paymentWebhookEvent.findUnique({ where: { eventId } })
-      if (priorEvent && (priorEvent.payloadHash !== payloadHash || priorEvent.paymentId !== payment.id)) return NextResponse.json({ error: "Conflicting webhook replay." }, { status: 409 })
+      if (priorEvent && (priorEvent.paymentId !== payment.id)) return NextResponse.json({ error: "Conflicting webhook replay." }, { status: 409 })
       if (priorEvent) return NextResponse.json({ ok: true })
       let awarded = 0
-      let completed = false
       await db.$transaction(async (tx) => {
         const seen = await tx.paymentWebhookEvent.findUnique({ where: { eventId } })
         if (seen) return
         await tx.paymentWebhookEvent.create({ data: { provider: "INTASEND", eventId, payloadHash, paymentId: payment.id } })
         if (invoice.state === "COMPLETE") {
-          const changed = await tx.payment.updateMany({ where: { id: payment.id, status: { not: "SUCCESS" } }, data: { status: "SUCCESS", providerReference: invoice.id, failureReason: null } })
+          const changed = await tx.payment.updateMany({ where: { id: payment.id, status: { in: ["PENDING", "PROCESSING", "FAILED"] } }, data: { status: "SUCCESS", providerReference: invoice.id, failureReason: null } })
           if (changed.count === 0) return
-          completed = true
+          await notifyPaymentOutcome(tx, { paymentId: payment.id, orderId: payment.orderId, success: true })
           const moved = await tx.order.updateMany({ where: { id: payment.orderId, status: { in: ["AWAITING_PAYMENT", "AVAILABILITY_CONFIRMED", "PRESCRIPTION_VERIFIED"] } }, data: { status: "PAID", version: { increment: 1 } } })
           if (moved.count) await tx.orderStatusHistory.create({ data: { orderId: payment.orderId, status: "PAID", actor: "System", note: `IntaSend payment confirmed (${invoice.id})` } })
           if (payment.order.userId) {
@@ -48,32 +47,33 @@ export async function POST(request: Request) {
             }
           }
         } else if (["FAILED", "CANCELLED"].includes(invoice.state)) {
-          await tx.payment.updateMany({ where: { id: payment.id, status: { not: "SUCCESS" } }, data: { status: "FAILED", failureReason: "Card payment was not completed" } })
+          const failedPayment = await tx.payment.updateMany({ where: { id: payment.id, status: { in: ["PENDING", "PROCESSING", "FAILED"] } }, data: { status: "FAILED", failureReason: "Card payment was not completed" } })
+          if (failedPayment.count) await notifyPaymentOutcome(tx, { paymentId: payment.id, orderId: payment.orderId, success: false })
         }
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
-      if (completed) await notifyCustomer(payment.order.userId, "PAYMENT", `Payment received — order ${payment.order.reference}`, `Card payment of KSh ${Number(payment.amount).toLocaleString()} confirmed.${awarded ? ` You earned ${awarded} Sphere Points.` : ""}`, "IN_APP", { link: `/orders/${payment.orderId}`, metadata: { orderId: payment.orderId, providerReference: invoice.id } })
       return NextResponse.json({ ok: true })
     }
 
-    const servicePayment = await db.servicePayment.findFirst({ where: { provider: "INTASEND", OR: [{ checkoutRequestId: invoice.id }, { checkoutRequestId: invoiceId }, { providerReference: invoice.id }] }, include: { booking: { include: { user: true, service: true } } } })
+    const servicePayment = await db.servicePayment.findFirst({ where: { provider: "INTASEND", OR: [{ id: invoice.apiRef }, { checkoutRequestId: invoice.id }, { checkoutRequestId: invoiceId }, { providerReference: invoice.id }] }, include: { booking: { include: { user: true, service: true } } } })
     if (!servicePayment) return NextResponse.json({ error: "Unknown payment attempt." }, { status: 404 })
-    if (invoice.apiRef !== servicePayment.booking.reference || !paymentMatchesExpected({ expectedAmount: servicePayment.amount, actualAmount: invoice.amount, expectedCurrency: servicePayment.currency, actualCurrency: invoice.currency, receipt: invoice.id })) return NextResponse.json({ error: "Payment verification mismatch." }, { status: 409 })
+    if ((invoice.apiRef !== servicePayment.id && invoice.apiRef !== servicePayment.booking.reference) || !paymentMatchesExpected({ expectedAmount: servicePayment.amount, actualAmount: invoice.amount, expectedCurrency: servicePayment.currency, actualCurrency: invoice.currency, receipt: invoice.id })) return NextResponse.json({ error: "Payment verification mismatch." }, { status: 409 })
     const priorEvent = await db.paymentWebhookEvent.findUnique({ where: { eventId } })
-    if (priorEvent && (priorEvent.payloadHash !== payloadHash || priorEvent.servicePaymentId !== servicePayment.id)) return NextResponse.json({ error: "Conflicting webhook replay." }, { status: 409 })
+    if (priorEvent && (priorEvent.servicePaymentId !== servicePayment.id)) return NextResponse.json({ error: "Conflicting webhook replay." }, { status: 409 })
     if (priorEvent) return NextResponse.json({ ok: true })
-    let serviceCompleted = false
     await db.$transaction(async (tx) => {
       if (await tx.paymentWebhookEvent.findUnique({ where: { eventId } })) return
       await tx.paymentWebhookEvent.create({ data: { provider: "INTASEND", eventId, payloadHash, servicePaymentId: servicePayment.id } })
       if (invoice.state === "COMPLETE") {
-        const changed = await tx.servicePayment.updateMany({ where: { id: servicePayment.id, status: { not: "SUCCESS" } }, data: { status: "SUCCESS", providerReference: invoice.id, failureReason: null } })
+        const changed = await tx.servicePayment.updateMany({ where: { id: servicePayment.id, status: { in: ["PENDING", "PROCESSING", "FAILED"] } }, data: { status: "SUCCESS", providerReference: invoice.id, failureReason: null } })
         if (changed.count) {
-          serviceCompleted = true
+          await notifyPaymentOutcome(tx, { paymentId: servicePayment.id, bookingId: servicePayment.bookingId, success: true })
           await tx.serviceBooking.update({ where: { id: servicePayment.bookingId }, data: { paymentStatus: "PAID" } })
         }
-      } else if (["FAILED", "CANCELLED"].includes(invoice.state)) await tx.servicePayment.updateMany({ where: { id: servicePayment.id, status: { not: "SUCCESS" } }, data: { status: "FAILED", failureReason: "Card payment was not completed" } })
+      } else if (["FAILED", "CANCELLED"].includes(invoice.state)) {
+      const failedPayment = await tx.servicePayment.updateMany({ where: { id: servicePayment.id, status: { in: ["PENDING", "PROCESSING", "FAILED"] } }, data: { status: "FAILED", failureReason: "Card payment was not completed" } })
+      if (failedPayment.count) await notifyPaymentOutcome(tx, { paymentId: servicePayment.id, bookingId: servicePayment.bookingId, success: false })
+      }
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
-    if (serviceCompleted) await notifyServiceBooking({ userId: servicePayment.booking.userId, customerName: servicePayment.booking.user.name, customerEmail: servicePayment.booking.user.email, reference: servicePayment.booking.reference, serviceName: servicePayment.booking.service.name, status: "Payment received", message: `Your card payment of KSh ${Number(servicePayment.amount).toLocaleString()} was received.`, start: servicePayment.booking.scheduledStart, end: servicePayment.booking.scheduledEnd, bookingId: servicePayment.bookingId, event: "SERVICE_PAYMENT_SUCCESS" })
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ error: "Webhook verification is temporarily unavailable." }, { status: 503 })

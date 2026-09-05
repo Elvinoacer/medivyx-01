@@ -20,17 +20,11 @@ export async function GET(request: Request) {
     const from = new Date(now.getTime() + window.minHours * 3600000)
     const to = new Date(now.getTime() + window.maxHours * 3600000)
     const bookings = await db.serviceBooking.findMany({
-      where: { scheduledStart: { gte: from, lte: to }, status: { in: ["PENDING", "CONFIRMED"] } },
+      where: { scheduledStart: { gte: from, lte: to }, status: { in: ["PENDING", "CONFIRMED", "RESCHEDULED"] } },
       include: { service: true, user: true },
     })
     for (const booking of bookings) {
-      const key = `${window.event}:${booking.id}`
-      try {
-        const claimed = await db.$executeRaw`INSERT INTO "ScheduledJobDelivery" ("key", "createdAt") VALUES (${key}, NOW()) ON CONFLICT ("key") DO NOTHING`
-        if (claimed !== 1) continue
-      } catch {
-        continue
-      }
+      const key = `${window.event}:${booking.id}:${booking.scheduledStart.toISOString()}`
       try {
         await notifyServiceBooking({
           userId: booking.userId,
@@ -44,13 +38,13 @@ export async function GET(request: Request) {
           end: booking.scheduledEnd,
           bookingId: booking.id,
           event: window.event,
+          dedupeKey: key,
         })
-        await db.$executeRaw`UPDATE "ScheduledJobDelivery" SET "sentAt" = NOW() WHERE "key" = ${key}`
         sent++
       } catch {
-        await db.$executeRaw`DELETE FROM "ScheduledJobDelivery" WHERE "key" = ${key}`.catch(() => undefined)
+        return NextResponse.json({ error: "Could not queue all reminders. Retry this job." }, { status: 503 })
       }
     }
   }
-  return NextResponse.json({ ok: true, sent })
+  return NextResponse.json({ ok: true, queued: sent })
 }

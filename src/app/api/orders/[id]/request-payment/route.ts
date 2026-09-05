@@ -1,9 +1,10 @@
+import { reservePaymentAttempt } from "@/lib/security/payment-attempt"
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { requireStaff } from "@/lib/session"
-import { formatDarajaPhone, initiateStkPush } from "@/lib/mpesa/daraja"
+import { formatDarajaPhone, initiateStkPush, isDarajaConfigured } from "@/lib/mpesa/daraja"
 import { money } from "@/lib/security/payment"
-import { isUniqueConstraintError, rejectOversizedRequest } from "@/lib/security/request"
+import { enforceRateLimit, rejectOversizedRequest } from "@/lib/security/request"
 import { audit, notifyCustomer } from "@/lib/notify"
 
 const PHONE_RE = /^(?:\+?254|0)?(7\d{8}|1\d{8})$/
@@ -15,6 +16,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const sizeError = rejectOversizedRequest(request, 8 * 1024)
   if (sizeError) return sizeError
   const { id } = await params
+  const limited = await enforceRateLimit(request, "staff-payment-request", 5, 15 * 60_000, id)
+  if (limited) return limited
   const body = await request.json().catch(() => ({}))
   const idempotency = String(body.idempotencyKey || "")
   if (!/^[a-zA-Z0-9_-]{16,100}$/.test(idempotency)) return NextResponse.json({ error: "A valid idempotency key is required." }, { status: 400 })
@@ -32,26 +35,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const key = `staff:${id}:mpesa:${idempotency}`
   const existing = await db.payment.findUnique({ where: { idempotencyKey: key } })
   if (existing?.checkoutRequestId) return NextResponse.json({ paymentId: existing.id, checkoutRequestId: existing.checkoutRequestId, message: "Payment request already sent." })
-  let payment = existing
-  if (!payment) try {
-    payment = await db.payment.create({ data: { orderId: id, provider: "MPESA", method: "STK_PUSH", status: "PENDING", amount: order.total, currency: "KES", phone, idempotencyKey: key } })
-  } catch (createError) {
-    if (!isUniqueConstraintError(createError)) throw createError
-    payment = await db.payment.findUnique({ where: { idempotencyKey: key } })
-  }
-  if (!payment) return NextResponse.json({ error: "Could not reserve the payment request." }, { status: 503 })
+  if (!isDarajaConfigured()) return NextResponse.json({ error: "M-Pesa is not configured." }, { status: 503 })
+  let payment
+  try { payment = await reservePaymentAttempt({ kind: "order", entityId: id, key, provider: "MPESA", method: "STK_PUSH", amount: order.total, phone, staffRequest: true }) }
+  catch { return NextResponse.json({ error: "A payment is in progress or this order changed. Refresh before trying again." }, { status: 409 }) }
   try {
     const result = await initiateStkPush({ phone: formatDarajaPhone(phone), amount, reference: order.reference, description: `Order ${order.reference}` })
     await db.$transaction([
-      db.payment.update({ where: { id: payment.id }, data: { status: "PROCESSING", checkoutRequestId: result.checkoutRequestId } }),
-      db.payment.updateMany({ where: { orderId: id, id: { not: payment.id }, status: { in: ["PENDING", "PROCESSING"] }, method: "STK_PUSH" }, data: { status: "FAILED", failureReason: "Superseded by a new payment request" } }),
+      db.payment.updateMany({ where: { id: payment.id, status: "PROCESSING" }, data: { status: "PROCESSING", checkoutRequestId: result.checkoutRequestId } }),
     ])
     if (["PRESCRIPTION_VERIFIED", "AVAILABILITY_CONFIRMED"].includes(order.status)) await db.order.updateMany({ where: { id, status: order.status }, data: { status: "AWAITING_PAYMENT", version: { increment: 1 } } })
     await audit(session.staffName || "Staff", session.staffRole, "PAYMENT_REQUESTED", "Order", order.reference, `M-Pesa request created by ${session.staffRole}`)
     await notifyCustomer(order.userId, "PAYMENT", `Payment request — ${order.reference}`, `An M-Pesa prompt for KSh ${amount.toLocaleString()} was sent to your phone.`, "IN_APP", { link: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/orders/${id}`, metadata: { orderId: id, reference: order.reference, amount } })
     return NextResponse.json({ paymentId: payment.id, checkoutRequestId: result.checkoutRequestId, phone, amount, message: result.customerMessage })
   } catch {
-    await db.payment.update({ where: { id: payment.id }, data: { status: "FAILED", failureReason: "M-Pesa request could not be started" } })
-    return NextResponse.json({ error: "M-Pesa is temporarily unavailable. No payment was taken." }, { status: 503 })
+    await db.payment.updateMany({ where: { id: payment.id, status: "PROCESSING" }, data: { status: "PROCESSING", failureReason: "Provider response uncertain; reconcile before another attempt" } })
+    return NextResponse.json({ error: "M-Pesa response is uncertain. Check payment status before another request." }, { status: 503 })
   }
 }
