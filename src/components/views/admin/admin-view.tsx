@@ -35,6 +35,7 @@ import { OverviewSection } from "./sections/overview-section"
 import { OrdersSection } from "./sections/orders-section"
 import { DispatchSection } from "./sections/dispatch-section"
 import { PrescriptionsSection } from "./sections/prescriptions-section"
+import { MedicineRequestsSection } from "./sections/medicine-requests-section"
 import { CatalogueSection } from "./sections/catalogue-section"
 import { ReviewsSection } from "./sections/reviews-section"
 import { PromotionsSection } from "./sections/promotions-section"
@@ -79,6 +80,10 @@ const NAV: NavItem[] = [
   {
     key: "prescriptions", label: "Prescriptions", title: "Prescription review", subtitle: "Verify uploaded prescriptions before dispensing",
     icon: ClipboardList, roles: ["ADMIN", "PHARMACIST"],
+  },
+  {
+    key: "medicine-requests", label: "Medicine requests", title: "Medicine requests", subtitle: "Check requested medicines, view photos and follow up with customers",
+    icon: MessageSquareText, roles: ["ADMIN", "PHARMACIST", "STAFF"],
   },
   {
     key: "service-analytics", label: "Service analytics", title: "Service performance", subtitle: "Bookings, completion and care-service revenue", icon: BarChart3, roles: ["ADMIN"],
@@ -259,6 +264,8 @@ export function AdminView() {
         return <DispatchSection {...sectionProps} />
       case "prescriptions":
         return <PrescriptionsSection {...sectionProps} />
+      case "medicine-requests":
+        return <MedicineRequestsSection {...sectionProps} />
       case "service-analytics":
         return <ServiceAnalyticsSection {...sectionProps} />
       case "service-bookings":

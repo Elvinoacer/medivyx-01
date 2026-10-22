@@ -13,6 +13,7 @@ import { ProductCard } from "@/components/shared/product-card"
 import { ProductImage } from "@/components/shared/product-image"
 import { EmptyState, LoadingGrid } from "@/components/shared/empty-state"
 import { LuxuryCategoryRibbon } from "@/components/catalog/luxury-category-ribbon"
+import { MedicineRequest } from "@/components/catalog/medicine-request"
 import {
   HighPerformancePagination,
   type PaginationMode,
@@ -447,6 +448,7 @@ export function CatalogView() {
 
         {/* results section */}
         <section className="min-w-0 flex-1" aria-live="polite">
+          <MedicineRequest search={effectiveSearch} />
           {/* Results controls header bar: Chips + View Switcher + Pagination Mode */}
           <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-border/50 bg-card/60 p-3 backdrop-blur-sm">
             {/* active filter chips */}
@@ -553,7 +555,7 @@ export function CatalogView() {
             <EmptyState
               icon={Search}
               title="No products match your filters"
-              description="Try a different search term, clear some filters, or ask us directly on WhatsApp — we may have it in stock behind the counter."
+              description="Try a different search term, clear some filters, or use Request medicine above and we’ll check availability for you."
               action={{ label: "Clear all filters", onClick: clearAll }}
             />
           ) : (

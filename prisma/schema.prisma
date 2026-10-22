@@ -235,6 +235,21 @@ model OrderStatusHistory {
   @@index([orderId, createdAt])
 }
 
+model MedicineRequest {
+  id           String   @id @default(cuid())
+  medicineName String
+  phone        String
+  status       String   @default("NEW")
+  staffNotes   String?
+  photoName    String?
+  photoType    String?
+  storageKey   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
 model Prescription {
   id             String                  @id @default(cuid())
   userId         String?

@@ -27,6 +27,19 @@ import type {
   UserDTO,
 } from "./types"
 import type { OrderStatus, RxStatus } from "./constants"
+import type { MedicineRequestDTO, MedicineRequestInput, MedicineRequestStatus, MedicineRequestsResponse } from "./medicine-requests"
+
+export const medicineRequestsApi = {
+  create: (data: MedicineRequestInput) => req<{ id: string }>("/api/medicine-requests", { method: "POST", body: JSON.stringify(data) }),
+  list: (query: { status?: MedicineRequestStatus; search?: string; page: number }) => {
+    const params = new URLSearchParams({ page: String(query.page) })
+    if (query.status) params.set("status", query.status)
+    if (query.search) params.set("search", query.search)
+    return req<MedicineRequestsResponse>(`/api/admin/medicine-requests?${params}`)
+  },
+  update: (id: string, data: { status: MedicineRequestStatus; staffNotes: string }) =>
+    req<MedicineRequestDTO>("/api/admin/medicine-requests", { method: "PATCH", body: JSON.stringify({ id, ...data }) }),
+}
 
 export interface UploadResponse {
   url: string

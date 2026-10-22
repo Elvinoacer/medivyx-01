@@ -23,6 +23,7 @@ export type AdminSectionKey =
   | "service-bookings"
   | "service-analytics"
   | "prescriptions"
+  | "medicine-requests"
   | "catalogue"
   | "reviews"
   | "promotions"

@@ -1,0 +1,1848 @@
+[
+  {
+    "id": "P01",
+    "role": "Guest",
+    "title": "Homepage and navigation",
+    "route": "/",
+    "purpose": "Introduce the pharmacy and the main customer destinations.",
+    "ready": "Start signed out on the current homepage. Use the desktop header first, then show the mobile menu as a separate take.",
+    "rows": [
+      [
+        "Open the homepage and hold for 3 seconds.",
+        "Establish the brand and location before navigating.",
+        "Welcome to Sphere Pharmacy in Roysambu."
+      ],
+      [
+        "Click Find your feel-good.",
+        "Open the product catalogue.",
+        "Browse medicines and everyday health essentials."
+      ],
+      [
+        "Click the Sphere Pharmacy logo.",
+        "Return home using the shared navigation.",
+        "Return home from any screen."
+      ],
+      [
+        "Click Care services in the header; on mobile use Services.",
+        "Open the service catalogue.",
+        "Explore pharmacy care services."
+      ],
+      [
+        "Open navigation, then choose My account; on desktop use the account icon.",
+        "Show the customer account entry point.",
+        "Keep orders, prescriptions and appointments together."
+      ]
+    ],
+    "note": "The current homepage uses SphereLanding. Use its visible controls, rather than labels from older homepage designs."
+  },
+  {
+    "id": "P02",
+    "role": "Guest",
+    "title": "Find and filter products",
+    "route": "/catalog",
+    "purpose": "Show how a shopper narrows the catalogue to a suitable listing.",
+    "ready": "Have several active products across categories, with different prices and stock states.",
+    "rows": [
+      [
+        "Click Shop health or mobile Shop, then type a known product in Search products.",
+        "Show matching listings after the search finishes.",
+        "Find a medicine by name, ingredient or brand."
+      ],
+      [
+        "Clear search, then select a category ribbon item.",
+        "Narrow the visible catalogue to a category.",
+        "Browse products by category."
+      ],
+      [
+        "Use the desktop filter sidebar or mobile Filters; choose prescription and availability filters.",
+        "Demonstrate filtering by product type and stock.",
+        "Check prescription requirements and availability."
+      ],
+      [
+        "Change Sort by, then use Grid view and List view.",
+        "Compare results in different orders and layouts.",
+        "Compare products in the view that suits you."
+      ],
+      [
+        "Choose Numbered page navigation and move to another page; also show the auto-scrolling mode if there are enough items.",
+        "Explain how to browse larger result sets.",
+        "Browse more products without losing your filters."
+      ],
+      [
+        "Click Clear all filters.",
+        "Restore the full catalogue.",
+        "Start a fresh search at any time."
+      ]
+    ],
+    "note": ""
+  },
+  {
+    "id": "P03",
+    "role": "Guest or Customer",
+    "title": "Product details and saved items",
+    "route": "/catalog -> /products/<productId>",
+    "purpose": "Help the shopper inspect a listing before adding it to the cart.",
+    "ready": "Use an in-stock non-prescription demo product with an image, description and warnings.",
+    "rows": [
+      [
+        "Click a product card or its name.",
+        "Open product details and show price, pack size and stock.",
+        "Check the product details before you buy."
+      ],
+      [
+        "Scroll through the description, How to use and Warnings & precautions.",
+        "Show the information supplied with the listing.",
+        "Review the product information and cautions."
+      ],
+      [
+        "Click the heart labelled Save for later; click it again to remove the saved state if needed.",
+        "Demonstrate the saved-item toggle on this device.",
+        "Save a product for later."
+      ],
+      [
+        "Use Increase quantity, then click Add to cart.",
+        "Add the selected quantity and show the cart count update.",
+        "Add the packs you need to your cart."
+      ],
+      [
+        "Show Buy now and Order via WhatsApp as alternative actions.",
+        "Explain the faster purchase and contact entry points.",
+        "Choose checkout or ask the pharmacy for help."
+      ]
+    ],
+    "note": "The active header does not expose the older wishlist drawer. Show the heart toggle, without promising a separate saved-items screen."
+  },
+  {
+    "id": "P04",
+    "role": "Guest",
+    "title": "Request a missing medicine without a photo",
+    "route": "/catalog",
+    "purpose": "Show the simplest missing-medicine enquiry from customer to staff.",
+    "ready": "Use a made-up medicine description and a pharmacy-controlled recording phone number.",
+    "rows": [
+      [
+        "Search for a demo medicine that is not in the catalogue.",
+        "Show the empty results and the request option above them.",
+        "Cannot find your medicine? Send us a request."
+      ],
+      [
+        "Click Request medicine.",
+        "Open the request form with the search text prefilled.",
+        "Tell us which medicine you need."
+      ],
+      [
+        "Review Medicine name and enter Phone number.",
+        "Supply a clear medicine description and callback number.",
+        "Leave a number where our team can reach you."
+      ],
+      [
+        "Leave Medicine photo empty, then click Send request.",
+        "Demonstrate that the photo and account sign-in are optional.",
+        "A photo is optional. No account is required."
+      ],
+      [
+        "Hold on Your request has been received, then click Done.",
+        "Capture the success state before closing.",
+        "Your request is saved for pharmacy follow-up."
+      ]
+    ],
+    "note": "Keep the request NEW for A06. Submitting a request does not place an order or guarantee availability."
+  },
+  {
+    "id": "P05",
+    "role": "Guest",
+    "title": "Request a medicine with a photo",
+    "route": "/catalog",
+    "purpose": "Show the optional image path and useful validation feedback.",
+    "ready": "Prepare a JPG, PNG or WebP of a demo medicine pack under 3MB, with no patient information.",
+    "rows": [
+      [
+        "Click Request medicine and enter a medicine name and callback number.",
+        "Prepare a second enquiry for the photo branch.",
+        "Add a medicine name and your callback number."
+      ],
+      [
+        "Click Medicine photo and choose the prepared image.",
+        "Attach an optional reference photo.",
+        "A pack photo can help our team identify the medicine."
+      ],
+      [
+        "Show Remove photo, then reselect the image if demonstrating that control.",
+        "Demonstrate how to change an attachment before submitting.",
+        "Change or remove the photo before sending."
+      ],
+      [
+        "Click Send request and hold on the confirmation.",
+        "Capture a successful request with an attachment.",
+        "Your medicine request and photo have been received."
+      ],
+      [
+        "In a separate take, enter an invalid phone or select an oversized image.",
+        "Show the form asking for a correction.",
+        "Clear guidance helps you correct the request."
+      ]
+    ],
+    "note": "Photo limit: JPG, PNG or WebP, up to 3MB. The image is viewable only by permitted pharmacy staff. Do not mix the error take into the main success take."
+  },
+  {
+    "id": "P06",
+    "role": "Guest",
+    "title": "Questions and pharmacy contact",
+    "route": "/",
+    "purpose": "Show where people find basic answers and reach the pharmacy team.",
+    "ready": "Keep external messaging apps closed until you are ready to capture the handoff.",
+    "rows": [
+      [
+        "Scroll to the homepage questions and open a question.",
+        "Reveal the answer in the FAQ accordion.",
+        "Find quick answers before contacting the pharmacy."
+      ],
+      [
+        "Click Let's talk in the header or the visible WhatsApp contact link.",
+        "Show the handoff to a prefilled WhatsApp conversation.",
+        "Speak directly with the pharmacy team."
+      ],
+      [
+        "Return to the site and show the phone link in the catalogue footer.",
+        "Show the call handoff without placing a call during the take.",
+        "Call the pharmacy when you need personal help."
+      ],
+      [
+        "Show the Roysambu location link or Get directions.",
+        "Open the map destination for the pharmacy.",
+        "Find Sphere Pharmacy on Lumumba Drive."
+      ]
+    ],
+    "note": "Opening a WhatsApp link prepares a conversation; it does not mean the platform has sent a message. Capture only the handoff unless a demonstration conversation is arranged."
+  },
+  {
+    "id": "C01",
+    "role": "Customer",
+    "title": "Create an account and sign in",
+    "route": "/account -> /auth",
+    "purpose": "Introduce registration and the standard returning-customer sign-in.",
+    "ready": "Use a dedicated demo customer. Have a controlled phone and optional recording email; keep passwords out of the published video.",
+    "rows": [
+      [
+        "Open My account and click Create account, or choose Register on the auth screen.",
+        "Open the registration form.",
+        "Create your Sphere Pharmacy account."
+      ],
+      [
+        "Enter Full name, Phone number, optional Email and Choose a password.",
+        "Complete the registration fields with demo details.",
+        "Save your details for future visits."
+      ],
+      [
+        "Click Create account and wait for the account view.",
+        "Capture successful account creation and the signed-in identity.",
+        "Your account is ready."
+      ],
+      [
+        "For a separate returning-user take, sign out, choose Sign in, and enter Email or phone number and Password.",
+        "Demonstrate the normal sign-in form.",
+        "Sign in with your email address or phone number."
+      ],
+      [
+        "Click Sign in and hold on the account overview.",
+        "Show the customer session is active.",
+        "Continue with your saved account details."
+      ]
+    ],
+    "note": "Use a password of at least 10 characters containing letters and numbers. Some older help text says six; the server policy is stricter. Pre-create the account before the main recording if registration is not part of the final edit."
+  },
+  {
+    "id": "C02",
+    "role": "Customer",
+    "title": "Sign in with a phone code",
+    "route": "/auth -> Phone OTP",
+    "purpose": "Show the phone verification alternative to password sign-in.",
+    "ready": "Have access to a controlled phone and a working SMS setup. Do not publish the verification code.",
+    "rows": [
+      [
+        "Open the auth screen and click Phone OTP.",
+        "Switch to the phone-code sign-in tab.",
+        "Sign in using a code sent to your phone."
+      ],
+      [
+        "Enter Phone number and click Send code.",
+        "Request a six-digit verification code.",
+        "Request your verification code."
+      ],
+      [
+        "Cut away while receiving the SMS, then enter the six-digit code.",
+        "Demonstrate verification without exposing the code.",
+        "Verify your phone number securely."
+      ],
+      [
+        "If shown, enter Your name for a new customer; click Verify & continue.",
+        "Finish verification and enter the customer account.",
+        "Continue to your Sphere account."
+      ]
+    ],
+    "note": "Film this branch only when SMS delivery is configured. Do not use an old README claim that a production screen reveals demo OTP codes."
+  },
+  {
+    "id": "C03",
+    "role": "Guest becoming Customer",
+    "title": "Cart review and sign-in return",
+    "route": "/cart -> /auth?next=checkout -> /checkout",
+    "purpose": "Explain the real cart-to-checkout journey and cart preservation.",
+    "ready": "Start signed out with two in-stock demo products in the cart.",
+    "rows": [
+      [
+        "Click the shopping bag icon or mobile Cart.",
+        "Open the cart and display its line items and subtotal.",
+        "Review your cart before checkout."
+      ],
+      [
+        "Increase or decrease a quantity; remove one optional line.",
+        "Show quantities and totals updating.",
+        "Adjust quantities or remove an item."
+      ],
+      [
+        "Click Proceed to checkout while signed out.",
+        "Capture the current redirect to sign-in.",
+        "Sign in to continue with your saved cart."
+      ],
+      [
+        "Sign in with the demo customer account.",
+        "Return to checkout with the original cart.",
+        "Your cart stays with you as you sign in."
+      ],
+      [
+        "Hold on Fulfillment and the order summary.",
+        "Confirm checkout is ready to continue.",
+        "Choose pickup or delivery next."
+      ]
+    ],
+    "note": "Although some cart copy mentions guest checkout, the current Proceed to checkout action requires customer sign-in. Continue as guest on the auth page returns home. Do not record a normal guest-purchase success as if it is reachable through this button."
+  },
+  {
+    "id": "C04",
+    "role": "Customer",
+    "title": "Profile and account security",
+    "route": "/account",
+    "purpose": "Show how a customer maintains personal details and credentials.",
+    "ready": "Use a demo account and a generic avatar image. Plan to cut all password entry.",
+    "rows": [
+      [
+        "Open My account, then Profile -> Edit.",
+        "Enter profile-edit mode.",
+        "Keep your account details up to date."
+      ],
+      [
+        "Change Full name, Phone or Email, and optionally select the profile photo control.",
+        "Demonstrate editable contact information and avatar.",
+        "Make your account easy to recognise."
+      ],
+      [
+        "Click Save changes and hold on the updated profile.",
+        "Confirm the edited details have saved.",
+        "Your updated profile is saved."
+      ],
+      [
+        "Open Change password and fill Current password, New password and Confirm new password off-camera.",
+        "Show the password-change controls without revealing credentials.",
+        "Update your password when you need to."
+      ],
+      [
+        "Click Update password, then show Sign out under Security & data.",
+        "Demonstrate the end of the session as a separate take.",
+        "Sign out when you finish on a shared device."
+      ]
+    ],
+    "note": "Download my data is disabled and labelled Coming soon. It is not a completed data-export journey."
+  },
+  {
+    "id": "C05",
+    "role": "Customer",
+    "title": "Save and manage delivery addresses",
+    "route": "/account -> Saved addresses",
+    "purpose": "Show reusable delivery details for faster checkout.",
+    "ready": "Use a fictional recording address within a configured delivery zone.",
+    "rows": [
+      [
+        "Open Saved addresses and click Add address or Add your first address.",
+        "Open the address form.",
+        "Save an address for your next delivery."
+      ],
+      [
+        "Enter Label and Full address, then choose Delivery zone.",
+        "Give the address a recognisable name and delivery area.",
+        "Keep delivery details clear and easy to find."
+      ],
+      [
+        "Add Rider notes if useful; enable Default address.",
+        "Record directions and the preferred checkout address.",
+        "Add directions and choose your default address."
+      ],
+      [
+        "Click Add address and hold on the saved address card.",
+        "Confirm the address is available for reuse.",
+        "Your address is ready for checkout."
+      ],
+      [
+        "Click Edit to update it; in a separate take click Remove and show Keep address or the removal confirmation.",
+        "Demonstrate maintenance without deleting the main recording address.",
+        "Edit or remove a saved address when needed."
+      ]
+    ],
+    "note": "If showing the location button, use a prepared test location or capture only the permission explanation. Keep precise personal location out of the recording."
+  },
+  {
+    "id": "C06",
+    "role": "Customer or Staff",
+    "title": "Updates and notification preferences",
+    "route": "/account and header Notifications",
+    "purpose": "Show the customer inbox and the notification controls currently visible.",
+    "ready": "Prepare at least one unread demo notification. Use a browser where permission prompts can be recorded cleanly.",
+    "rows": [
+      [
+        "Click the bell labelled Notifications.",
+        "Open Your updates and show an unread entry.",
+        "See order, payment and appointment updates in one place."
+      ],
+      [
+        "Click an update.",
+        "Mark the entry read and open its linked destination.",
+        "Open an update to see the relevant details."
+      ],
+      [
+        "Return to My account -> Notification channels.",
+        "Show the email preference control and always-on in-app channel.",
+        "Choose whether to receive email updates."
+      ],
+      [
+        "Toggle Email notifications and show the saved state.",
+        "Demonstrate the visible preference.",
+        "Update your email notification preference."
+      ],
+      [
+        "Click Enable push on this device and show the browser permission flow; include Turn push off if already enabled.",
+        "Explain device-level push permission and the account preference.",
+        "Enable alerts on this browser if you want them."
+      ]
+    ],
+    "note": "The current account UI exposes Email and push controls. Do not promise SMS or WhatsApp preference switches from older documentation. Delivery of email or push also depends on the environment configuration."
+  },
+  {
+    "id": "C07",
+    "role": "Customer",
+    "title": "Back in stock alerts",
+    "route": "/products/<outOfStockProductId> -> /account",
+    "purpose": "Show a stock alert for a listed product, distinct from a missing-medicine request.",
+    "ready": "Prepare an active OUT_OF_STOCK demo product with zero quantity. Keep it listed.",
+    "rows": [
+      [
+        "Open the out-of-stock product.",
+        "Show that ordinary add-to-cart actions are unavailable.",
+        "This listed product is currently out of stock."
+      ],
+      [
+        "Click Notify me when back in stock; sign in if prompted.",
+        "Register the customer stock alert.",
+        "Ask to be notified when this product returns."
+      ],
+      [
+        "Hold on Alert set, then open My account and locate the stock watchlist.",
+        "Show the alert is attached to the account.",
+        "Your stock alert is saved."
+      ],
+      [
+        "After A07 restocks the same product, refresh the product and customer updates.",
+        "Show current stock and any generated alert that is actually present.",
+        "Check availability again when stock is updated."
+      ]
+    ],
+    "note": "Do not promise an SMS or email unless it was actually delivered. Medicine requests are for an enquiry; stock alerts watch a specific existing product."
+  },
+  {
+    "id": "C08",
+    "role": "Customer",
+    "title": "Sphere Points and redemption",
+    "route": "/account -> /checkout",
+    "purpose": "Show the loyalty balance, history and eligible checkout redemption.",
+    "ready": "Use a demo customer with enough points for redemption and a cart large enough to meet the minimum.",
+    "rows": [
+      [
+        "Open My account -> Sphere Points.",
+        "Show the balance, Earned and Redeemed values.",
+        "See your Sphere Points balance."
+      ],
+      [
+        "Open or scroll through Points history and click an order reference.",
+        "Connect the points entry to its source order.",
+        "Review where your points came from."
+      ],
+      [
+        "Return to checkout and find the Sphere Points redemption switch in the order summary.",
+        "Show the available redemption quote when eligible.",
+        "Use eligible points toward your order."
+      ],
+      [
+        "Enable redemption and hold on the changed total.",
+        "Capture the discount and payable amount.",
+        "Review your updated total before confirming."
+      ],
+      [
+        "After a genuinely successful payment, return to Sphere Points and refresh.",
+        "Show only the balance and history the server recorded.",
+        "Your points history reflects completed account activity."
+      ]
+    ],
+    "note": "Current constants: 1 point per KSh100, KSh1 per point, at least 100 points to redeem, capped at 25% of the eligible subtotal. Do not promise points from an unpaid order."
+  },
+  {
+    "id": "C09",
+    "role": "Customer",
+    "title": "Write a product review",
+    "route": "/products/<productId>",
+    "purpose": "Show ratings and customer feedback on a product.",
+    "ready": "Use a signed-in demo customer and a product without an existing review by that customer.",
+    "rows": [
+      [
+        "Open a product and scroll to Customer reviews.",
+        "Show the rating summary and existing feedback.",
+        "Read customer feedback on this product."
+      ],
+      [
+        "Open Write a review or the visible review form.",
+        "Enter the signed-in review area.",
+        "Share your experience with the product."
+      ],
+      [
+        "Select a star rating and type a short demo comment.",
+        "Prepare the rating and optional text.",
+        "Add a rating and useful feedback."
+      ],
+      [
+        "Click Submit review and hold on the confirmation.",
+        "Capture successful submission.",
+        "Your review has been submitted."
+      ],
+      [
+        "Keep this review available for A13 moderation.",
+        "Link the customer scene to staff moderation.",
+        "The pharmacy can moderate product reviews."
+      ]
+    ],
+    "note": "Do not caption the review as a verified purchase unless the live system explicitly verifies that claim. A customer can submit only one review per product."
+  },
+  {
+    "id": "O01",
+    "role": "Customer",
+    "title": "Place a cash pickup order",
+    "route": "/cart -> /checkout",
+    "purpose": "Record a complete order-placement journey that does not depend on an online gateway.",
+    "ready": "Sign in, add an in-stock non-prescription demo product, and keep a second admin browser ready.",
+    "rows": [
+      [
+        "Click Proceed to checkout and choose Store pickup on Fulfillment.",
+        "Select collection from the pharmacy with no delivery address.",
+        "Choose free pickup from the pharmacy."
+      ],
+      [
+        "Click Continue and review Details; add optional Order notes.",
+        "Confirm the account and collection information.",
+        "Check your details before placing the order."
+      ],
+      [
+        "Click Continue to payment, then choose Cash.",
+        "Select payment on collection.",
+        "Pay in cash when you collect your order."
+      ],
+      [
+        "Click Place order and hold on the confirmation and reference.",
+        "Capture order placement, without claiming payment is complete.",
+        "Your pickup order has been placed."
+      ],
+      [
+        "Click Track order.",
+        "Open the order status and history.",
+        "Follow the order until it is ready for pickup."
+      ]
+    ],
+    "note": "Keep this order for A02. A cash-order confirmation is not proof that cash has been received. Show the pickup code only when the current order screen exposes it."
+  },
+  {
+    "id": "O02",
+    "role": "Customer",
+    "title": "Place a delivery order",
+    "route": "/checkout -> Delivery",
+    "purpose": "Show delivery-area selection, address entry and fee review.",
+    "ready": "Use a second in-stock non-prescription cart and the saved demo address from C05.",
+    "rows": [
+      [
+        "Choose Delivery on Fulfillment, then select a delivery zone.",
+        "Calculate and display the quoted delivery fee.",
+        "Check delivery availability for your area."
+      ],
+      [
+        "Click Continue and select a saved address or enter a new Full address.",
+        "Set the delivery destination.",
+        "Choose where you want the order delivered."
+      ],
+      [
+        "Enter rider directions, then review delivery fee and order total.",
+        "Make the handoff location clear and show the full quote.",
+        "Review your address, delivery fee and total."
+      ],
+      [
+        "Continue to payment and choose the intended method; use Cash for a non-gateway placement take.",
+        "Explain the payment choice without marking the order paid.",
+        "Choose how you want to pay."
+      ],
+      [
+        "Place the order and open Track order.",
+        "Capture the delivery-order reference and current status.",
+        "Your delivery order is ready for pharmacy processing."
+      ]
+    ],
+    "note": "Use a paid delivery fixture for the full dispatch journey in A03 and R01. The current server restricts progression of unpaid orders; rehearse cash-on-delivery fulfillment before promising a complete recorded COD lifecycle."
+  },
+  {
+    "id": "O03",
+    "role": "Customer",
+    "title": "Pay an order with M Pesa",
+    "route": "/checkout or /orders/<orderId>",
+    "purpose": "Show an M-Pesa request, its pending state and the verified outcome.",
+    "ready": "Use a non-prescription order at Awaiting payment, configured Daraja credentials, and an approved recording handset or sandbox workflow.",
+    "rows": [
+      [
+        "Open an Awaiting payment order and choose M-Pesa; checkout also offers M-Pesa.",
+        "Show a payable order and its current amount.",
+        "Pay your order securely with M-Pesa."
+      ],
+      [
+        "Enter the controlled M-Pesa phone number and review the amount.",
+        "Confirm the payment destination and payable total.",
+        "Check the phone number and amount first."
+      ],
+      [
+        "Click the M-Pesa payment button and hold on the waiting state.",
+        "Show that a request has been sent, not a completed payment.",
+        "Approve the payment prompt on your phone."
+      ],
+      [
+        "Cut away for handset PIN entry, then return to the order after the provider confirms.",
+        "Capture the actual success status and payment record.",
+        "Payment is complete when confirmation is received."
+      ],
+      [
+        "If the provider declines or times out, show the failure message and check status before retrying.",
+        "Demonstrate recovery in a separate take.",
+        "Check the payment result before trying again."
+      ]
+    ],
+    "note": "There is no website PIN-entry simulator in the current flow. Never use old fake-PIN instructions. If the gateway is not configured, record only the unavailable state and leave the success take pending."
+  },
+  {
+    "id": "O04",
+    "role": "Customer",
+    "title": "Pay an order by card",
+    "route": "/checkout or /orders/<orderId> -> IntaSend",
+    "purpose": "Explain the secure hosted card-payment handoff.",
+    "ready": "Use a payable demo order and a configured IntaSend sandbox or approved payment setup.",
+    "rows": [
+      [
+        "Select Card on the payment screen.",
+        "Show the card-payment option and amount.",
+        "Choose card payment for your order."
+      ],
+      [
+        "Click Continue to IntaSend.",
+        "Leave Sphere for the provider-hosted checkout.",
+        "Card details are entered on IntaSend secure checkout."
+      ],
+      [
+        "Capture the hosted page with test data only; cut sensitive fields and authentication.",
+        "Explain the provider step without exposing payment details.",
+        "Complete the provider steps to authorise payment."
+      ],
+      [
+        "Return using the provider flow and open the same order.",
+        "Check the server-recorded payment outcome.",
+        "Your order shows the confirmed payment result."
+      ],
+      [
+        "If the result is pending, refresh or revisit the order instead of assuming success.",
+        "Show the difference between a redirect and verified payment.",
+        "Check the order status after payment."
+      ]
+    ],
+    "note": "Do not enter card numbers or CVV into Sphere itself. A redirect or return to the site does not establish payment success."
+  },
+  {
+    "id": "O05",
+    "role": "Customer",
+    "title": "Reserve items for collection",
+    "route": "/checkout -> Payment -> Reserve",
+    "purpose": "Show an order reserved for later payment in store.",
+    "ready": "Use a separate non-prescription cart and select Store pickup.",
+    "rows": [
+      [
+        "Choose Store pickup and complete Details.",
+        "Set up an in-store reservation.",
+        "Reserve items to collect at the pharmacy."
+      ],
+      [
+        "On Payment, choose Reserve.",
+        "Select the later-payment option.",
+        "Choose to pay in store."
+      ],
+      [
+        "Click Reserve items - pay in store.",
+        "Submit the reservation without an online charge.",
+        "Your reservation request is saved."
+      ],
+      [
+        "Hold on the confirmation, reference and Track order.",
+        "Give the recorder a clear reservation end state.",
+        "Keep your order reference for collection."
+      ],
+      [
+        "Open the reservation in Admin -> Orders in a separate take.",
+        "Show the reservation is available for processing.",
+        "Staff can manage the reservation in the order queue."
+      ]
+    ],
+    "note": "The UI mentions a 24-hour hold. Confirm the recording environment's actual reservation expiry configuration before putting a precise deadline in the published caption."
+  },
+  {
+    "id": "O06",
+    "role": "Customer",
+    "title": "Track cancel and reorder",
+    "route": "/orders -> /orders/<orderId>",
+    "purpose": "Show the customer order list and its state-dependent actions.",
+    "ready": "Prepare one unpaid cancellable order, one active order and one completed order. Do not cancel the primary pickup or delivery recording order.",
+    "rows": [
+      [
+        "Open My account -> Orders or Open navigation -> Track my orders.",
+        "Display the customer order history.",
+        "Find your current and previous orders."
+      ],
+      [
+        "Open an active order and scroll through status history, items, totals and payment records.",
+        "Show the detail behind the current status.",
+        "Follow each stage of your order."
+      ],
+      [
+        "On an Awaiting payment order, show Complete payment and its payment choices.",
+        "Demonstrate how a customer returns to pay.",
+        "Complete payment when your order is ready."
+      ],
+      [
+        "On a separate eligible unpaid order, click Cancel order; enter an optional reason and confirm cancellation.",
+        "Capture an allowed cancellation and its terminal status.",
+        "Cancel an eligible order before fulfillment."
+      ],
+      [
+        "Open the completed order, click Reorder these items, and confirm the cart action.",
+        "Recreate a cart for review rather than an automatic purchase.",
+        "Reorder previous items and review your cart again."
+      ]
+    ],
+    "note": "Cancellation depends on order state. Do not promise automatic refunds: captured payments use a separate provider-refund process, and the current admin UI has no refund button."
+  },
+  {
+    "id": "X01",
+    "role": "Customer",
+    "title": "Upload a prescription for review",
+    "route": "/prescriptions -> Upload new",
+    "purpose": "Show a standalone prescription upload without placing an order.",
+    "ready": "Sign in and prepare a clearly marked DEMO prescription image or PDF under 10MB, with fictional patient details.",
+    "rows": [
+      [
+        "Click Prescriptions or Upload prescription; sign in if prompted.",
+        "Open the customer prescription workspace.",
+        "Send your prescription to the pharmacy for review."
+      ],
+      [
+        "Click Upload new, then Browse files.",
+        "Choose the prepared image or PDF and show the preview.",
+        "Upload a clear photo or PDF of the prescription."
+      ],
+      [
+        "Optionally enter Notes for the pharmacist.",
+        "Add context for the review.",
+        "Add a note for the pharmacist if needed."
+      ],
+      [
+        "Click Upload for review; keep the progress and confirmation in shot.",
+        "Capture completed upload rather than the initial file selection.",
+        "Your prescription has been submitted for review."
+      ],
+      [
+        "Open My prescriptions and show Pending review.",
+        "Establish the customer-visible review state.",
+        "Follow the pharmacist review from your account."
+      ]
+    ],
+    "note": "Standalone upload alone does not place or charge an order. Checkout currently uploads attachments within its own Details step; do not claim it has a picker for an existing standalone prescription."
+  },
+  {
+    "id": "X02",
+    "role": "Customer",
+    "title": "Order prescription medicines",
+    "route": "/products/<rxProductId> -> /cart -> /checkout",
+    "purpose": "Show the prescription requirement inside an order journey.",
+    "ready": "Prepare an active in-stock prescription-only demo product, a customer account and a second DEMO prescription file.",
+    "rows": [
+      [
+        "Open the prescription product and show Prescription required, then add it to the cart.",
+        "Explain why the order needs pharmacist review.",
+        "Prescription medicines need pharmacist verification."
+      ],
+      [
+        "Proceed to checkout, choose pickup or delivery, and open Details.",
+        "Reach the prescription-upload section.",
+        "Attach your prescription as part of checkout."
+      ],
+      [
+        "Choose the demo file, add optional notes, and click Upload 1 file or the visible upload action.",
+        "Finish the actual upload and capture its success.",
+        "Submit the prescription for this order."
+      ],
+      [
+        "Continue to payment and choose Cash for the order-placement take.",
+        "Submit the order while retaining the review requirement.",
+        "The pharmacy will review the prescription before dispensing."
+      ],
+      [
+        "Open Track order and hold on Under review and the attached document.",
+        "Capture the correct pending-review outcome.",
+        "Your prescription order is awaiting review."
+      ]
+    ],
+    "note": "A prescription order initially goes Under review. Online payment remains blocked until the pharmacy advances it to Awaiting payment. Return for payment after A04 and A02, rather than implying immediate Rx payment succeeds."
+  },
+  {
+    "id": "X03",
+    "role": "Customer",
+    "title": "Prescription outcomes and refills",
+    "route": "/prescriptions -> My prescriptions",
+    "purpose": "Show how the customer reads decisions and requests an eligible refill.",
+    "ready": "Prepare approved, clarification and rejected examples. For refill, use an approved, unexpired prescription with remaining refills.",
+    "rows": [
+      [
+        "Open My prescriptions after the pharmacist review.",
+        "Show the updated status, review notes and reviewer information.",
+        "See the pharmacist decision and notes."
+      ],
+      [
+        "Click View and show the private document viewer; use Download if relevant.",
+        "Demonstrate access to the customer's own document.",
+        "View or download your prescription privately."
+      ],
+      [
+        "Show a Clarification requested example and its message.",
+        "Explain the extra information needed from the customer.",
+        "Read what the pharmacist needs you to clarify."
+      ],
+      [
+        "Show an Approved example with remaining refills; click Request refill when that action is available.",
+        "Submit the eligible refill for re-review.",
+        "Request an available refill for pharmacist review."
+      ],
+      [
+        "If the prescription is linked to an order, use View / Pay Order.",
+        "Continue through the related order rather than treating approval as payment.",
+        "Continue to the linked order when it is ready."
+      ]
+    ],
+    "note": "Do not promise a direct replacement-upload response inside the clarification card. The current customer UI supports new uploads and contact with the pharmacy. Refill eligibility and status are rechecked by the server."
+  },
+  {
+    "id": "S01",
+    "role": "Customer",
+    "title": "Browse services and book an appointment",
+    "route": "/services",
+    "purpose": "Show service discovery and a pending booking request.",
+    "ready": "Prepare an active service with an image, price, duration and enabled future availability. Sign in as the demo customer.",
+    "rows": [
+      [
+        "Click Care services or mobile Services; search or filter the service catalogue.",
+        "Find the relevant care service.",
+        "Explore the pharmacy care services."
+      ],
+      [
+        "Click Details on a service, then Book appointment.",
+        "Show the description and booking entry point.",
+        "Review the service before choosing an appointment."
+      ],
+      [
+        "Choose Select appointment date and an available time slot.",
+        "Show bookable availability for that day.",
+        "Choose an available date and time."
+      ],
+      [
+        "Optionally add health-context notes using fictional demo text.",
+        "Provide information for the appointment request.",
+        "Add a note for the pharmacy team if needed."
+      ],
+      [
+        "Click Confirm appointment and capture its reference and current status.",
+        "Record a saved booking request without claiming staff confirmation.",
+        "Your appointment request has been submitted."
+      ]
+    ],
+    "note": "A selected slot is not a confirmed visit until the actual status says so. If no slots are available, choose another configured day instead of filming an empty booking as success."
+  },
+  {
+    "id": "S02",
+    "role": "Customer",
+    "title": "Choose appointment payment",
+    "route": "/services -> My Bookings -> booking payment",
+    "purpose": "Show the separate appointment-payment choices.",
+    "ready": "Use an unpaid booking for a chargeable service with a nonzero price. Online branches require working provider configuration.",
+    "rows": [
+      [
+        "Open the booking payment prompt or use Pay Now via M-Pesa from appointment details.",
+        "Open the appointment-payment dialog.",
+        "Choose how to pay for your appointment."
+      ],
+      [
+        "Review the service name, booking reference and amount.",
+        "Connect the payment to the correct booking.",
+        "Check the appointment and amount before paying."
+      ],
+      [
+        "For the counter-payment take, click Pay at pharmacy counter during visit.",
+        "Save the payment preference without marking it paid.",
+        "You can choose to pay at the pharmacy counter."
+      ],
+      [
+        "For a separate M-Pesa take, enter the controlled number and click Pay with M-Pesa.",
+        "Show provider initiation and the verified result when received.",
+        "Approve the M-Pesa prompt on your phone."
+      ],
+      [
+        "For the card branch, click Pay with Card and capture the provider handoff.",
+        "Demonstrate the alternate hosted payment route.",
+        "Use the secure provider checkout for card payment."
+      ]
+    ],
+    "note": "A counter-payment preference is not a payment receipt. The current booking admin screen does not provide a clear cash-receipt action; do not invent one for the recording."
+  },
+  {
+    "id": "S03",
+    "role": "Customer",
+    "title": "Track an appointment and review a visit",
+    "route": "/services?tab=bookings",
+    "purpose": "Show the customer appointment workspace after booking.",
+    "ready": "Keep one active booking and a separate completed visit for the review scene.",
+    "rows": [
+      [
+        "Open My account -> Appointments or Services -> My Bookings.",
+        "Display the customer booking list.",
+        "Keep track of your appointments."
+      ],
+      [
+        "Click Trace status & details on the booking card.",
+        "Show time, reference, progress and payment information.",
+        "Check the latest appointment details."
+      ],
+      [
+        "Click Add to Calendar.",
+        "Download the calendar entry.",
+        "Add the appointment to your calendar."
+      ],
+      [
+        "Show the WhatsApp or Call Clinic contact action for a change of plans.",
+        "Explain how the customer requests rescheduling.",
+        "Contact the pharmacy if you need to change the visit."
+      ],
+      [
+        "Open the completed booking, choose Review Experience, add stars and feedback, then Submit Review.",
+        "Record post-visit feedback.",
+        "Tell us about your completed visit."
+      ]
+    ],
+    "note": "Customers currently request changes through contact actions; there is no direct customer reschedule/cancel booking button. Staff actions are covered in A12."
+  },
+  {
+    "id": "H01",
+    "role": "Guest or Customer",
+    "title": "Find products with the assistant",
+    "route": "Any customer screen -> Open Sphere Pharmacy AI assistant",
+    "purpose": "Demonstrate conversational navigation and product discovery.",
+    "ready": "Use a configured assistant and a known active product. Keep the prompt practical rather than asking for a diagnosis.",
+    "rows": [
+      [
+        "Click Open Sphere Pharmacy AI assistant.",
+        "Open the chat workspace.",
+        "Ask for help finding your way around Sphere."
+      ],
+      [
+        "Type Find a product followed by the demo product name, then press Enter or Send.",
+        "Show a catalogue-based assistant response.",
+        "Find products using a simple conversation."
+      ],
+      [
+        "If a product card is returned, click its product link or Add action.",
+        "Open the listing or add one available pack after its current price is checked.",
+        "Review a product or add it to your bag."
+      ],
+      [
+        "Ask where to find prescriptions or appointments and use the returned navigation action.",
+        "Demonstrate a shortcut into the relevant screen.",
+        "Jump to the part of the platform you need."
+      ],
+      [
+        "For a medication-advice question, show any pharmacy handoff the assistant actually returns.",
+        "Keep clinical questions with the pharmacy team.",
+        "Ask the pharmacist for personal medicine advice."
+      ]
+    ],
+    "note": "Assistant responses depend on the prompt and available data. Rehearse once, and use the action label actually returned. Do not promise treatment recommendations or a particular generated answer."
+  },
+  {
+    "id": "H02",
+    "role": "Customer",
+    "title": "Book through the assistant",
+    "route": "Assistant -> booking action",
+    "purpose": "Show an explicit booking confirmation inside the assistant workspace.",
+    "ready": "Sign in, prepare a configured service and future slot, and rehearse a prompt that returns its booking action.",
+    "rows": [
+      [
+        "Ask the assistant to help book the prepared service.",
+        "Obtain the relevant service or booking action.",
+        "Ask for help booking a care service."
+      ],
+      [
+        "Click the booking action and complete sign-in if the private panel requests it.",
+        "Open the account-scoped booking controls.",
+        "Booking details stay inside your account."
+      ],
+      [
+        "Choose the appointment date and Available time.",
+        "Show live slot availability.",
+        "Choose a time that is available."
+      ],
+      [
+        "Review the service, date, time and Nairobi-time summary.",
+        "Make the proposed appointment explicit before submission.",
+        "Review the appointment before sending the request."
+      ],
+      [
+        "Click Confirm booking request, then open Appointments.",
+        "Capture the saved booking in the normal customer workspace.",
+        "Your booking request is ready for pharmacy follow-up."
+      ]
+    ],
+    "note": "Use a separate slot from S01 to avoid a collision. If the response is uncertain, use Check my appointments first before sending another request."
+  },
+  {
+    "id": "H03",
+    "role": "Customer",
+    "title": "Pay through the assistant",
+    "route": "Assistant -> payment action",
+    "purpose": "Show the assistant payment review and status check.",
+    "ready": "Use a signed-in demo account with an eligible unpaid order or payable appointment and configured M-Pesa.",
+    "rows": [
+      [
+        "Ask the assistant for help paying an order or appointment, then open its payment action.",
+        "Open the private payment workspace.",
+        "Get help with an outstanding payment."
+      ],
+      [
+        "Under Pay for, choose the correct order or appointment.",
+        "Load its reference and amount.",
+        "Choose exactly which item you want to pay for."
+      ],
+      [
+        "Enter the controlled M-Pesa phone number and read the payment review.",
+        "Confirm payee, amount, reference and destination number.",
+        "Check the amount and phone number before sending."
+      ],
+      [
+        "Click Send M-Pesa prompt.",
+        "Initiate a provider request after an explicit click.",
+        "Approve the M-Pesa prompt on your phone."
+      ],
+      [
+        "Use Check payment status, or View my orders / other payment options.",
+        "Verify the server result or return to the standard payment screen.",
+        "Check the result before starting another payment."
+      ]
+    ],
+    "note": "A chat request alone does not authorise or complete payment. Never caption a sent prompt as a successful charge."
+  },
+  {
+    "id": "A01",
+    "role": "Admin",
+    "title": "Staff sign in and daily overview",
+    "route": "/admin or /auth?mode=staff&next=admin",
+    "purpose": "Introduce internal access, admin navigation and the operational overview.",
+    "ready": "Use a dedicated admin account with demo orders and activity. Keep customer and staff browser sessions separate.",
+    "rows": [
+      [
+        "From a non-home footer choose Staff dashboard, then Sign in as staff; alternatively open /admin.",
+        "Reach the staff gate and sign-in form.",
+        "Staff use a separate sign-in to manage the pharmacy."
+      ],
+      [
+        "Choose Staff, enter the demo Staff email and Password off-camera, then Sign in to dashboard.",
+        "Start the admin session.",
+        "Sign in to the staff dashboard."
+      ],
+      [
+        "Hold on Overview and scroll through order, revenue, queue and inventory cards.",
+        "Show the current operational snapshot.",
+        "See the pharmacy workload at a glance."
+      ],
+      [
+        "Click a relevant overview card, such as Pending prescriptions or Active orders.",
+        "Open the matching work queue or section.",
+        "Move from the overview straight to the work that needs attention."
+      ],
+      [
+        "Show the admin sidebar; on mobile open Open admin menu.",
+        "Explain where Orders, Prescriptions, Medicine requests and other sections live.",
+        "Use the admin menu to move between work areas."
+      ]
+    ],
+    "note": "The active homepage footer has My account, rather than Staff dashboard. The non-home footer or /admin is the reliable staff entry point. Role-specific menus are covered in T01 and T02."
+  },
+  {
+    "id": "A02",
+    "role": "Admin or permitted pharmacy staff",
+    "title": "Process an order to pickup",
+    "route": "/admin?section=orders",
+    "purpose": "Show order triage, payment evidence and the pickup workflow.",
+    "ready": "Use O01 for a cash example; have a separate already-paid order if needed. Never mark cash received before the demonstration transaction is arranged.",
+    "rows": [
+      [
+        "Open Orders and show Queue, All orders, search, status, type and date filters.",
+        "Locate the recording order by reference.",
+        "Find the order that needs processing."
+      ],
+      [
+        "Click its row or card and inspect customer, items, notes, payments and status history.",
+        "Open the order detail drawer.",
+        "Review the order details before taking action."
+      ],
+      [
+        "For an OTC Received order, click Confirm availability, confirm the action, then Request payment when offered.",
+        "Move the order through the allowed preparation steps.",
+        "Confirm availability before requesting payment."
+      ],
+      [
+        "After payment is actually received, use Mark paid (cash received) for cash, or show the provider-confirmed payment record.",
+        "Establish genuine payment evidence for the next stage.",
+        "Record payment only after it is received."
+      ],
+      [
+        "Click Start preparing, then Ready for pickup, confirming each dialog.",
+        "Progress the paid pickup order through fulfillment.",
+        "Prepare the order and mark it ready for collection."
+      ],
+      [
+        "At collection, use Complete pickup and capture the final history; switch to the customer order to show the same result.",
+        "Finish the journey across both roles.",
+        "The collected order is now complete."
+      ]
+    ],
+    "note": "Some statuses advance automatically after prescription review or provider payment. Use the action available for the current state. A generic Mark as paid transition alone is not a substitute for a real payment record."
+  },
+  {
+    "id": "A03",
+    "role": "Admin or permitted dispatch staff",
+    "title": "Assign and dispatch a delivery",
+    "route": "/admin?section=dispatch and /admin?section=orders",
+    "purpose": "Connect a paid delivery order to an active rider.",
+    "ready": "Prepare a paid delivery order and an active Rider account with contact details. Keep its reference for R01.",
+    "rows": [
+      [
+        "Open Dispatch and review Unassigned, Assigned / active and Rider workload.",
+        "Show the delivery work queue.",
+        "See which deliveries still need a rider."
+      ],
+      [
+        "Find the prepared order, choose a rider from its assignment dropdown, then click Assign.",
+        "Attach the delivery to a specific active rider.",
+        "Assign the delivery to the right rider."
+      ],
+      [
+        "Show the rider name and the contact actions.",
+        "Verify the assignment is saved.",
+        "The assigned rider is linked to this delivery."
+      ],
+      [
+        "If needed, use Orders to Start preparing, then Dispatch for delivery from the allowed state.",
+        "Advance the paid delivery into Out for delivery.",
+        "Mark the order as out for delivery when it leaves."
+      ],
+      [
+        "Switch to the rider session and locate the same reference.",
+        "Show the order is visible to the assigned rider.",
+        "The rider can now follow the assigned delivery."
+      ]
+    ],
+    "note": "Rider Start delivery buttons are shown for more states than the server currently accepts. The reliable core take is staff Dispatch for delivery followed by the rider completion flow in R01. Rehearse any earlier rider-start branch before including it."
+  },
+  {
+    "id": "A04",
+    "role": "Pharmacist or Admin",
+    "title": "Review and approve a prescription",
+    "route": "/admin?section=prescriptions",
+    "purpose": "Show the pharmacist document review and an approved outcome.",
+    "ready": "Use a DEMO prescription from X01 or X02 and a separate pharmacist session.",
+    "rows": [
+      [
+        "Open Prescriptions and choose the pending review queue.",
+        "Locate the submitted demo document.",
+        "New prescriptions enter the pharmacist review queue."
+      ],
+      [
+        "Open the prescription and choose View document or Document.",
+        "Display the actual submitted image or PDF.",
+        "Review the prescription document before deciding."
+      ],
+      [
+        "Click Proceed to review if shown, then select Approve.",
+        "Open the pharmacist decision controls.",
+        "Record the pharmacist decision."
+      ],
+      [
+        "Set Refills allowed and Validity period, and add optional review notes.",
+        "Save the permitted refill and validity information.",
+        "Add the review conditions and notes."
+      ],
+      [
+        "Click Approve prescription and hold on the approved status and reviewer details.",
+        "Capture the decision as a completed staff action.",
+        "The prescription has been approved."
+      ],
+      [
+        "Show the customer prescription result and any linked order state.",
+        "Connect staff review to the customer journey.",
+        "The customer can see the review outcome in their account."
+      ]
+    ],
+    "note": "For an order with multiple prescriptions, every attachment must be reviewed before payment can be accepted. Use only fictional patient and prescriber details in the video."
+  },
+  {
+    "id": "A05",
+    "role": "Pharmacist or Admin",
+    "title": "Clarify partially approve or reject a prescription",
+    "route": "/admin?section=prescriptions",
+    "purpose": "Cover the alternative pharmacist decisions with clear reasons.",
+    "ready": "Prepare three separate pending DEMO documents. Do not reuse the already-approved prescription.",
+    "rows": [
+      [
+        "Open the clarification example, view its document, then choose Clarify.",
+        "Show the review branch for missing information.",
+        "Request clarification when more information is needed."
+      ],
+      [
+        "Enter Message to customer and click Send clarification request.",
+        "Save the reason and the customer-facing review outcome.",
+        "Tell the customer what needs to be clarified."
+      ],
+      [
+        "On a second document, choose Partial approval and fill Unavailable items, refills and validity as applicable.",
+        "Explain the limit of the approval.",
+        "Record which requested items are unavailable."
+      ],
+      [
+        "Click Save partial approval and capture the status.",
+        "Save the partial review result.",
+        "The prescription has been partially approved."
+      ],
+      [
+        "On a third document, choose Reject, enter Reason for rejection, and click Reject prescription.",
+        "Demonstrate an explained rejection.",
+        "Save a clear reason when a prescription cannot be approved."
+      ]
+    ],
+    "note": "Use separate takes with separate documents for each outcome. Clinical decisions must be framed as demonstration examples, not as medical advice to viewers."
+  },
+  {
+    "id": "A06",
+    "role": "Admin Pharmacist or Staff",
+    "title": "Manage medicine requests",
+    "route": "/admin?section=medicine-requests",
+    "purpose": "Complete the customer-to-pharmacy missing-medicine journey.",
+    "ready": "Keep P04 and P05 requests available, including one with a photo.",
+    "rows": [
+      [
+        "Open Medicine requests from the admin menu.",
+        "Show the callback-request queue.",
+        "Customer medicine requests arrive in one place."
+      ],
+      [
+        "Search by medicine name or stored phone number; choose a status filter.",
+        "Find the enquiry to follow up.",
+        "Find a request by medicine or phone number."
+      ],
+      [
+        "Open View photo on the request that has an attachment.",
+        "Show the private medicine reference image.",
+        "View the optional photo shared with the pharmacy."
+      ],
+      [
+        "Show the phone link, add Staff notes, and choose Contacted under Status.",
+        "Record the follow-up outcome; do not place a real call during the take.",
+        "Contact the customer and keep an internal follow-up note."
+      ],
+      [
+        "Click Save changes, then demonstrate Fulfilled or Unavailable on the appropriate separate request.",
+        "Capture the persisted status and notes.",
+        "Keep each request status up to date."
+      ]
+    ],
+    "note": "Statuses are New, Contacted, Fulfilled and Unavailable. A status change does not automatically call or message the customer, or create an order. Phone search uses the stored international format, such as +254... ."
+  },
+  {
+    "id": "A07",
+    "role": "Admin Pharmacist or Staff",
+    "title": "Update existing products and stock",
+    "route": "/admin?section=catalogue",
+    "purpose": "Show everyday inventory and listing maintenance.",
+    "ready": "Prepare demo products for stock, price and visibility edits. Keep the C07 product ID for the restock take.",
+    "rows": [
+      [
+        "Open Catalogue, search by name, SKU or brand, and use category or stock filters.",
+        "Locate the demo listing.",
+        "Find the product you need to update."
+      ],
+      [
+        "Use the stock plus or minus control and show the saved quantity.",
+        "Adjust the inventory count.",
+        "Keep stock quantities current."
+      ],
+      [
+        "Use the inline price control or Edit to change the price and save.",
+        "Update the customer-facing price.",
+        "Update a product price when needed."
+      ],
+      [
+        "Show the prescription requirement and Live visibility switches on a disposable listing.",
+        "Demonstrate product controls that affect the shop.",
+        "Control prescription requirements and storefront visibility."
+      ],
+      [
+        "Restock the C07 product and reopen it in the customer session.",
+        "Show the catalogue reflecting current stock.",
+        "Updated stock is reflected in the shop."
+      ]
+    ],
+    "note": "Use Edit if a direct price change needs an explicit save. The UI includes a prescription toggle, but this is a pharmacy classification decision; restore the intended value after a demonstration."
+  },
+  {
+    "id": "A08",
+    "role": "Admin",
+    "title": "Create a product and choose its images",
+    "route": "/admin?section=catalogue",
+    "purpose": "Show the complete listing form and reusable image library.",
+    "ready": "Prepare a demo product name, unique SKU, category, price and a non-patient pack image.",
+    "rows": [
+      [
+        "Click Add product.",
+        "Open the new-product editor.",
+        "Add a new product to the catalogue."
+      ],
+      [
+        "Fill Name, SKU, Category, Brand, Pack size, Price and Stock quantity.",
+        "Set the basic listing and inventory information.",
+        "Enter the product and stock details."
+      ],
+      [
+        "Click Browse gallery and choose a photo; show search and Show more photos if available.",
+        "Reuse an existing image instead of duplicating uploads.",
+        "Choose an image from the shared product gallery."
+      ],
+      [
+        "In a separate image take, use the upload control or custom image path field.",
+        "Demonstrate the alternative image sources.",
+        "Upload a new product photo when needed."
+      ],
+      [
+        "Add Description, Usage info, Warnings and the correct Prescription-only setting; click Add product.",
+        "Save the complete product listing.",
+        "Save the details customers will see."
+      ],
+      [
+        "Open the new listing in the customer catalogue.",
+        "Confirm the published appearance.",
+        "The new product is available in the shop."
+      ]
+    ],
+    "note": "Add product and delete controls are admin-only in the current catalogue UI. Use a separate disposable listing to demonstrate Delete product and its confirmation."
+  },
+  {
+    "id": "A09",
+    "role": "Permitted catalogue staff",
+    "title": "Import products from CSV",
+    "route": "/admin?section=catalogue -> CSV import",
+    "purpose": "Show the bulk-product import with both new and existing SKUs.",
+    "ready": "Prepare a small CSV using Download template: one new demo SKU and one disposable existing SKU. Keep an invalid row for a separate error take.",
+    "rows": [
+      [
+        "Click CSV import and then Download template.",
+        "Show the expected import format.",
+        "Start with the product import template."
+      ],
+      [
+        "Show the prepared file briefly, then use upload a .csv file or Paste CSV.",
+        "Load the product rows into the importer.",
+        "Import several product changes at once."
+      ],
+      [
+        "Review the expected columns and the selected file or pasted content.",
+        "Confirm what will be submitted.",
+        "Check the import data before continuing."
+      ],
+      [
+        "Click Import CSV and hold on the created and updated counts.",
+        "Capture the actual import result.",
+        "New SKUs are created and matching SKUs are updated."
+      ],
+      [
+        "Search for the imported SKU in Catalogue.",
+        "Verify one imported product in the interface.",
+        "Review the imported products in the catalogue."
+      ]
+    ],
+    "note": "For an error take, show the reported row errors and correct the file. Do not describe a partial import as if every row succeeded. Importing an existing SKU changes that product."
+  },
+  {
+    "id": "A10",
+    "role": "Admin Pharmacist or Staff",
+    "title": "Publish a service and set booking hours",
+    "route": "/admin?section=services",
+    "purpose": "Show service content, images and the availability that drives bookings.",
+    "ready": "Prepare a demo service, price, duration, image and a future recording day.",
+    "rows": [
+      [
+        "Open Services and click New service.",
+        "Open the service editor.",
+        "Create a care service customers can book."
+      ],
+      [
+        "Enter Service name, Category, Duration, Price, Display price and descriptions.",
+        "Configure the service listing.",
+        "Set the service details, duration and price."
+      ],
+      [
+        "Upload a Hero image and optional Gallery images.",
+        "Show how the service is presented visually.",
+        "Add useful photos of the service environment."
+      ],
+      [
+        "Set Show on storefront and Feature service as intended, then click Save service.",
+        "Publish the listing with its visibility settings.",
+        "Choose whether the service appears in the catalogue."
+      ],
+      [
+        "On the service card click Hours, enable a day and set its start and end times, then Save hours.",
+        "Make valid booking hours available.",
+        "Set the times when customers can request appointments."
+      ],
+      [
+        "Open the customer service and check a date within those hours.",
+        "Connect admin configuration to customer availability.",
+        "Customers choose from the available appointment slots."
+      ]
+    ],
+    "note": "Feature service saves a marketing-priority flag, but the current homepage has static service content. Do not promise automatic homepage replacement without checking the deployed page. Archive is available on service cards; demonstrate it only on a disposable service."
+  },
+  {
+    "id": "A11",
+    "role": "Admin Pharmacist or Staff",
+    "title": "Run the appointment workflow",
+    "route": "/admin?section=service-bookings",
+    "purpose": "Show daily appointments from confirmation to completed care.",
+    "ready": "Use the booking from S01. Note its date in Nairobi time and have an active staff member available for assignment.",
+    "rows": [
+      [
+        "Open Bookings and set the date to the demo appointment day.",
+        "Show Total, Pending and Confirmed counts and the booking card.",
+        "View the care schedule for the selected day."
+      ],
+      [
+        "Choose an active staff member from Assign staff.",
+        "Assign responsibility for the appointment.",
+        "Assign the appointment to a team member."
+      ],
+      [
+        "On a pending booking click Confirm and capture the new status.",
+        "Record pharmacy confirmation.",
+        "Confirm the appointment with the customer."
+      ],
+      [
+        "Click Mark arrived when the demonstration visit begins, then Start.",
+        "Move the visit through Arrived and In progress.",
+        "Record arrival and start the care session."
+      ],
+      [
+        "Click Complete and switch to the customer appointment view.",
+        "Finish the visit and expose the completed-visit review action.",
+        "The completed visit is recorded in the customer account."
+      ]
+    ],
+    "note": "These actions update the care workflow, not the payment record. Do not caption Complete as proof that the appointment has been paid."
+  },
+  {
+    "id": "A12",
+    "role": "Admin Pharmacist or Staff",
+    "title": "Reschedule and cancel appointments",
+    "route": "/admin?section=service-bookings",
+    "purpose": "Show staff-managed changes to the care schedule.",
+    "ready": "Prepare one pending booking for rescheduling and a different pending or confirmed booking for cancellation. Use a free future slot inside enabled hours.",
+    "rows": [
+      [
+        "Locate the reschedule example by its booking date and reference.",
+        "Identify the correct appointment.",
+        "Find the appointment that needs a new time."
+      ],
+      [
+        "Click Reschedule and enter Start and End with the original service duration.",
+        "Prepare a valid replacement timeslot.",
+        "Choose a new time within the service availability."
+      ],
+      [
+        "Click Save new time and capture Rescheduled.",
+        "Save the changed appointment and its new time.",
+        "The appointment time has been updated."
+      ],
+      [
+        "Show the new details in the customer appointment view.",
+        "Confirm the customer sees the change.",
+        "The customer can see the updated appointment."
+      ],
+      [
+        "On the separate cancellation example, click Cancel and hold on Cancelled.",
+        "Record a staff cancellation without affecting the main completed-visit take.",
+        "Cancel an appointment when it cannot go ahead."
+      ]
+    ],
+    "note": "Rehearse rescheduling before filming: the current staff UI marks a booking Rescheduled but does not expose a Confirm button for that status. Do not promise the full rescheduled-to-completed sequence from these controls. Server checks also enforce service hours, duration and conflicts."
+  },
+  {
+    "id": "A13",
+    "role": "Admin or Pharmacist",
+    "title": "Moderate product reviews",
+    "route": "/admin?section=reviews",
+    "purpose": "Show how staff publish or hide customer product feedback.",
+    "ready": "Use the C09 demo product review and keep a customer window on that product.",
+    "rows": [
+      [
+        "Open Reviews and show All, Published and Hidden filters.",
+        "Display the moderation queue.",
+        "Review customer feedback from one queue."
+      ],
+      [
+        "Locate the demo rating, author and comment.",
+        "Inspect the review before acting.",
+        "Read the review in its product context."
+      ],
+      [
+        "Click the hide action and show the Hidden badge.",
+        "Remove the review from public display.",
+        "Hide a review when moderation requires it."
+      ],
+      [
+        "Refresh the customer product reviews.",
+        "Show the public result of the moderation action.",
+        "The storefront reflects the moderation decision."
+      ],
+      [
+        "Return to the hidden review and use Restore.",
+        "Publish the review again.",
+        "Restore a review when it should be visible again."
+      ]
+    ],
+    "note": "This section moderates product reviews. Do not describe it as a separate moderation screen for service-experience reviews."
+  },
+  {
+    "id": "A14",
+    "role": "Admin or Staff",
+    "title": "Create and use a promotion",
+    "route": "/admin?section=promotions -> /checkout",
+    "purpose": "Connect a staff-created discount code to the customer total.",
+    "ready": "Use a unique recording code, sensible discount and an active date range. Prepare a separate customer cart.",
+    "rows": [
+      [
+        "Open Promotions and click New promotion.",
+        "Open the campaign editor.",
+        "Create a promotion for customers."
+      ],
+      [
+        "Enter Title, Description, Promo code, Discount %, Badge and dates as needed.",
+        "Define the offer and its validity.",
+        "Set the offer details and dates."
+      ],
+      [
+        "Enable Live on storefront and click Create promotion.",
+        "Save the promotion as active.",
+        "Make the promotion available for eligible use."
+      ],
+      [
+        "In the customer checkout enter the code and click Apply.",
+        "Validate the code and show the discount line.",
+        "Apply the promotion and review the savings."
+      ],
+      [
+        "Back in Promotions, show editing or pausing the disposable offer; use a separate take for deletion.",
+        "Demonstrate ongoing campaign management.",
+        "Pause or update a promotion when the offer changes."
+      ]
+    ],
+    "note": "The current homepage does not automatically render all legacy promotional banners. Show the promotion list and successful checkout code, rather than promising a homepage banner that is not visible."
+  },
+  {
+    "id": "A15",
+    "role": "Admin",
+    "title": "Manage staff accounts and roles",
+    "route": "/admin?section=staff",
+    "purpose": "Show controlled access for pharmacists, counter staff and riders.",
+    "ready": "Use disposable demo staff accounts. Keep generated passwords and actual credentials out of the recording.",
+    "rows": [
+      [
+        "Open Staff and show the team list and What each role can access.",
+        "Explain role-based internal access.",
+        "Give team members access for their work."
+      ],
+      [
+        "Click Add staff and enter Full name, Email, Phone, Job title and Role.",
+        "Create a role-specific staff identity.",
+        "Add a staff member with the appropriate role."
+      ],
+      [
+        "Set or generate a strong password off-camera, then click Add staff member.",
+        "Save the staff account without publishing credentials.",
+        "Share staff access details privately."
+      ],
+      [
+        "Open the edit action on the demo member and update the role or title.",
+        "Demonstrate maintaining staff details.",
+        "Keep staff responsibilities and details current."
+      ],
+      [
+        "Use Active on a disposable account to demonstrate deactivation; show removal confirmation only if needed.",
+        "Explain stopping access without using the current admin account.",
+        "Deactivate access when a team member no longer needs it."
+      ]
+    ],
+    "note": "Never deactivate or remove the recording admin. Capture password resets only with a disposable account and cut credential entry. Use at least 10 characters with letters and numbers regardless of older helper text."
+  },
+  {
+    "id": "A16",
+    "role": "Admin",
+    "title": "Reports service analytics and audit activity",
+    "route": "/admin?section=reports and /admin?section=service-analytics",
+    "purpose": "Show owner-level reporting and the evidence behind operational changes.",
+    "ready": "Prepare completed demo orders, a completed service booking and recent staff activity.",
+    "rows": [
+      [
+        "Open Reports and show revenue, top products and the order funnel.",
+        "Summarise order performance.",
+        "Review sales and the order pipeline."
+      ],
+      [
+        "Click Top products CSV.",
+        "Download the visible report export.",
+        "Export top-product results for further review."
+      ],
+      [
+        "Open Service analytics.",
+        "Show the last-30-days service totals and By service table.",
+        "Review care-service activity and revenue."
+      ],
+      [
+        "Return to Overview -> Recent activity.",
+        "Show recorded staff actions with their timestamps.",
+        "See recent operational activity."
+      ],
+      [
+        "Open Compliance -> Compliance audit trail for the compliance-specific history.",
+        "Show where licence changes are tracked.",
+        "Review the history of compliance updates."
+      ]
+    ],
+    "note": "There is an audit API but no separate general Audit section in the current admin navigation. Film visible Recent activity and Compliance audit trail. Do not imply that an unexposed audit page exists."
+  },
+  {
+    "id": "A17",
+    "role": "Admin with Pharmacist view only",
+    "title": "Compliance information",
+    "route": "/admin?section=compliance",
+    "purpose": "Show where the pharmacy records licence and superintendent details.",
+    "ready": "Use a rehearsal environment with authorised demo data. Keep real licence records unchanged during recording.",
+    "rows": [
+      [
+        "Open Compliance and show the licence, expiry and superintendent summary.",
+        "Display the compliance record.",
+        "Keep the pharmacy compliance record accessible to authorised staff."
+      ],
+      [
+        "As Admin, show Premise licence number, Licence expiry, Superintendent name and PPB registration fields.",
+        "Demonstrate the editable compliance information.",
+        "Record the licence and superintendent details accurately."
+      ],
+      [
+        "In rehearsal only, edit the authorised demo record and click Save compliance details.",
+        "Capture a saved compliance change.",
+        "Save verified compliance information."
+      ],
+      [
+        "Scroll to Compliance audit trail.",
+        "Show the actor and timestamp of the update.",
+        "Compliance edits leave an audit trail."
+      ],
+      [
+        "Switch to Pharmacist and show the view-only notice.",
+        "Demonstrate the editing restriction.",
+        "Pharmacists can view this record; admins maintain it."
+      ]
+    ],
+    "note": "Do not enter invented live licence details or present a missing licence as verified. If no current licence is supplied, film the existing no-current-licence state and explain it truthfully."
+  },
+  {
+    "id": "A18",
+    "role": "Admin",
+    "title": "Pharmacy settings and delivery pricing",
+    "route": "/admin?section=settings",
+    "purpose": "Show the configuration available to the pharmacy owner.",
+    "ready": "Use rehearsal settings and record the original values before editing. Do not change live contact details or delivery prices for the video.",
+    "rows": [
+      [
+        "Open Settings -> Pharmacy profile.",
+        "Show name, contact, address, hours and map fields.",
+        "Maintain the pharmacy profile from the admin dashboard."
+      ],
+      [
+        "Open Delivery settings and show flat-fee and zone-based choices.",
+        "Explain the available fee setup.",
+        "Set delivery charges for the areas you serve."
+      ],
+      [
+        "Show Free delivery over, named zones and the optional night-delivery setting.",
+        "Demonstrate configurable delivery rules.",
+        "Configure free-delivery thresholds and zone fees."
+      ],
+      [
+        "Show Delivery origin & pricing method and the distance-band controls where used.",
+        "Explain the distance-based configuration branch.",
+        "Configure delivery pricing from the pharmacy location."
+      ],
+      [
+        "Click Save pharmacy profile or Save delivery settings in rehearsal, then verify the relevant customer screen.",
+        "Check the practical outcome rather than only the form values.",
+        "Check the delivery quote from the customer checkout."
+      ]
+    ],
+    "note": "Some public branding and contact links still read static constants. Verify the exact customer screen before claiming every public label updates instantly. Integration status labels alone do not prove an email or push has been delivered. Demo data controls are not part of the main recording."
+  },
+  {
+    "id": "R01",
+    "role": "Rider",
+    "title": "Complete an assigned delivery",
+    "route": "/admin -> Dispatch",
+    "purpose": "Show the rider-specific view and delivery completion.",
+    "ready": "Use an active Rider account and the assigned, paid, Out for delivery order from A03.",
+    "rows": [
+      [
+        "Sign in through the Staff tab using the demo rider account.",
+        "Land on the rider dispatch workspace.",
+        "Riders see their assigned deliveries."
+      ],
+      [
+        "Open the assigned order and review address, directions and customer contact.",
+        "Show the information needed for the handoff.",
+        "Review the delivery details before setting off."
+      ],
+      [
+        "Show Call or WhatsApp as customer-contact options without contacting a real person.",
+        "Demonstrate how a rider can clarify the handoff.",
+        "Contact the customer if you need directions."
+      ],
+      [
+        "For the prepared Out for delivery order, click Mark delivered.",
+        "Record completion of the assigned delivery.",
+        "Mark the delivery complete after the handoff."
+      ],
+      [
+        "Switch to the customer order and the admin order history.",
+        "Show the same completed-delivery result across roles.",
+        "The delivery outcome is visible to the customer and pharmacy."
+      ]
+    ],
+    "note": "An optional Cash Received action appears for unpaid assigned deliveries and has strict server checks. Use a separately rehearsed cash example. Do not promise an unpaid dispatch path works just because a button is visible."
+  },
+  {
+    "id": "T01",
+    "role": "Pharmacist",
+    "title": "Pharmacist workspace and access boundaries",
+    "route": "/admin",
+    "purpose": "Show the real pharmacist menu and its core responsibilities.",
+    "ready": "Use a separate pharmacist browser profile, with a demo prescription and medicine request ready.",
+    "rows": [
+      [
+        "Sign in as Pharmacist and open the admin menu.",
+        "Show the sections permitted to this role.",
+        "Pharmacists have a workspace for care and review."
+      ],
+      [
+        "Open Prescriptions and show the pending queue.",
+        "Connect the role to its main review duty.",
+        "Review prescriptions before dispensing."
+      ],
+      [
+        "Open Medicine requests, then Bookings.",
+        "Show follow-up enquiries and appointment work.",
+        "Follow up on medicine enquiries and care visits."
+      ],
+      [
+        "Open Compliance and show its view-only editing boundary.",
+        "Demonstrate the permitted compliance access.",
+        "View compliance details without changing admin records."
+      ],
+      [
+        "Show that Staff, Reports, Settings and owner Overview are not in the pharmacist menu.",
+        "Explain that owner controls remain separate.",
+        "Staff access is limited to the sections their role permits."
+      ]
+    ],
+    "note": "Current pharmacist menu also includes Orders, Dispatch, Services, Catalogue and Reviews. Do not use an old role summary that says pharmacists only see prescriptions."
+  },
+  {
+    "id": "T02",
+    "role": "Staff",
+    "title": "Counter staff workspace and access boundaries",
+    "route": "/admin",
+    "purpose": "Show the counter-staff version of the dashboard.",
+    "ready": "Use a separate Staff account with an OTC order, request and booking available.",
+    "rows": [
+      [
+        "Sign in as Staff and open the admin menu.",
+        "Display the role-specific navigation.",
+        "Counter staff see the tools needed for daily operations."
+      ],
+      [
+        "Open Orders and show the prepared OTC order.",
+        "Demonstrate daily order processing.",
+        "Manage the order queue from the counter."
+      ],
+      [
+        "Open Medicine requests and update a demo callback note.",
+        "Show customer-enquiry follow-up within staff access.",
+        "Keep medicine enquiries moving."
+      ],
+      [
+        "Open Dispatch, Bookings, Services, Catalogue and Promotions as short overview cuts.",
+        "Show the operational sections available to this role.",
+        "Support deliveries, appointments and catalogue updates."
+      ],
+      [
+        "Show that Prescriptions review, Reviews moderation, Staff management, Reports, Compliance and Settings are absent.",
+        "Make the access boundary visible.",
+        "Restricted owner and pharmacist controls stay separate."
+      ]
+    ],
+    "note": "The current Staff role can edit existing catalogue items but does not see Add product or Delete product. Use Admin for new-product and removal demonstrations."
+  }
+]

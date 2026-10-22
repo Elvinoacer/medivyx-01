@@ -1,0 +1,362 @@
+SPHERE PHARMACY RECORDING CAPTIONS
+Scene and step cues only. Set the actual timings after recording.
+
+P01  Homepage and navigation
+P01.01  Welcome to Sphere Pharmacy in Roysambu.
+P01.02  Browse medicines and everyday health essentials.
+P01.03  Return home from any screen.
+P01.04  Explore pharmacy care services.
+P01.05  Keep orders, prescriptions and appointments together.
+
+P02  Find and filter products
+P02.01  Find a medicine by name, ingredient or brand.
+P02.02  Browse products by category.
+P02.03  Check prescription requirements and availability.
+P02.04  Compare products in the view that suits you.
+P02.05  Browse more products without losing your filters.
+P02.06  Start a fresh search at any time.
+
+P03  Product details and saved items
+P03.01  Check the product details before you buy.
+P03.02  Review the product information and cautions.
+P03.03  Save a product for later.
+P03.04  Add the packs you need to your cart.
+P03.05  Choose checkout or ask the pharmacy for help.
+
+P04  Request a missing medicine without a photo
+P04.01  Cannot find your medicine? Send us a request.
+P04.02  Tell us which medicine you need.
+P04.03  Leave a number where our team can reach you.
+P04.04  A photo is optional. No account is required.
+P04.05  Your request is saved for pharmacy follow-up.
+
+P05  Request a medicine with a photo
+P05.01  Add a medicine name and your callback number.
+P05.02  A pack photo can help our team identify the medicine.
+P05.03  Change or remove the photo before sending.
+P05.04  Your medicine request and photo have been received.
+P05.05  Clear guidance helps you correct the request.
+
+P06  Questions and pharmacy contact
+P06.01  Find quick answers before contacting the pharmacy.
+P06.02  Speak directly with the pharmacy team.
+P06.03  Call the pharmacy when you need personal help.
+P06.04  Find Sphere Pharmacy on Lumumba Drive.
+
+C01  Create an account and sign in
+C01.01  Create your Sphere Pharmacy account.
+C01.02  Save your details for future visits.
+C01.03  Your account is ready.
+C01.04  Sign in with your email address or phone number.
+C01.05  Continue with your saved account details.
+
+C02  Sign in with a phone code
+C02.01  Sign in using a code sent to your phone.
+C02.02  Request your verification code.
+C02.03  Verify your phone number securely.
+C02.04  Continue to your Sphere account.
+
+C03  Cart review and sign-in return
+C03.01  Review your cart before checkout.
+C03.02  Adjust quantities or remove an item.
+C03.03  Sign in to continue with your saved cart.
+C03.04  Your cart stays with you as you sign in.
+C03.05  Choose pickup or delivery next.
+
+C04  Profile and account security
+C04.01  Keep your account details up to date.
+C04.02  Make your account easy to recognise.
+C04.03  Your updated profile is saved.
+C04.04  Update your password when you need to.
+C04.05  Sign out when you finish on a shared device.
+
+C05  Save and manage delivery addresses
+C05.01  Save an address for your next delivery.
+C05.02  Keep delivery details clear and easy to find.
+C05.03  Add directions and choose your default address.
+C05.04  Your address is ready for checkout.
+C05.05  Edit or remove a saved address when needed.
+
+C06  Updates and notification preferences
+C06.01  See order, payment and appointment updates in one place.
+C06.02  Open an update to see the relevant details.
+C06.03  Choose whether to receive email updates.
+C06.04  Update your email notification preference.
+C06.05  Enable alerts on this browser if you want them.
+
+C07  Back in stock alerts
+C07.01  This listed product is currently out of stock.
+C07.02  Ask to be notified when this product returns.
+C07.03  Your stock alert is saved.
+C07.04  Check availability again when stock is updated.
+
+C08  Sphere Points and redemption
+C08.01  See your Sphere Points balance.
+C08.02  Review where your points came from.
+C08.03  Use eligible points toward your order.
+C08.04  Review your updated total before confirming.
+C08.05  Your points history reflects completed account activity.
+
+C09  Write a product review
+C09.01  Read customer feedback on this product.
+C09.02  Share your experience with the product.
+C09.03  Add a rating and useful feedback.
+C09.04  Your review has been submitted.
+C09.05  The pharmacy can moderate product reviews.
+
+O01  Place a cash pickup order
+O01.01  Choose free pickup from the pharmacy.
+O01.02  Check your details before placing the order.
+O01.03  Pay in cash when you collect your order.
+O01.04  Your pickup order has been placed.
+O01.05  Follow the order until it is ready for pickup.
+
+O02  Place a delivery order
+O02.01  Check delivery availability for your area.
+O02.02  Choose where you want the order delivered.
+O02.03  Review your address, delivery fee and total.
+O02.04  Choose how you want to pay.
+O02.05  Your delivery order is ready for pharmacy processing.
+
+O03  Pay an order with M Pesa
+O03.01  Pay your order securely with M-Pesa.
+O03.02  Check the phone number and amount first.
+O03.03  Approve the payment prompt on your phone.
+O03.04  Payment is complete when confirmation is received.
+O03.05  Check the payment result before trying again.
+
+O04  Pay an order by card
+O04.01  Choose card payment for your order.
+O04.02  Card details are entered on IntaSend secure checkout.
+O04.03  Complete the provider steps to authorise payment.
+O04.04  Your order shows the confirmed payment result.
+O04.05  Check the order status after payment.
+
+O05  Reserve items for collection
+O05.01  Reserve items to collect at the pharmacy.
+O05.02  Choose to pay in store.
+O05.03  Your reservation request is saved.
+O05.04  Keep your order reference for collection.
+O05.05  Staff can manage the reservation in the order queue.
+
+O06  Track cancel and reorder
+O06.01  Find your current and previous orders.
+O06.02  Follow each stage of your order.
+O06.03  Complete payment when your order is ready.
+O06.04  Cancel an eligible order before fulfillment.
+O06.05  Reorder previous items and review your cart again.
+
+X01  Upload a prescription for review
+X01.01  Send your prescription to the pharmacy for review.
+X01.02  Upload a clear photo or PDF of the prescription.
+X01.03  Add a note for the pharmacist if needed.
+X01.04  Your prescription has been submitted for review.
+X01.05  Follow the pharmacist review from your account.
+
+X02  Order prescription medicines
+X02.01  Prescription medicines need pharmacist verification.
+X02.02  Attach your prescription as part of checkout.
+X02.03  Submit the prescription for this order.
+X02.04  The pharmacy will review the prescription before dispensing.
+X02.05  Your prescription order is awaiting review.
+
+X03  Prescription outcomes and refills
+X03.01  See the pharmacist decision and notes.
+X03.02  View or download your prescription privately.
+X03.03  Read what the pharmacist needs you to clarify.
+X03.04  Request an available refill for pharmacist review.
+X03.05  Continue to the linked order when it is ready.
+
+S01  Browse services and book an appointment
+S01.01  Explore the pharmacy care services.
+S01.02  Review the service before choosing an appointment.
+S01.03  Choose an available date and time.
+S01.04  Add a note for the pharmacy team if needed.
+S01.05  Your appointment request has been submitted.
+
+S02  Choose appointment payment
+S02.01  Choose how to pay for your appointment.
+S02.02  Check the appointment and amount before paying.
+S02.03  You can choose to pay at the pharmacy counter.
+S02.04  Approve the M-Pesa prompt on your phone.
+S02.05  Use the secure provider checkout for card payment.
+
+S03  Track an appointment and review a visit
+S03.01  Keep track of your appointments.
+S03.02  Check the latest appointment details.
+S03.03  Add the appointment to your calendar.
+S03.04  Contact the pharmacy if you need to change the visit.
+S03.05  Tell us about your completed visit.
+
+H01  Find products with the assistant
+H01.01  Ask for help finding your way around Sphere.
+H01.02  Find products using a simple conversation.
+H01.03  Review a product or add it to your bag.
+H01.04  Jump to the part of the platform you need.
+H01.05  Ask the pharmacist for personal medicine advice.
+
+H02  Book through the assistant
+H02.01  Ask for help booking a care service.
+H02.02  Booking details stay inside your account.
+H02.03  Choose a time that is available.
+H02.04  Review the appointment before sending the request.
+H02.05  Your booking request is ready for pharmacy follow-up.
+
+H03  Pay through the assistant
+H03.01  Get help with an outstanding payment.
+H03.02  Choose exactly which item you want to pay for.
+H03.03  Check the amount and phone number before sending.
+H03.04  Approve the M-Pesa prompt on your phone.
+H03.05  Check the result before starting another payment.
+
+A01  Staff sign in and daily overview
+A01.01  Staff use a separate sign-in to manage the pharmacy.
+A01.02  Sign in to the staff dashboard.
+A01.03  See the pharmacy workload at a glance.
+A01.04  Move from the overview straight to the work that needs attention.
+A01.05  Use the admin menu to move between work areas.
+
+A02  Process an order to pickup
+A02.01  Find the order that needs processing.
+A02.02  Review the order details before taking action.
+A02.03  Confirm availability before requesting payment.
+A02.04  Record payment only after it is received.
+A02.05  Prepare the order and mark it ready for collection.
+A02.06  The collected order is now complete.
+
+A03  Assign and dispatch a delivery
+A03.01  See which deliveries still need a rider.
+A03.02  Assign the delivery to the right rider.
+A03.03  The assigned rider is linked to this delivery.
+A03.04  Mark the order as out for delivery when it leaves.
+A03.05  The rider can now follow the assigned delivery.
+
+A04  Review and approve a prescription
+A04.01  New prescriptions enter the pharmacist review queue.
+A04.02  Review the prescription document before deciding.
+A04.03  Record the pharmacist decision.
+A04.04  Add the review conditions and notes.
+A04.05  The prescription has been approved.
+A04.06  The customer can see the review outcome in their account.
+
+A05  Clarify partially approve or reject a prescription
+A05.01  Request clarification when more information is needed.
+A05.02  Tell the customer what needs to be clarified.
+A05.03  Record which requested items are unavailable.
+A05.04  The prescription has been partially approved.
+A05.05  Save a clear reason when a prescription cannot be approved.
+
+A06  Manage medicine requests
+A06.01  Customer medicine requests arrive in one place.
+A06.02  Find a request by medicine or phone number.
+A06.03  View the optional photo shared with the pharmacy.
+A06.04  Contact the customer and keep an internal follow-up note.
+A06.05  Keep each request status up to date.
+
+A07  Update existing products and stock
+A07.01  Find the product you need to update.
+A07.02  Keep stock quantities current.
+A07.03  Update a product price when needed.
+A07.04  Control prescription requirements and storefront visibility.
+A07.05  Updated stock is reflected in the shop.
+
+A08  Create a product and choose its images
+A08.01  Add a new product to the catalogue.
+A08.02  Enter the product and stock details.
+A08.03  Choose an image from the shared product gallery.
+A08.04  Upload a new product photo when needed.
+A08.05  Save the details customers will see.
+A08.06  The new product is available in the shop.
+
+A09  Import products from CSV
+A09.01  Start with the product import template.
+A09.02  Import several product changes at once.
+A09.03  Check the import data before continuing.
+A09.04  New SKUs are created and matching SKUs are updated.
+A09.05  Review the imported products in the catalogue.
+
+A10  Publish a service and set booking hours
+A10.01  Create a care service customers can book.
+A10.02  Set the service details, duration and price.
+A10.03  Add useful photos of the service environment.
+A10.04  Choose whether the service appears in the catalogue.
+A10.05  Set the times when customers can request appointments.
+A10.06  Customers choose from the available appointment slots.
+
+A11  Run the appointment workflow
+A11.01  View the care schedule for the selected day.
+A11.02  Assign the appointment to a team member.
+A11.03  Confirm the appointment with the customer.
+A11.04  Record arrival and start the care session.
+A11.05  The completed visit is recorded in the customer account.
+
+A12  Reschedule and cancel appointments
+A12.01  Find the appointment that needs a new time.
+A12.02  Choose a new time within the service availability.
+A12.03  The appointment time has been updated.
+A12.04  The customer can see the updated appointment.
+A12.05  Cancel an appointment when it cannot go ahead.
+
+A13  Moderate product reviews
+A13.01  Review customer feedback from one queue.
+A13.02  Read the review in its product context.
+A13.03  Hide a review when moderation requires it.
+A13.04  The storefront reflects the moderation decision.
+A13.05  Restore a review when it should be visible again.
+
+A14  Create and use a promotion
+A14.01  Create a promotion for customers.
+A14.02  Set the offer details and dates.
+A14.03  Make the promotion available for eligible use.
+A14.04  Apply the promotion and review the savings.
+A14.05  Pause or update a promotion when the offer changes.
+
+A15  Manage staff accounts and roles
+A15.01  Give team members access for their work.
+A15.02  Add a staff member with the appropriate role.
+A15.03  Share staff access details privately.
+A15.04  Keep staff responsibilities and details current.
+A15.05  Deactivate access when a team member no longer needs it.
+
+A16  Reports service analytics and audit activity
+A16.01  Review sales and the order pipeline.
+A16.02  Export top-product results for further review.
+A16.03  Review care-service activity and revenue.
+A16.04  See recent operational activity.
+A16.05  Review the history of compliance updates.
+
+A17  Compliance information
+A17.01  Keep the pharmacy compliance record accessible to authorised staff.
+A17.02  Record the licence and superintendent details accurately.
+A17.03  Save verified compliance information.
+A17.04  Compliance edits leave an audit trail.
+A17.05  Pharmacists can view this record; admins maintain it.
+
+A18  Pharmacy settings and delivery pricing
+A18.01  Maintain the pharmacy profile from the admin dashboard.
+A18.02  Set delivery charges for the areas you serve.
+A18.03  Configure free-delivery thresholds and zone fees.
+A18.04  Configure delivery pricing from the pharmacy location.
+A18.05  Check the delivery quote from the customer checkout.
+
+R01  Complete an assigned delivery
+R01.01  Riders see their assigned deliveries.
+R01.02  Review the delivery details before setting off.
+R01.03  Contact the customer if you need directions.
+R01.04  Mark the delivery complete after the handoff.
+R01.05  The delivery outcome is visible to the customer and pharmacy.
+
+T01  Pharmacist workspace and access boundaries
+T01.01  Pharmacists have a workspace for care and review.
+T01.02  Review prescriptions before dispensing.
+T01.03  Follow up on medicine enquiries and care visits.
+T01.04  View compliance details without changing admin records.
+T01.05  Staff access is limited to the sections their role permits.
+
+T02  Counter staff workspace and access boundaries
+T02.01  Counter staff see the tools needed for daily operations.
+T02.02  Manage the order queue from the counter.
+T02.03  Keep medicine enquiries moving.
+T02.04  Support deliveries, appointments and catalogue updates.
+T02.05  Restricted owner and pharmacist controls stay separate.
+
