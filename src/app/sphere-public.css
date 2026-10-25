@@ -190,6 +190,20 @@
 .sphere-public .app-page-product [data-slot="card"] {
   overflow: hidden;
 }
+/* Keep safety notices legible on the storefront's light canvas in either theme. */
+.sphere-public .app-page-product .product-otc-notice {
+  background: #edf7ef;
+  border-color: #b5d7c0;
+  color: #174b32;
+}
+.sphere-public .app-page-product .product-otc-notice [data-slot="alert-description"] {
+  color: #24593e;
+}
+.sphere-public .app-page-product .product-warning-notice {
+  background: #fff7e5;
+  border-color: #e9c98a;
+  color: #623b14;
+}
 .sphere-catalog-heading {
   position: relative;
   padding: 38px !important;

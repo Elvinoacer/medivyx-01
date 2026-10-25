@@ -380,10 +380,10 @@ export function ProductView() {
                   </AlertDescription>
                 </Alert>
               ) : (
-                <Alert className="border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 [&>svg]:text-emerald-600">
+                <Alert className="product-otc-notice">
                   <CheckCircle2 className="h-4 w-4" />
-                  <AlertTitle>No prescription needed</AlertTitle>
-                  <AlertDescription className="text-emerald-800 dark:text-emerald-300">
+                  <AlertTitle className="font-semibold">No prescription needed</AlertTitle>
+                  <AlertDescription>
                     This is an over-the-counter product — order straight away and pay by M-Pesa, card or cash.
                   </AlertDescription>
                 </Alert>
@@ -403,11 +403,11 @@ export function ProductView() {
             ) : null}
 
             {product.warnings ? (
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-800 dark:bg-amber-950/30">
-                <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+              <div className="product-warning-notice mt-4 rounded-xl border p-4">
+                <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide">
                   <TriangleAlert className="h-3.5 w-3.5" aria-hidden /> Warnings & precautions
                 </h2>
-                <p className="mt-1.5 text-sm leading-relaxed text-amber-900 dark:text-amber-200">{product.warnings}</p>
+                <p className="mt-1.5 text-sm leading-relaxed">{product.warnings}</p>
               </div>
             ) : null}
 
