@@ -406,6 +406,20 @@ export interface ServiceBookingDTO {
   statusHistory: { id: string; status: string; note?: string | null; actor: string; createdAt: string }[]
 }
 
+export interface AdminServiceBookingOverviewDTO {
+  pendingCount: number
+  upcomingCount: number
+  pendingPreview: {
+    id: string
+    reference: string
+    scheduledStart: string
+    serviceName: string
+    customerName: string | null
+  }[]
+  nextBooking: { scheduledStart: string; serviceName: string } | null
+  nextBookedDate: string | null
+}
+
 export interface ServiceAvailabilityResponse {
   service: ServiceDTO
   availability: ServiceAvailabilityDTO[]

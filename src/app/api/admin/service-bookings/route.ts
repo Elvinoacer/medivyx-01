@@ -12,21 +12,84 @@ function localMinutes(value: string) {
   return h * 60 + m
 }
 
+// Service bookings use Nairobi calendar days, regardless of the server's time zone.
+function nairobiDate(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Nairobi", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(value)
+  const part = (type: string) => parts.find((item) => item.type === type)?.value || ""
+  return [part("year"), part("month"), part("day")].join("-")
+}
+
+function dayBounds(date: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null
+  const check = new Date(date + "T12:00:00Z")
+  if (Number.isNaN(check.getTime()) || check.toISOString().slice(0, 10) !== date) return null
+  const start = new Date(date + "T00:00:00+03:00")
+  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) }
+}
+
+const activeBookingStatuses = ["PENDING", "CONFIRMED", "RESCHEDULED", "ARRIVED", "IN_PROGRESS"]
+
 export async function GET(request: Request) {
   const session = await getSession()
   if (!can(session)) return NextResponse.json({ error: "Staff access required." }, { status: 403 })
 
   const url = new URL(request.url)
   const date = url.searchParams.get("date")
-  const where: any = {}
+  const bounds = date ? dayBounds(date) : null
+  if (date && !bounds) return NextResponse.json({ error: "Invalid appointment date." }, { status: 400 })
 
-  if (date) {
-    const start = new Date(date + "T00:00:00")
-    const end = new Date(date + "T23:59:59.999")
-    if (!Number.isNaN(start.getTime())) {
-      where.scheduledStart = { gte: start, lte: end }
-    }
+  if (url.searchParams.get("scope") === "overview") {
+    const today = dayBounds(nairobiDate(new Date()))!
+    const selectedDay = bounds || today
+    const nextDayStart = new Date(Math.max(selectedDay.end.getTime(), today.start.getTime()))
+    const [pendingCount, upcomingCount, pendingPreview, nextBooking, nextBookedDay] = await Promise.all([
+      db.serviceBooking.count({ where: { status: "PENDING" } }),
+      db.serviceBooking.count({
+        where: { scheduledStart: { gte: today.start }, status: { in: activeBookingStatuses } },
+      }),
+      db.serviceBooking.findMany({
+        where: { status: "PENDING" },
+        orderBy: { scheduledStart: "asc" },
+        take: 4,
+        select: {
+          id: true, reference: true, scheduledStart: true,
+          service: { select: { name: true } },
+          user: { select: { name: true } },
+        },
+      }),
+      db.serviceBooking.findFirst({
+        where: { scheduledStart: { gte: today.start }, status: { in: activeBookingStatuses } },
+        orderBy: { scheduledStart: "asc" },
+        select: { scheduledStart: true, service: { select: { name: true } } },
+      }),
+      db.serviceBooking.findFirst({
+        where: { scheduledStart: { gte: nextDayStart }, status: { in: activeBookingStatuses } },
+        orderBy: { scheduledStart: "asc" },
+        select: { scheduledStart: true },
+      }),
+    ])
+
+    return NextResponse.json({
+      pendingCount,
+      upcomingCount,
+      pendingPreview: pendingPreview.map((booking) => ({
+        id: booking.id,
+        reference: booking.reference,
+        scheduledStart: booking.scheduledStart.toISOString(),
+        serviceName: booking.service.name,
+        customerName: booking.user.name,
+      })),
+      nextBooking: nextBooking ? {
+        scheduledStart: nextBooking.scheduledStart.toISOString(),
+        serviceName: nextBooking.service.name,
+      } : null,
+      nextBookedDate: nextBookedDay ? nairobiDate(nextBookedDay.scheduledStart) : null,
+    }, { headers: { "Cache-Control": "no-store" } })
   }
+
+  const where = bounds ? { scheduledStart: { gte: bounds.start, lt: bounds.end } } : {}
 
   const list = await db.serviceBooking.findMany({
     where,
