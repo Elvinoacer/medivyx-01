@@ -454,6 +454,8 @@ export const serviceStaffApi = { list: () => req<import("./types").StaffDTO[]>("
 export const adminServiceBookingsApi = {
   list: (date?: string) =>
     req<import("./types").ServiceBookingDTO[]>(`/api/admin/service-bookings${date ? `?date=${encodeURIComponent(date)}` : ""}`),
+  overview: (date: string) =>
+    req<import("./types").AdminServiceBookingOverviewDTO>(`/api/admin/service-bookings?scope=overview&date=${encodeURIComponent(date)}`),
   reschedule: (id: string, scheduledStart: string, scheduledEnd: string) => req<{ok:boolean;status:string}>("/api/admin/service-bookings", { method: "PATCH", body: JSON.stringify({ id, scheduledStart, scheduledEnd }) }),
   updateStatus: (id: string, status: string, note?: string, staffNotes?: string) =>
     req<{ ok: boolean; status: string }>("/api/admin/service-bookings", { method: "PATCH", body: JSON.stringify({ id, status, note, staffNotes }) }),
