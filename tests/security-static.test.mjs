@@ -128,3 +128,16 @@ test("notification integration tests report real provider outcomes", () => {
   assert.match(settings, /res\.ok && data\.ok/)
   assert.match(settings, /data\.message \|\| data\.error/)
 })
+
+test("catalog desktop sidebar is independently scrollable and reveals filters without scrolling to catalogue end", () => {
+  const catalog = read("src/components/views/catalog-view.tsx")
+  assert.doesNotMatch(catalog, /Card className="sticky top-36/)
+  assert.match(catalog, /sticky top-6/)
+  assert.match(catalog, /max-h-\[calc\(100dvh-2\.5rem\)\]/)
+  assert.match(catalog, /overflow-y-auto overscroll-contain/)
+  assert.match(catalog, /scroll-slim/)
+  assert.match(catalog, /Prescription filter/)
+  assert.match(catalog, /Filter by availability/)
+  assert.match(catalog, /Sort products/)
+  assert.match(catalog, /aria-expanded=\{categoriesOpen\}/)
+})

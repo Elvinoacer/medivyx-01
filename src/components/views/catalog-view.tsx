@@ -48,8 +48,8 @@ const SORT_OPTIONS: { value: CatalogFilters["sort"]; label: string }[] = [
 ]
 
 const RX_OPTIONS: { value: CatalogFilters["rx"]; label: string }[] = [
-  { value: "any", label: "All items" },
-  { value: "yes", label: "Prescription only" },
+  { value: "any", label: "All" },
+  { value: "yes", label: "Rx only" },
   { value: "no", label: "OTC only" },
 ]
 
@@ -70,6 +70,7 @@ export function CatalogView() {
   // local search input override (null = show the committed filters.search)
   const [override, setOverride] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [categoriesOpen, setCategoriesOpen] = useState(true)
   const [reloadNonce, setReloadNonce] = useState(0)
   const effectiveSearch = override ?? filters.search
 
@@ -216,76 +217,21 @@ export function CatalogView() {
 
   // ---------- filter panel (shared by sidebar & mobile sheet) ----------
   const filterPanel = (
-    <div className="space-y-6">
-      {/* categories */}
-      <div>
-        <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-          <ChevronDown className="h-3.5 w-3.5 -rotate-90" aria-hidden /> Categories
-        </h3>
-        {categoriesError ? (
-          <p className="text-xs text-muted-foreground">{categoriesError} — filters still work.</p>
-        ) : !categories ? (
-          <div className="space-y-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-8 w-full" />
-            ))}
-          </div>
-        ) : (
-          <ul className="scroll-slim max-h-72 space-y-1 overflow-y-auto pr-1">
-            <li>
-              <button
-                onClick={() => pickCategory(null)}
-                className={cn(
-                  "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                  !filters.category ? "bg-primary/10 font-semibold text-primary" : "hover:bg-accent/60"
-                )}
-              >
-                All products
-                <span className="text-xs text-muted-foreground">{total > 0 ? total : ""}</span>
-              </button>
-            </li>
-            {categories.map((c) => (
-              <li key={c.id}>
-                <button
-                  onClick={() => pickCategory(c.id)}
-                  className={cn(
-                    "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                    filters.category === c.id ? "bg-primary/10 font-semibold text-primary" : "hover:bg-accent/60"
-                  )}
-                  aria-pressed={filters.category === c.id}
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <ProductImage
-                      src={c.icon}
-                      alt=""
-                      className="h-6 w-6 shrink-0 rounded-md border bg-muted"
-                      fallback="/images/cat-fallback.webp"
-                    />
-                    <span className="truncate">{c.name}</span>
-                  </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{c.productCount}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <Separator />
-
+    <div className="space-y-4">
       {/* rx filter */}
       <div>
-        <h3 className="mb-2.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Prescription</h3>
+        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Prescription</h3>
         <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1" role="radiogroup" aria-label="Prescription filter">
           {RX_OPTIONS.map((opt) => (
             <button
               key={opt.value}
+              type="button"
               role="radio"
               aria-checked={filters.rx === opt.value}
               onClick={() => setCatalogFilters({ rx: opt.value })}
               className={cn(
-                "rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
-                filters.rx === opt.value ? "bg-background shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"
+                "rounded-md px-1.5 py-1.5 text-xs font-medium transition-colors text-center truncate",
+                filters.rx === opt.value ? "bg-background shadow-sm text-primary font-semibold" : "text-muted-foreground hover:text-foreground"
               )}
             >
               {opt.label}
@@ -296,15 +242,15 @@ export function CatalogView() {
 
       {/* availability */}
       <div>
-        <h3 className="mb-2.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Availability</h3>
+        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Availability</h3>
         <Select
           value={filters.availability}
           onValueChange={(v) => setCatalogFilters({ availability: v as CatalogFilters["availability"] })}
         >
-          <SelectTrigger className="w-full" aria-label="Filter by availability">
+          <SelectTrigger className="w-full h-9 bg-background/80" aria-label="Filter by availability">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="z-[100]">
             {AVAILABILITY_OPTIONS.map((o) => (
               <SelectItem key={o.value} value={o.value}>
                 {o.label}
@@ -316,12 +262,12 @@ export function CatalogView() {
 
       {/* sort */}
       <div>
-        <h3 className="mb-2.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Sort by</h3>
+        <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Sort by</h3>
         <Select value={filters.sort} onValueChange={(v) => setCatalogFilters({ sort: v as CatalogFilters["sort"] })}>
-          <SelectTrigger className="w-full" aria-label="Sort products">
+          <SelectTrigger className="w-full h-9 bg-background/80" aria-label="Sort products">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="z-[100]">
             {SORT_OPTIONS.map((o) => (
               <SelectItem key={o.value} value={o.value}>
                 {o.label}
@@ -331,9 +277,90 @@ export function CatalogView() {
         </Select>
       </div>
 
+      <Separator className="my-1" />
+
+      {/* categories */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setCategoriesOpen((open) => !open)}
+          className="mb-2 flex w-full items-center justify-between text-xs font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors group"
+          aria-expanded={categoriesOpen}
+        >
+          <span className="flex items-center gap-1.5">
+            <ChevronDown
+              className={cn(
+                "h-3.5 w-3.5 transition-transform duration-200 text-muted-foreground group-hover:text-foreground",
+                categoriesOpen ? "rotate-0" : "-rotate-90"
+              )}
+              aria-hidden
+            />
+            Categories
+          </span>
+          {activeCategory ? (
+            <span className="truncate max-w-[110px] rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+              {activeCategory.name}
+            </span>
+          ) : (
+            <span className="text-[11px] font-normal text-muted-foreground">All ({total})</span>
+          )}
+        </button>
+        {categoriesOpen ? (
+          categoriesError ? (
+            <p className="text-xs text-muted-foreground">{categoriesError} — filters still work.</p>
+          ) : !categories ? (
+            <div className="space-y-1.5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-7 w-full rounded-md" />
+              ))}
+            </div>
+          ) : (
+            <ul className="space-y-0.5 pr-0.5">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => pickCategory(null)}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
+                    !filters.category ? "bg-primary/10 font-semibold text-primary" : "hover:bg-accent/60 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <span>All products</span>
+                  <span className="text-[11px] text-muted-foreground font-medium">{total > 0 ? total : ""}</span>
+                </button>
+              </li>
+              {categories.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => pickCategory(c.id)}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
+                      filters.category === c.id ? "bg-primary/10 font-semibold text-primary" : "hover:bg-accent/60 text-muted-foreground hover:text-foreground"
+                    )}
+                    aria-pressed={filters.category === c.id}
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <ProductImage
+                        src={c.icon}
+                        alt=""
+                        className="h-5 w-5 shrink-0 rounded border bg-muted"
+                        fallback="/images/cat-fallback.webp"
+                      />
+                      <span className="truncate">{c.name}</span>
+                    </span>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">{c.productCount}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : null}
+      </div>
+
       {hasActiveFilters ? (
-        <Button variant="outline" className="w-full gap-1.5" onClick={clearAll}>
-          <X className="h-4 w-4" /> Clear all filters
+        <Button variant="outline" size="sm" className="w-full gap-1.5 h-8 text-xs font-semibold" onClick={clearAll}>
+          <X className="h-3.5 w-3.5" /> Clear all filters
         </Button>
       ) : null}
     </div>
@@ -403,12 +430,23 @@ export function CatalogView() {
                 {hasActiveFilters ? <Badge className="ml-0.5 h-5 min-w-5 rounded-full px-1 text-[11px] font-bold">!</Badge> : null}
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-80 overflow-y-auto p-0">
-              <SheetHeader className="border-b p-4">
-                <SheetTitle className="text-base">Filters & sorting</SheetTitle>
+            <SheetContent side="left" className="flex flex-col w-80 p-0">
+              <SheetHeader className="border-b p-4 shrink-0">
+                <div className="flex items-center justify-between pr-6">
+                  <SheetTitle className="text-base flex items-center gap-2 font-bold">
+                    <SlidersHorizontal className="h-4 w-4 text-primary" /> Filters & sorting
+                  </SheetTitle>
+                  {hasActiveFilters ? (
+                    <Button variant="ghost" size="sm" onClick={clearAll} className="h-7 px-2 text-xs font-semibold">
+                      Reset
+                    </Button>
+                  ) : null}
+                </div>
                 <SheetDescription className="sr-only">Narrow down the product catalogue</SheetDescription>
               </SheetHeader>
-              <div className="p-4">{filterPanel}</div>
+              <div className="scroll-slim min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+                {filterPanel}
+              </div>
             </SheetContent>
           </Sheet>
         </div>
@@ -440,9 +478,35 @@ export function CatalogView() {
 
       <div className="mx-auto flex max-w-7xl gap-6 px-4 pt-2">
         {/* sidebar (desktop) */}
-        <aside className="hidden w-64 shrink-0 lg:block" aria-label="Product filters">
-          <Card className="sticky top-36 rounded-2xl border-border/70 shadow-sm">
-            <CardContent className="p-5">{filterPanel}</CardContent>
+        <aside className="hidden w-64 shrink-0 lg:block xl:w-72" aria-label="Product filters">
+          <Card className="sticky top-6 flex max-h-[calc(100dvh-2.5rem)] flex-col gap-0 rounded-2xl border-border/70 p-0 shadow-sm overflow-hidden bg-card/95 backdrop-blur-sm">
+            {/* sticky card header */}
+            <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 shrink-0 bg-card/80 backdrop-blur-sm">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4 text-primary" aria-hidden />
+                <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Filters & Sorting</h2>
+                {hasActiveFilters ? (
+                  <Badge variant="secondary" className="h-4.5 rounded-full px-1.5 text-[10px] font-bold">
+                    Active
+                  </Badge>
+                ) : null}
+              </div>
+              {hasActiveFilters ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAll}
+                  className="h-6 px-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
+                >
+                  Reset
+                </Button>
+              ) : null}
+            </div>
+
+            {/* scrollable filter body */}
+            <div className="scroll-slim min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+              {filterPanel}
+            </div>
           </Card>
         </aside>
 
