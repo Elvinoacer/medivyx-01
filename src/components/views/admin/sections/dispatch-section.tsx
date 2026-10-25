@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
+import { EmptyState } from "@/components/shared/empty-state"
 import { OrderStatusBadge } from "@/components/shared/status-badges"
 import { adminApi, ordersApi, paymentsApi } from "@/lib/api-client"
 import type { OrderDTO, StaffDTO } from "@/lib/types"
@@ -20,7 +20,7 @@ import { PAYMENT_METHOD_LABELS, type OrderStatus } from "@/lib/constants"
 import { formatKES, shortRef, statusLabel, timeAgo } from "@/lib/format"
 import { useAuthStore } from "@/store/use-auth-store"
 import { toast } from "sonner"
-import { apiErrorMessage, SectionError, telHref, waHref, type SectionProps } from "../admin-shared"
+import { AdminSectionHeader, apiErrorMessage, SectionError, telHref, waHref, type SectionProps } from "../admin-shared"
 import {
   Bike, CheckCircle2, Loader2, MapPin, MessageCircle, Navigation, Package, Phone, Truck, User,
   Banknote, Smartphone, Wallet,
@@ -196,7 +196,7 @@ export function DispatchSection({ refreshKey, onRefresh }: SectionProps) {
 
     return (
       <div className="space-y-4">
-        <SectionHeader
+        <AdminSectionHeader
           title="My deliveries"
           subtitle="Your assigned drop-offs — contact the customer, start the run and confirm delivery."
         />
@@ -290,7 +290,7 @@ export function DispatchSection({ refreshKey, onRefresh }: SectionProps) {
 
   return (
     <div className="space-y-4">
-      <SectionHeader
+      <AdminSectionHeader
         title="Dispatch board"
         subtitle="Delivery orders waiting for riders — assign, track and confirm drop-offs."
       />

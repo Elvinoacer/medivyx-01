@@ -18,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
-import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
+import { EmptyState } from "@/components/shared/empty-state"
 import { ProductImage } from "@/components/shared/product-image"
 import { StockStatusBadge } from "@/components/shared/status-badges"
 import { adminApi, catalogApi, storageApi } from "@/lib/api-client"
@@ -27,9 +27,10 @@ import { PRODUCT_IMAGE_LIBRARY, type LibraryImage } from "@/lib/image-library"
 import { FALLBACK_PRODUCT_IMAGE, productImageSrc, sanitizeImageInput } from "@/lib/image"
 import { STOCK_LABELS, STOCK_STATUSES, type StockStatus } from "@/lib/constants"
 import { formatKES } from "@/lib/format"
+import { useAppStore } from "@/store/use-app-store"
 import { useAuthStore } from "@/store/use-auth-store"
 import { toast } from "sonner"
-import { apiErrorMessage, downloadCsv, useDebounced, type SectionProps } from "../admin-shared"
+import { AdminSectionHeader, apiErrorMessage, downloadCsv, useDebounced, type SectionProps } from "../admin-shared"
 import {
   Search, Pill, Loader2, Plus, Minus, Upload, Download, FileUp, Trash2, Pencil, Package, Dices, Images, ImagePlus, Check, ArrowUpDown,
 } from "lucide-react"
@@ -81,7 +82,7 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
   const [searchInput, setSearchInput] = useState("")
   const search = useDebounced(searchInput.trim(), 300)
   const [categoryFilter, setCategoryFilter] = useState("ALL")
-  const [stockFilter, setStockFilter] = useState("ANY")
+  const [stockFilter, setStockFilter] = useState(() => { const value = useAppStore.getState().params.stock; return value && STOCK_STATUSES.includes(value as StockStatus) ? value : "ANY" })
   const [sortBy, setSortBy] = useState<CatalogueSort>("NAME_ASC")
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
@@ -185,7 +186,7 @@ export function CatalogueSection({ refreshKey, onRefresh }: SectionProps) {
 
   return (
     <div className="space-y-4">
-      <SectionHeader
+      <AdminSectionHeader
         title="Catalogue"
         subtitle="Products, pricing and stock. Changes appear on the storefront immediately."
         action={

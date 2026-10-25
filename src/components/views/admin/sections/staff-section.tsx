@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
+import { EmptyState } from "@/components/shared/empty-state"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { adminApi } from "@/lib/api-client"
 import type { StaffDTO } from "@/lib/types"
@@ -24,7 +24,7 @@ import { ROLES, ROLE_LABELS, type Role } from "@/lib/constants"
 import { formatDate, initials } from "@/lib/format"
 import { useAuthStore } from "@/store/use-auth-store"
 import { toast } from "sonner"
-import { apiErrorMessage, type SectionProps } from "../admin-shared"
+import { AdminSectionHeader, apiErrorMessage, type SectionProps } from "../admin-shared"
 import { Users, Loader2, Plus, Pencil, Trash2, Dices, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -99,7 +99,7 @@ export function StaffSection({ refreshKey, onRefresh }: SectionProps) {
 
   return (
     <div className="space-y-4">
-      <SectionHeader
+      <AdminSectionHeader
         title="Staff & access"
         subtitle="Team members, roles and sign-in status. Staff sign in with email + password."
         action={

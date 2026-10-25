@@ -20,7 +20,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
+import { EmptyState } from "@/components/shared/empty-state"
 import { OrderStatusBadge, PaymentStatusBadge, RxFlagBadge, RxStatusBadge } from "@/components/shared/status-badges"
 import { ordersApi, adminApi, paymentsApi } from "@/lib/api-client"
 import type { OrderDTO, PaymentDTO, StaffDTO } from "@/lib/types"
@@ -29,9 +29,10 @@ import {
   PAYMENT_METHOD_LABELS, TERMINAL_STATUSES, type OrderStatus, type OrderType, type Role,
 } from "@/lib/constants"
 import { formatDateTime, formatKES, shortRef, statusLabel, timeAgo } from "@/lib/format"
+import { useAppStore } from "@/store/use-app-store"
 import { useAuthStore } from "@/store/use-auth-store"
 import { toast } from "sonner"
-import { apiErrorMessage, telHref, useDebounced, waHref, type SectionProps } from "../admin-shared"
+import { AdminSectionHeader, KpiCard, apiErrorMessage, telHref, useDebounced, waHref, type SectionProps } from "../admin-shared"
 import {
   Search, Package, Loader2, Truck, Store, Phone, MessageCircle, ChevronRight, Ban,
   Banknote, Smartphone, CreditCard, ClipboardList, Wallet, Clock, CheckCircle2, User, X,
@@ -116,10 +117,10 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
   const [searchInput, setSearchInput] = useState("")
   const search = useDebounced(searchInput.trim(), 300)
 
-  const [statusFilter, setStatusFilter] = useState<string>("ALL")
+  const [statusFilter, setStatusFilter] = useState<string>(() => { const value = useAppStore.getState().params.status; return value && [...ACTIVE_STATUSES, ...TERMINAL_STATUSES].includes(value as OrderStatus) ? value : "ALL" })
   const [typeFilter, setTypeFilter] = useState<string>("ALL")
   const [range, setRange] = useState<RangeKey>("all")
-  const [tab, setTab] = useState<"queue" | "all">("queue")
+  const [tab, setTab] = useState<"queue" | "all">(() => TERMINAL_STATUSES.includes(useAppStore.getState().params.status as OrderStatus) ? "all" : "queue")
 
   const [selected, setSelected] = useState<OrderDTO | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -227,35 +228,14 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
 
   return (
     <div className="space-y-4">
-      <SectionHeader
+      <AdminSectionHeader
         title="Orders"
         subtitle={isRider ? "Your delivery queue — dispatch and confirm drop-offs." : "Process the queue — review, confirm, take payment and dispatch."}
       />
 
       {/* KPI queue snapshot */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        {queueKpis.map((kpi) => (
-          <Card key={kpi.label}>
-            <CardContent className="flex items-center gap-3 p-4">
-              <span
-                className={cn(
-                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                  kpi.tone === "amber"
-                    ? "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
-                    : kpi.tone === "teal"
-                      ? "bg-teal-100 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300"
-                      : "bg-muted text-muted-foreground"
-                )}
-              >
-                <kpi.icon className="h-4 w-4" aria-hidden />
-              </span>
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-muted-foreground">{kpi.label}</p>
-                <p className="text-xl font-bold tabular-nums">{kpi.value}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {queueKpis.map((kpi) => <KpiCard key={kpi.label} label={kpi.label} value={loading ? "—" : kpi.value} icon={kpi.icon} tone={kpi.tone} hint="In the active order queue" />)}
       </div>
 
       {/* filter bar */}
@@ -437,7 +417,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                         <TableCell className="text-right font-semibold tabular-nums">{formatKES(order.total)}</TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">{timeAgo(order.createdAt)}</TableCell>
                         <TableCell>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
+                          <Button variant="ghost" size="icon" aria-label={`View order ${shortRef(order.reference)}`} onClick={(event) => { event.stopPropagation(); openDetail(order) }}><ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden /></Button>
                         </TableCell>
                       </TableRow>
                     )
@@ -452,7 +432,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
             {visible.map((order) => {
               const pay = latestPayment(order)
               return (
-                <Card key={order.id} className="card-lift cursor-pointer" onClick={() => openDetail(order)}>
+                <Card key={order.id} className="card-lift cursor-pointer" role="button" tabIndex={0} aria-label={`View order ${shortRef(order.reference)} for ${order.customerName ?? "Guest"}`} onClick={() => openDetail(order)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDetail(order) } }}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-bold">{shortRef(order.reference)}</p>

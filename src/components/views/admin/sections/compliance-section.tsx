@@ -15,13 +15,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
-import { SectionHeader } from "@/components/shared/empty-state"
 import { adminApi, settingsApi } from "@/lib/api-client"
 import type { AuditLogDTO, ComplianceInfo } from "@/lib/types"
 import { formatDate, formatDateTime, timeAgo } from "@/lib/format"
 import { useAuthStore } from "@/store/use-auth-store"
 import { toast } from "sonner"
-import { apiErrorMessage, SectionError, type SectionProps } from "../admin-shared"
+import { AdminSectionHeader, apiErrorMessage, SectionError, type SectionProps } from "../admin-shared"
 import { ShieldCheck, CalendarClock, UserCog, Save, Loader2, Info, FileText, TriangleAlert } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -141,7 +140,7 @@ export function ComplianceSection({ refreshKey, onRefresh }: SectionProps) {
 
   return (
     <div className="space-y-4">
-      <SectionHeader
+      <AdminSectionHeader
         title="Compliance"
         subtitle="PPB licence record and superintendent pharmacist details. Licence info is only published once verified."
       />

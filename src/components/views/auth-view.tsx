@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp"
+import { AdminAccessFrame } from "@/components/views/admin/admin-access"
 import { LogoMark } from "@/components/shared/logo"
 import { useAppStore, type AuthMode } from "@/store/use-app-store"
 import { useAuthStore } from "@/store/use-auth-store"
@@ -213,6 +214,29 @@ export function AuthView() {
     </div>
   )
 
+  if (authMode === "staff") {
+    return (
+      <AdminAccessFrame>
+        <div className="admin-signin">
+          <p className="admin-eyebrow">WELCOME BACK</p>
+          <h2>Your team. Your workspace.</h2>
+          <p className="admin-signin-description">Sign in to manage your pharmacy and make room for better care.</p>
+          {authMessage ? <Alert className="mt-5"><Info className="h-4 w-4" /><AlertDescription>{authMessage}</AlertDescription></Alert> : null}
+          {error ? <Alert variant="destructive" className="mt-5" role="alert"><TriangleAlert className="h-4 w-4" /><AlertTitle>Couldn&apos;t sign you in</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
+          <form onSubmit={handleStaffLogin} className="mt-7" noValidate>
+            <fieldset disabled={loading} className="space-y-5">
+              <div className="space-y-2"><Label htmlFor="staff-email">Staff email address</Label><div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input id="staff-email" type="email" value={staffEmail} onChange={(event) => setStaffEmail(event.target.value)} placeholder="you@spherepharmacy.co.ke" autoComplete="username" className="pl-9" required /></div></div>
+              {passwordInput({ id: "staff-password", value: staffPassword, onChange: setStaffPassword, label: "Password" })}
+              <Button type="submit" className="h-11 w-full" disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}{loading ? "Opening your workspace…" : "Sign in to workspace"}<ArrowRight className="ml-auto h-4 w-4" aria-hidden /></Button>
+            </fieldset>
+          </form>
+          <p className="mt-5 text-xs leading-relaxed text-muted-foreground">Need an account or a password reset? Your pharmacy administrator can help.</p>
+          <div className="admin-signin-links"><button onClick={() => navigate("home")}>Back to storefront</button><button onClick={() => { clearAuthIntent(); navigate("auth", { mode: "login" }); setError(null) }}>Customer sign-in <ArrowRight className="h-3 w-3" aria-hidden /></button></div>
+        </div>
+      </AdminAccessFrame>
+    )
+  }
+
   return (
     <div className="app-page app-page-auth gradient-hero min-h-[calc(100vh-8rem)] px-4 py-10">
 
@@ -223,12 +247,10 @@ export function AuthView() {
             <LogoMark size={30} className="text-primary-foreground" />
           </span>
           <h1 className="text-2xl font-extrabold tracking-tight">
-            {authMode === "staff" ? "Staff sign-in" : "Welcome to Sphere Pharmacy"}
+            Welcome to Sphere Pharmacy
           </h1>
           <p className="text-sm text-muted-foreground">
-            {authMode === "staff"
-              ? "Internal access — orders, prescriptions and inventory."
-              : "Order medicines, track prescriptions and keep your history in one place."}
+            Order medicines, track prescriptions and keep your history in one place.
           </p>
         </div>
 
@@ -438,31 +460,7 @@ export function AuthView() {
                 )}
               </TabsContent>
 
-              {/* ---------------- STAFF ---------------- */}
-              <TabsContent value="staff" className="mt-5">
-                <form onSubmit={handleStaffLogin} className="space-y-4" noValidate>
-                  <div className="space-y-2">
-                    <Label htmlFor="staff-email">Staff email</Label>
-                    <div className="relative">
-                      <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-                      <Input
-                        id="staff-email"
-                        type="email"
-                        value={staffEmail}
-                        onChange={(e) => setStaffEmail(e.target.value)}
-                        placeholder="pharmacist@spherepharmacy.co.ke"
-                        className="pl-9"
-                        autoComplete="username"
-                      />
-                    </div>
-                  </div>
-                  {passwordInput({ id: "staff-password", value: staffPassword, onChange: setStaffPassword, label: "Password" })}
-                  <Button type="submit" size="lg" className="h-12 w-full gap-2 rounded-full text-base" disabled={loading}>
-                    {loading ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Stethoscope className="h-5 w-5" aria-hidden />}
-                    {loading ? "Signing in…" : "Sign in to dashboard"}
-                  </Button>
-                </form>
-              </TabsContent>
+
             </Tabs>
 
             <div className="mt-6 border-t pt-5 text-center">

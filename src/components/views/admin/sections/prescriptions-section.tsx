@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
+import { EmptyState } from "@/components/shared/empty-state"
 import { RxStatusBadge } from "@/components/shared/status-badges"
 import { ordersApi, prescriptionsApi } from "@/lib/api-client"
 import type { OrderDTO, PrescriptionDTO } from "@/lib/types"
@@ -26,7 +26,7 @@ import { RX_STATUS_LABELS, RX_STATUSES, type RxStatus } from "@/lib/constants"
 import { formatDate, formatDateTime, formatKES, timeAgo } from "@/lib/format"
 import { useAuthStore } from "@/store/use-auth-store"
 import { toast } from "sonner"
-import { apiErrorMessage, telHref, waHref, type SectionProps } from "../admin-shared"
+import { AdminSectionHeader, apiErrorMessage, telHref, waHref, type SectionProps } from "../admin-shared"
 import {
   ShieldAlert, Loader2, FileText, Download, Phone, MessageCircle, Eye,
   CheckCircle2, XCircle, HelpCircle, ListChecks, History, Clock,
@@ -94,7 +94,7 @@ export function PrescriptionsSection({ refreshKey, onRefresh }: SectionProps) {
 
   return (
     <div className="space-y-4">
-      <SectionHeader
+      <AdminSectionHeader
         title="Prescription review"
         subtitle="Verify uploaded prescriptions before dispensing — approvals, rejections and refill counts are audit-logged."
       />

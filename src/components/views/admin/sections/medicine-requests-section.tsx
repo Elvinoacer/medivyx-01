@@ -15,7 +15,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { medicineRequestsApi } from "@/lib/api-client"
 import { MEDICINE_REQUEST_LABELS, MEDICINE_REQUEST_STATUSES, type MedicineRequestDTO, type MedicineRequestStatus, type MedicineRequestsResponse } from "@/lib/medicine-requests"
 import { formatDateTime } from "@/lib/format"
-import { apiErrorMessage, SectionError, useDebounced, type SectionProps } from "../admin-shared"
+import { AdminSectionHeader, apiErrorMessage, SectionError, useDebounced, type SectionProps } from "../admin-shared"
 
 export function MedicineRequestsSection({ refreshKey }: SectionProps) {
   const [data, setData] = useState<MedicineRequestsResponse | null>(null)
@@ -40,6 +40,7 @@ export function MedicineRequestsSection({ refreshKey }: SectionProps) {
 
   return (
     <div className="space-y-4">
+      <AdminSectionHeader title="Medicine requests" subtitle="Help patients find what they need. Review requests, check availability and keep the conversation moving." />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Input value={search} maxLength={200} placeholder="Search medicine or phone number" aria-label="Search medicine requests" onChange={(event) => { setSearch(event.target.value); setPage(1) }} className="sm:max-w-sm" />
         <Select value={status} onValueChange={(value) => { setStatus(value as typeof status); setPage(1) }}>

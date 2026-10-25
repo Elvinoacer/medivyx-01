@@ -5,17 +5,18 @@
 // Section data refreshes via a refreshKey counter so actions in one section can
 // trigger refetches in others (e.g. prescription review → orders + overview).
 
-import { useEffect, useState } from "react"
-import { Badge } from "@/components/ui/badge"
+import { useEffect, useRef, useState } from "react"
+import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { EmptyState } from "@/components/shared/empty-state"
-import { LogoFull } from "@/components/shared/logo"
-import { ROLE_LABELS, PHARMACY, type Role } from "@/lib/constants"
+import { AdminAccessFrame } from "./admin-access"
+import { ROLE_LABELS, type Role } from "@/lib/constants"
 import { initials, isOpenNow } from "@/lib/format"
 import { useAppStore } from "@/store/use-app-store"
 import { useAuthStore } from "@/store/use-auth-store"
@@ -24,7 +25,8 @@ import { toast } from "sonner"
 import {
   LayoutDashboard, Package, ClipboardList, Pill, Megaphone, Users, BarChart3,
   ShieldCheck, Settings, LogOut, Lock, Store, Menu, Loader2, RefreshCw, Bike, MessageSquareText,
-  Bell, BellRing, BriefcaseMedical, CalendarDays,
+  Bell, BellRing, BriefcaseMedical, CalendarDays, ArrowUpRight, ChevronRight, Search,
+  Plus, Moon, Sun,
 } from "lucide-react"
 import { enablePushNotifications, getPushPermissionState } from "@/lib/firebase/client"
 import type { LucideIcon } from "lucide-react"
@@ -130,12 +132,12 @@ function navItem(key: AdminSectionKey): NavItem | undefined {
   return NAV.find((n) => n.key === key)
 }
 
-const roleBadgeClass: Record<Role, string> = {
-  ADMIN: "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800",
-  PHARMACIST: "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800",
-  STAFF: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800",
-  RIDER: "bg-lime-100 text-lime-800 border-lime-200 dark:bg-lime-950/60 dark:text-lime-300 dark:border-lime-800",
-}
+const NAV_GROUPS = [
+  { label: "Workspace", keys: ["overview", "orders", "dispatch"] },
+  { label: "Patient care", keys: ["prescriptions", "medicine-requests", "service-bookings", "services"] },
+  { label: "Business", keys: ["catalogue", "promotions", "reviews", "reports", "service-analytics"] },
+  { label: "Management", keys: ["staff", "compliance", "settings"] },
+]
 
 export function AdminView() {
   const session = useAuthStore((s) => s.session)
@@ -146,7 +148,13 @@ export function AdminView() {
   const navigate = useAppStore((s) => s.navigate)
   const routeSection = useAppStore((s) => s.params.section)
 
-  const [section, setSection] = useState<AdminSectionKey>(() => navItem(routeSection as AdminSectionKey) ? routeSection as AdminSectionKey : useAuthStore.getState().session?.role === "RIDER" ? "dispatch" : "overview")
+  const role = session?.role
+  const visibleNav = NAV.filter((item) => isStaffRole(role) && item.roles.includes(role))
+  const section = navItem(routeSection as AdminSectionKey)?.key ?? visibleNav[0]?.key ?? "overview"
+  const { resolvedTheme, setTheme } = useTheme()
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [dateLabel, setDateLabel] = useState("")
   const [refreshKey, setRefreshKey] = useState(0)
   const [navOpen, setNavOpen] = useState(false)
 
@@ -155,11 +163,19 @@ export function AdminView() {
 
   useEffect(() => {
     setPushStatus(getPushPermissionState())
+    setDateLabel(new Intl.DateTimeFormat("en-KE", { weekday: "short", day: "numeric", month: "short", timeZone: "Africa/Nairobi" }).format(new Date()))
   }, [])
 
   useEffect(() => {
-    if (navItem(routeSection as AdminSectionKey)) setSection(routeSection as AdminSectionKey)
-  }, [routeSection])
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k" && isStaffRole(role)) {
+        event.preventDefault()
+        setSearchOpen((open) => !open)
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [role])
 
   async function handleTogglePush() {
     setPushLoading(true)
@@ -193,7 +209,6 @@ export function AdminView() {
     )
   }
 
-  const role = session?.role
   if (!session || !isStaffRole(role)) {
     return (
       <>
@@ -208,19 +223,19 @@ export function AdminView() {
   }
 
   const staff = session.staff
-  const visibleNav = NAV.filter((n) => n.roles.includes(role))
   const active = navItem(section)
   const allowed = active ? active.roles.includes(role) : false
   const openNow = isOpenNow()
 
   const bumpRefresh = () => setRefreshKey((k) => k + 1)
 
-  function goTo(next: AdminSectionKey) {
+  function goTo(next: AdminSectionKey, filters: Record<string, string> = {}) {
     const item = navItem(next)
     if (item && item.roles.includes(role as Role)) {
-      setSection(next)
-      navigate("admin", { section: next })
+      navigate("admin", { ...filters, section: next })
       setNavOpen(false)
+      setSearchOpen(false)
+      requestAnimationFrame(() => contentRef.current?.focus({ preventScroll: true }))
     } else {
       toast.error("Your role doesn't have access to that section.")
     }
@@ -229,12 +244,10 @@ export function AdminView() {
   async function handleSignOut() {
     try {
       await logout()
+      navigate("admin")
       toast.success("Signed out of the staff dashboard.")
     } catch {
       toast.error("Sign out failed — please try again.")
-    } finally {
-      // reset the landing logic so the next sign-in auto-lands by role again
-      setSection("overview")
     }
   }
 
@@ -251,7 +264,7 @@ export function AdminView() {
           icon={Lock}
           title="Restricted section"
           description={`The ${active?.label ?? "requested"} section isn't available to ${ROLE_LABELS[role as Role]} accounts. Ask an admin if you need access.`}
-          action={{ label: "Back to Overview", onClick: () => setSection("overview") }}
+          action={{ label: `Go to ${visibleNav[0]?.label ?? "workspace"}`, onClick: () => goTo(visibleNav[0]?.key ?? "dispatch") }}
         />
       )
     }
@@ -290,211 +303,86 @@ export function AdminView() {
   }
 
   return (
-    <div className="app-page app-page-admin w-full">
-      <div className="mx-auto flex w-full max-w-7xl items-stretch">
-        {/* ---------- desktop sidebar ---------- */}
-        <aside className="admin-sidebar sticky top-0 hidden h-fit w-64 shrink-0 flex-col self-start border-r bg-muted/30 md:flex">
-          <SidebarNav
-            items={visibleNav}
-            section={section}
-            onSelect={goTo}
-            staffName={staff?.name ?? "Staff"}
-            staffRole={role as Role}
-            onSignOut={handleSignOut}
-          />
-        </aside>
+    <div className="app-page app-page-admin admin-workspace">
+      <aside className="admin-sidebar sticky top-0">
+        <SidebarNav items={visibleNav} section={section} onSelect={goTo} staffName={staff?.name ?? "Staff"} staffRole={role} onSignOut={handleSignOut} openNow={openNow} onStore={() => navigate("home")} />
+      </aside>
 
-        {/* ---------- main column ---------- */}
-        <div className="min-w-0 flex-1">
-          {/* top bar */}
-          <div className="admin-topbar flex min-h-14 flex-wrap items-center gap-2 border-b bg-background px-3 py-2 sm:px-5">
-            {/* mobile hamburger */}
-            <Sheet open={navOpen} onOpenChange={setNavOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="md:hidden" aria-label="Open admin menu">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0">
-                <SheetHeader className="border-b p-4">
-                  <SheetTitle>
-                    <LogoFull />
-                  </SheetTitle>
-                </SheetHeader>
-                <div className="flex h-[calc(100%-4.5rem)] flex-col">
-                  <SidebarNav
-                    items={visibleNav}
-                    section={section}
-                    onSelect={goTo}
-                    staffName={staff?.name ?? "Staff"}
-                    staffRole={role as Role}
-                    onSignOut={handleSignOut}
-                    inSheet
-                  />
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <h1 className="order-2 w-full text-base font-bold tracking-tight sm:order-1 sm:w-auto sm:text-lg">
-              {active?.title ?? "Dashboard"}
-            </h1>
-
-            <div className="order-3 ml-auto flex flex-wrap items-center gap-1.5">
-              <Button
-                variant={pushStatus === "granted" ? "ghost" : "outline"}
-                size="sm"
-                onClick={handleTogglePush}
-                disabled={pushLoading}
-                className={cn(
-                  "gap-1.5 text-xs font-medium",
-                  pushStatus === "granted" && "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-                )}
-                title={pushStatus === "granted" ? "Push alerts active on this device" : "Enable push alerts for orders and prescriptions"}
-              >
-                {pushLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : pushStatus === "granted" ? (
-                  <Bell className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                ) : (
-                  <BellRing className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
-                )}
-                <span className="hidden sm:inline">
-                  {pushStatus === "granted" ? "Push alerts active" : "Enable push alerts"}
-                </span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={bumpRefresh}
-                aria-label="Refresh section data"
-                title="Refresh section data"
-                className="h-9 w-9"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-
-              <span
-                className={cn(
-                  "hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium sm:inline-flex",
-                  openNow
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-                    : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-                )}
-              >
-                <span
-                  className={cn("pulse-dot h-1.5 w-1.5 rounded-full", openNow ? "bg-emerald-500" : "bg-amber-500")}
-                  aria-hidden
-                />
-                {openNow ? "Open now" : "Closed"} · {PHARMACY.hoursLabel.replace("Open daily · ", "")}
-              </span>
-
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate("home")}>
-                <Store className="h-4 w-4" />
-                <span className="hidden sm:inline">Back to store</span>
-                <span className="sm:hidden">Store</span>
-              </Button>
-
-              {staff ? (
-                <span className="flex items-center gap-2">
-                  <Avatar className="hidden h-8 w-8 sm:flex">
-                    <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
-                      {initials(staff.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden text-right leading-tight sm:block">
-                    <span className="block max-w-32 truncate text-xs font-semibold">{staff.name}</span>
-                    <Badge variant="outline" className={cn("mt-0.5 px-1.5 py-0 text-[10px]", roleBadgeClass[role as Role])}>
-                      {ROLE_LABELS[role as Role]}
-                    </Badge>
-                  </span>
-                </span>
-              ) : null}
-
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 text-muted-foreground hover:text-rose-600"
-                onClick={handleSignOut}
-                aria-label="Sign out of staff dashboard"
-                title="Sign out"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
+      <div className="admin-main">
+        <header className="admin-topbar">
+          <Sheet open={navOpen} onOpenChange={setNavOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="admin-menu-toggle" aria-label="Open admin menu"><Menu className="h-5 w-5" /></Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="admin-mobile-sidebar w-72 gap-0 p-0">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Workspace navigation</SheetTitle>
+                <SheetDescription>Navigate your pharmacy workspace.</SheetDescription>
+              </SheetHeader>
+              <SidebarNav items={visibleNav} section={section} onSelect={goTo} staffName={staff?.name ?? "Staff"} staffRole={role} onSignOut={handleSignOut} openNow={openNow} onStore={() => navigate("home")} />
+            </SheetContent>
+          </Sheet>
+          <div className="admin-breadcrumb"><span>Workspace</span><ChevronRight aria-hidden className="h-3.5 w-3.5" /><span>{active?.label ?? "Dashboard"}</span></div>
+          <div className="admin-topbar-actions">
+            <span className="admin-today"><CalendarDays className="h-3.5 w-3.5" aria-hidden />{dateLabel}</span>
+            <Button variant="outline" className="admin-search-trigger" onClick={() => setSearchOpen(true)} aria-label="Search admin pages">
+              <Search className="h-4 w-4" /><span>Jump to a page…</span><kbd>⌘ / Ctrl K</kbd>
+            </Button>
+            <Button variant="ghost" size="icon" onClick={bumpRefresh} aria-label="Refresh section data" title="Refresh data"><RefreshCw className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")} aria-label="Toggle color theme" title="Toggle color theme"><Sun className="admin-sun h-4 w-4" /><Moon className="admin-moon h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={handleTogglePush} disabled={pushLoading} aria-label={pushStatus === "granted" ? "Push alerts active" : "Enable push alerts"} title={pushStatus === "granted" ? "Push alerts active" : "Enable order and prescription alerts"} className={cn("admin-notification", pushStatus === "granted" && "is-enabled")}>
+              {pushLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : pushStatus === "granted" ? <Bell className="h-4 w-4" /> : <BellRing className="h-4 w-4" />}
+              {pushStatus === "granted" ? <span className="admin-notification-dot" /> : null}
+            </Button>
+            <Avatar className="admin-topbar-avatar h-9 w-9"><AvatarFallback>{initials(staff?.name ?? "Staff")}</AvatarFallback></Avatar>
           </div>
+        </header>
 
-          {/* section subtitle + content */}
-          <div className="admin-content p-3 sm:p-5 lg:p-6">
-            {active && allowed ? (
-              <p className="mb-4 text-sm text-muted-foreground">{active.subtitle}</p>
-            ) : null}
-            {renderSection()}
-          </div>
+        <div ref={contentRef} tabIndex={-1} className="admin-content" aria-label={active?.title ?? "Dashboard"}>
+          <p className="sr-only" role="status">{active?.title ?? "Dashboard"} page</p>
+          <div key={section} className="admin-section" data-admin-section={section}>{renderSection()}</div>
+          <footer className="admin-footer"><span>Sphere Pharmacy <span aria-hidden>·</span> Staff workspace</span><span><ShieldCheck className="h-3.5 w-3.5" aria-hidden /> {ROLE_LABELS[role]} access</span></footer>
         </div>
       </div>
+
+      <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <DialogContent className="admin-command-dialog gap-0 overflow-hidden p-0" showCloseButton={false}>
+          <DialogHeader className="sr-only"><DialogTitle>Find a page</DialogTitle><DialogDescription>Search the pages available to your role. Use arrow keys and Enter to navigate.</DialogDescription></DialogHeader>
+          <Command>
+            <CommandInput placeholder="Where would you like to go?" />
+            <CommandList><CommandEmpty>No pages match your search.</CommandEmpty>
+              {NAV_GROUPS.map((group) => <CommandGroup key={group.label} heading={group.label}>{visibleNav.filter((item) => group.keys.includes(item.key)).map((item) => <CommandItem key={item.key} value={`${item.label} ${item.subtitle}`} onSelect={() => goTo(item.key)}><item.icon className="h-4 w-4" /><span className="flex-1">{item.label}</span><ChevronRight className="h-3.5 w-3.5" /></CommandItem>)}</CommandGroup>)}
+            </CommandList>
+            <div className="admin-command-hint"><span>↑ ↓ to browse</span><span>↵ to open</span><span>esc to close</span></div>
+          </Command>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
-// ---------- sidebar nav (shared by desktop aside & mobile sheet) ----------
-
-function SidebarNav({
-  items,
-  section,
-  onSelect,
-  staffName,
-  staffRole,
-  onSignOut,
-  inSheet = false,
-}: {
+function SidebarNav({ items, section, onSelect, staffName, staffRole, onSignOut, openNow, onStore }: {
   items: NavItem[]
   section: AdminSectionKey
   onSelect: (key: AdminSectionKey) => void
   staffName: string
   staffRole: Role
   onSignOut: () => void
-  inSheet?: boolean
+  openNow: boolean
+  onStore: () => void
 }) {
   return (
-    <nav
-      aria-label="Admin sections"
-      className={cn("flex flex-1 flex-col gap-1 overflow-y-auto p-3 scroll-slim", !inSheet && "max-h-[calc(100vh-12rem)]")}
-    >
-      {items.map((item) => (
-        <button
-          key={item.key}
-          onClick={() => onSelect(item.key)}
-          aria-current={section === item.key ? "page" : undefined}
-          className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-            section === item.key
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-          )}
-        >
-          <item.icon className="h-4 w-4 shrink-0" aria-hidden />
-          {item.label}
-        </button>
-      ))}
-
-      <Separator className="my-3" />
-
-      <div className="rounded-lg border bg-background p-3">
-        <p className="text-xs font-semibold">{staffName}</p>
-        <Badge variant="outline" className={cn("mt-1 px-1.5 py-0 text-[10px]", roleBadgeClass[staffRole])}>
-          {ROLE_LABELS[staffRole]}
-        </Badge>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-2.5 w-full gap-1.5"
-          onClick={onSignOut}
-        >
-          <LogOut className="h-3.5 w-3.5" /> Sign out
-        </Button>
-      </div>
-    </nav>
+    <div className="admin-sidebar-inner">
+      <button onClick={onStore} className="admin-brand" aria-label="Sphere Pharmacy storefront"><span className="admin-brand-mark"><Plus strokeWidth={2.5} /></span><span>sphere<span className="admin-brand-caption">PHARMACY WORKSPACE</span></span><ArrowUpRight className="admin-brand-arrow h-4 w-4" aria-hidden /></button>
+      <div className="admin-location"><span className="admin-location-icon"><Store className="h-4 w-4" /></span><span><strong>Roysambu, Nairobi</strong><span className="admin-location-status"><i className={openNow ? "is-open" : ""} />{openNow ? "Pharmacy is open" : "Pharmacy is closed"}</span></span></div>
+      <nav aria-label="Admin sections" className="admin-nav">
+        {NAV_GROUPS.map((group) => {
+          const groupItems = group.keys.flatMap((key) => items.filter((item) => item.key === key))
+          return groupItems.length ? <div className="admin-nav-group" key={group.label}><p className="admin-nav-label">{group.label}</p>{groupItems.map((item) => <button key={item.key} onClick={() => onSelect(item.key)} aria-current={section === item.key ? "page" : undefined} className={cn("admin-nav-item", section === item.key && "is-active")}><item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden /><span>{item.label}</span>{section === item.key ? <span className="admin-nav-active-dot" aria-hidden /> : null}</button>)}</div> : null
+        })}
+      </nav>
+      <div className="admin-sidebar-bottom"><button className="admin-store-link" onClick={onStore}><Store className="h-4 w-4" /><span>View storefront</span><ArrowUpRight className="h-3.5 w-3.5" /></button><div className="admin-sidebar-profile"><Avatar className="h-9 w-9"><AvatarFallback>{initials(staffName)}</AvatarFallback></Avatar><span className="min-w-0 flex-1"><strong>{staffName}</strong><span>{ROLE_LABELS[staffRole]}</span></span><button onClick={onSignOut} aria-label="Sign out of staff dashboard" title="Sign out"><LogOut className="h-4 w-4" /></button></div></div>
+    </div>
   )
 }
 
@@ -521,14 +409,14 @@ function StaffGate({
   }, [onSessionChange])
 
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center px-4 py-16">
+    <AdminAccessFrame>
       <Card className="w-full">
         <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Lock className="h-7 w-7" aria-hidden />
           </span>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Staff access only</h1>
+            <h2 className="text-2xl font-bold tracking-tight">Welcome to your workspace</h2>
             <p className="mt-1.5 text-sm text-muted-foreground">
               {isCustomer
                 ? "You're signed in with a customer account. The dashboard is for Sphere Pharmacy staff — admins, pharmacists, staff and riders."
@@ -543,11 +431,9 @@ function StaffGate({
               <Store className="h-4 w-4" /> Back to storefront
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Demo staff logins: admin@ / pharmacist@ / staff@ / rider@spherepharmacy.co.ke
-          </p>
+          <p className="text-xs text-muted-foreground">Need access? Contact your pharmacy administrator.</p>
         </CardContent>
       </Card>
-    </div>
+    </AdminAccessFrame>
   )
 }

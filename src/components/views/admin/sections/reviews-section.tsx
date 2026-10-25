@@ -11,14 +11,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
+import { EmptyState } from "@/components/shared/empty-state"
 import { StarRow } from "@/components/shared/product-card"
 import { adminApi } from "@/lib/api-client"
 import type { AdminReviewDTO } from "@/lib/types"
 import { REVIEW_STATUS_LABELS, type ReviewStatus } from "@/lib/constants"
 import { formatDate, timeAgo } from "@/lib/format"
 import { toast } from "sonner"
-import { apiErrorMessage, type SectionProps } from "../admin-shared"
+import { AdminSectionHeader, apiErrorMessage, type SectionProps } from "../admin-shared"
 import { Eye, EyeOff, Loader2, MessageSquareText, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -88,7 +88,7 @@ export function ReviewsSection({ refreshKey }: SectionProps) {
 
   return (
     <div className="space-y-4">
-      <SectionHeader
+      <AdminSectionHeader
         title="Reviews"
         subtitle="Moderate customer product reviews — hidden reviews disappear from the storefront and rating averages."
       />

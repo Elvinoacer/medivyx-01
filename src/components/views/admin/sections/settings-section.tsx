@@ -14,13 +14,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { SectionHeader } from "@/components/shared/empty-state"
 import { UseCurrentLocationButton } from "@/components/shared/use-current-location-button"
 import { settingsApi } from "@/lib/api-client"
 import type { DeliverySettings, PharmacySettings } from "@/lib/types"
 import { toast } from "sonner"
-import { apiErrorMessage, SectionError, type SectionProps } from "../admin-shared"
+import { AdminSectionHeader, apiErrorMessage, SectionError, type SectionProps } from "../admin-shared"
 import { Badge } from "@/components/ui/badge"
 import { enablePushNotifications, getPushPermissionState } from "@/lib/firebase/client"
 import { Save, Loader2, Info, Building2, Truck, MoonStar, KeyRound, Trash2, Plus, Bell, Mail, Send, CheckCircle2, MapPinned, Search, ShieldCheck } from "lucide-react"
@@ -209,7 +209,7 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
 
   return (
     <div className="space-y-5">
-      <SectionHeader
+      <AdminSectionHeader
         title="Settings"
         subtitle="These settings power the storefront — contact details, opening hours and delivery fees."
       />
@@ -220,6 +220,14 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
         all read from here.
       </p>
 
+      <Tabs defaultValue="pharmacy" className="admin-settings-tabs">
+        <TabsList aria-label="Settings categories" className="mb-5 w-full justify-start gap-1">
+          <TabsTrigger value="pharmacy"><Building2 className="mr-1.5 h-3.5 w-3.5" />Pharmacy profile</TabsTrigger>
+          <TabsTrigger value="delivery"><Truck className="mr-1.5 h-3.5 w-3.5" />Delivery & pricing</TabsTrigger>
+          <TabsTrigger value="notifications"><Bell className="mr-1.5 h-3.5 w-3.5" />Notifications</TabsTrigger>
+          <TabsTrigger value="reference"><KeyRound className="mr-1.5 h-3.5 w-3.5" />Demo reference</TabsTrigger>
+        </TabsList>
+        <TabsContent value="pharmacy">
       {/* pharmacy profile */}
       <Card>
         <CardHeader className="pb-3">
@@ -271,6 +279,8 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
         </CardContent>
       </Card>
 
+      </TabsContent>
+      <TabsContent value="delivery">
       {/* delivery settings */}
       <Card>
         <CardHeader className="pb-3">
@@ -651,6 +661,8 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
         </CardContent>
       </Card>
 
+      </TabsContent>
+      <TabsContent value="notifications">
       {/* notifications & messaging integrations */}
       <Card>
         <CardHeader className="pb-3">
@@ -783,6 +795,8 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
         </CardContent>
       </Card>
 
+      </TabsContent>
+      <TabsContent value="reference">
       {/* demo credentials */}
       <Card>
         <CardHeader className="pb-3">
@@ -815,6 +829,8 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
           </p>
         </CardContent>
       </Card>
+      </TabsContent>
+      </Tabs>
     </div>
   )
 }

@@ -15,12 +15,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
+import { EmptyState } from "@/components/shared/empty-state"
 import { promotionsApi } from "@/lib/api-client"
 import type { PromotionDTO } from "@/lib/types"
 import { formatDate } from "@/lib/format"
 import { toast } from "sonner"
-import { apiErrorMessage, type SectionProps } from "../admin-shared"
+import { AdminSectionHeader, apiErrorMessage, type SectionProps } from "../admin-shared"
 import { Megaphone, Loader2, Plus, Pencil, Trash2, Ticket, CalendarDays, Copy } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -105,7 +105,7 @@ export function PromotionsSection({ refreshKey, onRefresh }: SectionProps) {
 
   return (
     <div className="space-y-4">
-      <SectionHeader
+      <AdminSectionHeader
         title="Promotions"
         subtitle={`${activeCount} active campaign${activeCount === 1 ? "" : "s"} — banners and codes appear on the storefront homepage.`}
         action={

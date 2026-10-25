@@ -3,12 +3,12 @@
 // Shared primitives for the Sphere Pharmacy admin dashboard sections.
 // Kept inside views/admin so sections stay self-contained and typed.
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { AlertTriangle, RefreshCw } from "lucide-react"
+import { AlertTriangle, ArrowUpRight, RefreshCw } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { ApiError } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
@@ -38,7 +38,7 @@ export interface SectionProps {
   /** Bump the shell-level refreshKey (e.g. after a mutation that affects other sections). */
   onRefresh: () => void
   /** Jump to another admin section (role-checked in the shell). */
-  onNavigateSection: (section: AdminSectionKey) => void
+  onNavigateSection: (section: AdminSectionKey, filters?: Record<string, string>) => void
 }
 
 // ---------- Hooks ----------
@@ -94,7 +94,21 @@ export function SectionError({
 
 // ---------- KPI card ----------
 
-type KpiTone = "default" | "teal" | "amber" | "rose" | "emerald"
+export function AdminSectionHeader({ title, subtitle, action, className }: {
+  title: string
+  subtitle?: string
+  action?: ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn("admin-section-header", className)}>
+      <div><p className="admin-eyebrow">SPHERE WORKSPACE</p><h1>{title}</h1>{subtitle ? <p className="admin-section-description">{subtitle}</p> : null}</div>
+      {action ? <div className="admin-section-actions">{action}</div> : null}
+    </div>
+  )
+}
+
+type KpiTone = "default" | "teal" | "amber" | "rose" | "emerald" | "violet"
 
 const kpiToneClasses: Record<KpiTone, string> = {
   default: "bg-muted text-muted-foreground",
@@ -102,6 +116,7 @@ const kpiToneClasses: Record<KpiTone, string> = {
   amber: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300",
   rose: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300",
   emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300",
+  violet: "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300",
 }
 
 export function KpiCard({
@@ -121,28 +136,27 @@ export function KpiCard({
 }) {
   const clickable = Boolean(onClick)
   const body = (
-    <CardContent className="flex items-start justify-between gap-3 p-4">
-      <div className="min-w-0">
+    <CardContent className="admin-kpi-content">
+      <div className="admin-kpi-heading">
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <p className={cn(
-          "mt-1 font-bold tracking-tight tabular-nums leading-tight",
-          typeof value === "number" || String(value).length <= 8 ? "text-2xl" : "text-xl sm:text-2xl"
-        )}>{value}</p>
-        {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
+        {Icon ? <span className={cn("admin-kpi-icon", kpiToneClasses[tone])}><Icon className="h-[18px] w-[18px]" aria-hidden /></span> : null}
       </div>
-      {Icon ? (
-        <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", kpiToneClasses[tone])}>
-          <Icon className="h-4.5 w-4.5" aria-hidden />
-        </span>
-      ) : null}
+      <div className="min-w-0">
+        <p className={cn(
+          "admin-kpi-value font-semibold tracking-tight tabular-nums leading-tight",
+          typeof value === "number" || String(value).length <= 8 ? "text-3xl" : "text-xl sm:text-2xl"
+        )}>{value}</p>
+        <div className="admin-kpi-bottom">{hint ? <p className="text-xs text-muted-foreground">{hint}</p> : <span className="text-xs text-muted-foreground">Current snapshot</span>}{clickable ? <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> : null}</div>
+      </div>
     </CardContent>
   )
   return (
     <Card
       className={cn(
-        "card-lift border shadow-xs transition-shadow",
+        "admin-kpi border transition-shadow",
         clickable && "cursor-pointer hover:shadow-md focus-visible:shadow-md"
       )}
+      data-tone={tone}
       onClick={onClick}
       role={clickable ? "button" : undefined}
       tabIndex={clickable ? 0 : undefined}

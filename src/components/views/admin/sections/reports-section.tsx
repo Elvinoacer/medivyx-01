@@ -17,13 +17,13 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { EmptyState, SectionHeader } from "@/components/shared/empty-state"
+import { EmptyState } from "@/components/shared/empty-state"
 import { adminApi, ordersApi } from "@/lib/api-client"
 import type { AdminStats, OrderDTO } from "@/lib/types"
 import { ORDER_STATUSES, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/constants"
 import { formatDate, formatKES } from "@/lib/format"
 import { toast } from "sonner"
-import { apiErrorMessage, downloadCsv, KpiCard, KpiSkeletonGrid, SectionError, type SectionProps } from "../admin-shared"
+import { AdminSectionHeader, apiErrorMessage, downloadCsv, KpiCard, KpiSkeletonGrid, SectionError, type SectionProps } from "../admin-shared"
 import { Download, Loader2, BarChart3, TrendingUp, Users, ClipboardList, Banknote, Package } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -139,7 +139,7 @@ export function ReportsSection({ refreshKey }: SectionProps) {
 
   return (
     <div className="space-y-5">
-      <SectionHeader
+      <AdminSectionHeader
         title="Reports"
         subtitle="Sales, products and the order funnel. Exports download straight from your browser."
         action={
@@ -192,7 +192,7 @@ export function ReportsSection({ refreshKey }: SectionProps) {
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                   <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} width={44} tickFormatter={(v: number | string) => `${Math.round(Number(v) / 1000)}k`} />
                   <ChartTooltip formatter={(value: number | string) => formatKES(Number(value))} />
-                  <Area type="monotone" dataKey="revenue" name="Revenue" stroke="var(--chart-2)" strokeWidth={2} fill="url(#reportRev)" />
+                  <Area isAnimationActive={false} type="monotone" dataKey="revenue" name="Revenue" stroke="var(--chart-2)" strokeWidth={2} fill="url(#reportRev)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -250,9 +250,8 @@ export function ReportsSection({ refreshKey }: SectionProps) {
               <div className="h-52" role="img" aria-label={`Donut chart: ${rxShare}% of orders include prescription items`}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={typeDonut} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="80%" paddingAngle={3} strokeWidth={0}>
-                      <Cell fill="var(--chart-1)" />
-                      <Cell fill="var(--chart-4)" />
+                    <Pie isAnimationActive={false} data={typeDonut} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="80%" paddingAngle={3} strokeWidth={0}>
+                      {typeDonut.map((entry, index) => <Cell key={entry.name} fill={index === 0 ? "var(--chart-1)" : "var(--chart-4)"} aria-label={`${entry.name}: ${entry.value} orders`} />)}
                     </Pie>
                     <ChartTooltip formatter={(value: number | string) => `${value} orders`} />
                     <Legend wrapperStyle={{ fontSize: 12 }} />

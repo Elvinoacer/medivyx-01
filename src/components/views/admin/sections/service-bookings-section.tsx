@@ -1,50 +1,126 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { CalendarDays, Check, Clock3, Loader2, RefreshCw, X } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Loader2, Phone, RefreshCw, Users, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { EmptyState } from "@/components/shared/empty-state"
 import { adminServiceBookingsApi, serviceStaffApi } from "@/lib/api-client"
 import type { ServiceBookingDTO, ServiceBookingStatus, StaffDTO } from "@/lib/types"
-import { type SectionProps, SectionError } from "../admin-shared"
+import { AdminSectionHeader, KpiCard, TableSkeleton, type SectionProps, SectionError } from "../admin-shared"
 import { toast } from "sonner"
 
-const statusClass = (s:string) => s==="CONFIRMED"||s==="COMPLETED" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300" : s==="CANCELLED"||s==="REJECTED" ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+const timeLabel = (iso: string) => new Date(iso).toLocaleTimeString("en-KE", { hour: "numeric", minute: "2-digit", timeZone: "Africa/Nairobi" })
+const localInput = (iso: string) => new Date(new Date(iso).getTime() + 3 * 60 * 60 * 1000).toISOString().slice(0, 16)
+const todayInNairobi = () => new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Africa/Nairobi" }).format(new Date())
+const statusClass = (status: string) => ["CONFIRMED", "COMPLETED"].includes(status)
+  ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+  : ["CANCELLED", "REJECTED"].includes(status)
+    ? "bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+    : "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
 
-export function ServiceBookingsSection({refreshKey}:SectionProps){
- const [date,setDate]=useState(new Date().toISOString().slice(0,10))
- const [bookings,setBookings]=useState<ServiceBookingDTO[]|null>(null)
- const [error,setError]=useState<string|null>(null)
- const [busy,setBusy]=useState<string|null>(null)
- const [rescheduleFor,setRescheduleFor]=useState<ServiceBookingDTO|null>(null)
- const [newStart,setNewStart]=useState("")
- const [newEnd,setNewEnd]=useState("")
- const [staff,setStaff]=useState<StaffDTO[]>([])
- async function load(){
-   setError(null)
-   const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Bookings are taking too long to load. Check the database connection and try again.")), 10000))
-   try {
-     setBookings(await Promise.race([adminServiceBookingsApi.list(date), timeout]))
-   } catch(err) {
-     setBookings([])
-     setError(err instanceof Error ? err.message : "Could not load bookings.")
-   }
- }
- useEffect(()=>{
-   void load()
-   serviceStaffApi.list().then(setStaff).catch(()=>{})
- },[date,refreshKey])
- const summary=useMemo(()=>({pending:(bookings??[]).filter(b=>b.status==="PENDING").length,confirmed:(bookings??[]).filter(b=>b.status==="CONFIRMED").length,total:(bookings??[]).length}),[bookings])
- async function setStatus(b:ServiceBookingDTO,status:ServiceBookingStatus){setBusy(b.id);try{await adminServiceBookingsApi.updateStatus(b.id,status,undefined);toast.success("Booking updated.");await load()}catch(err){toast.error(err instanceof Error?err.message:"Could not update booking.")}finally{setBusy(null)}}
- return <div className="space-y-5">
-  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-xl font-bold">Service bookings</h2><p className="mt-1 text-sm text-muted-foreground">Manage the daily care schedule and move appointments through their workflow.</p></div><div className="flex gap-2"><input type="date" value={date} onChange={e=>setDate(e.target.value)} className="h-9 rounded-md border bg-background px-3 text-sm"/><Button variant="outline" size="icon" onClick={()=>void load()} aria-label="Refresh bookings"><RefreshCw className="h-4 w-4"/></Button></div></div>
-  <div className="grid grid-cols-3 gap-3"><Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total</p><p className="mt-1 text-2xl font-bold">{summary.total}</p></CardContent></Card><Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Pending</p><p className="mt-1 text-2xl font-bold">{summary.pending}</p></CardContent></Card><Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Confirmed</p><p className="mt-1 text-2xl font-bold">{summary.confirmed}</p></CardContent></Card></div>
-  {error?<SectionError message={error} onRetry={()=>void load()}/>:bookings===null?<Card><CardContent className="flex items-center justify-center p-10"><Loader2 className="h-5 w-5 animate-spin"/></CardContent></Card>:bookings.length===0?<Card><CardContent className="p-10 text-center"><CalendarDays className="mx-auto h-8 w-8 text-muted-foreground"/><p className="mt-3 font-semibold">No bookings for this day.</p></CardContent></Card>:
-  <div className="space-y-3">{bookings.map(b=><Card key={b.id}><CardContent className="p-4"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold">{b.serviceName}</h3><Badge className={statusClass(b.status)} variant="outline">{b.status.replaceAll("_"," ")}</Badge><span className="text-xs text-muted-foreground">{b.reference}</span></div><p className="mt-2 text-sm">{b.customerName||"Customer"} <span className="text-muted-foreground">· {b.customerPhone||"No phone"}</span></p><p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground"><Clock3 className="h-3.5 w-3.5"/>{new Date(b.scheduledStart).toLocaleTimeString("en-KE",{hour:"numeric",minute:"2-digit",timeZone:"Africa/Nairobi"})}–{new Date(b.scheduledEnd).toLocaleTimeString("en-KE",{hour:"numeric",minute:"2-digit",timeZone:"Africa/Nairobi"})}</p>{b.customerNotes?<p className="mt-2 rounded-lg bg-muted p-2 text-xs text-muted-foreground">{b.customerNotes}</p>:null}
- <div className="mt-3 max-w-xs"><Select value={(b as any).assignedStaffId||"unassigned"} onValueChange={async(v)=>{setBusy(b.id);try{await adminServiceBookingsApi.assign(b.id,v==="unassigned"?null:v);toast.success("Staff assignment updated.");await load()}catch(err){toast.error(err instanceof Error?err.message:"Could not assign staff.")}finally{setBusy(null)}}}><SelectTrigger><SelectValue placeholder="Assign staff"/></SelectTrigger><SelectContent><SelectItem value="unassigned">Unassigned</SelectItem>{staff.filter(s=>s.active&&["ADMIN","PHARMACIST","STAFF"].includes(s.role)).map(s=><SelectItem key={s.id} value={s.id}>{s.name} · {s.role}</SelectItem>)}</SelectContent></Select></div></div><div className="flex flex-wrap gap-2 lg:max-w-[420px] lg:justify-end">{["PENDING","CONFIRMED","RESCHEDULED"].includes(b.status)?<Button size="sm" variant="outline" onClick={()=>{setRescheduleFor(b);setNewStart(b.scheduledStart.slice(0,16));setNewEnd(b.scheduledEnd.slice(0,16))}} disabled={!!busy}>Reschedule</Button>:null}{b.status==="PENDING"?<Button size="sm" onClick={()=>void setStatus(b,"CONFIRMED")} disabled={!!busy}><Check className="h-3.5 w-3.5"/> Confirm</Button>:null}{b.status==="CONFIRMED"?<Button size="sm" variant="outline" onClick={()=>void setStatus(b,"ARRIVED")} disabled={!!busy}>Mark arrived</Button>:null}{b.status==="ARRIVED"?<Button size="sm" onClick={()=>void setStatus(b,"IN_PROGRESS")} disabled={!!busy}>Start</Button>:null}{b.status==="IN_PROGRESS"?<Button size="sm" onClick={()=>void setStatus(b,"COMPLETED")} disabled={!!busy}>Complete</Button>:null}{["PENDING","CONFIRMED"].includes(b.status)?<Button size="sm" variant="outline" className="text-destructive" onClick={()=>void setStatus(b,"CANCELLED")} disabled={!!busy}><X className="h-3.5 w-3.5"/> Cancel</Button>:null}</div></div></CardContent></Card>)}</div>}
-  <Dialog open={rescheduleFor!==null} onOpenChange={open=>!open&&setRescheduleFor(null)}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>Reschedule appointment</DialogTitle><DialogDescription>{rescheduleFor?.serviceName} · {rescheduleFor?.reference}</DialogDescription></DialogHeader><div className="grid gap-3 sm:grid-cols-2"><div><label className="text-sm font-semibold">Start</label><input type="datetime-local" value={newStart} onChange={e=>setNewStart(e.target.value)} className="mt-2 h-9 w-full rounded-md border bg-background px-2 text-sm"/></div><div><label className="text-sm font-semibold">End</label><input type="datetime-local" value={newEnd} onChange={e=>setNewEnd(e.target.value)} className="mt-2 h-9 w-full rounded-md border bg-background px-2 text-sm"/></div></div><DialogFooter><Button variant="outline" onClick={()=>setRescheduleFor(null)} disabled={!!busy}>Cancel</Button><Button onClick={async()=>{if(!rescheduleFor)return;setBusy(rescheduleFor.id);try{await adminServiceBookingsApi.reschedule(rescheduleFor.id,new Date(newStart).toISOString(),new Date(newEnd).toISOString());toast.success("Appointment rescheduled.");setRescheduleFor(null);await load()}catch(err){toast.error(err instanceof Error?err.message:"Could not reschedule.")}finally{setBusy(null)}}} disabled={!newStart||!newEnd||!!busy}>Save new time</Button></DialogFooter></DialogContent></Dialog>
- </div>
+export function ServiceBookingsSection({ refreshKey }: SectionProps) {
+  const [date, setDate] = useState(todayInNairobi)
+  const [bookings, setBookings] = useState<ServiceBookingDTO[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [rescheduleFor, setRescheduleFor] = useState<ServiceBookingDTO | null>(null)
+  const [cancelFor, setCancelFor] = useState<ServiceBookingDTO | null>(null)
+  const [newStart, setNewStart] = useState("")
+  const [newEnd, setNewEnd] = useState("")
+  const [staff, setStaff] = useState<StaffDTO[]>([])
+  const requestId = useRef(0)
+
+  const load = useCallback(async () => {
+    const current = ++requestId.current
+    setLoading(true)
+    setError(null)
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    try {
+      const timeout = new Promise<never>((_, reject) => { timeoutId = setTimeout(() => reject(new Error("Bookings are taking too long to load. Please try again.")), 10000) })
+      const rows = await Promise.race([adminServiceBookingsApi.list(date), timeout])
+      if (current === requestId.current) setBookings(rows)
+    } catch (err) {
+      if (current === requestId.current) setError(err instanceof Error ? err.message : "Could not load bookings.")
+    } finally {
+      clearTimeout(timeoutId)
+      if (current === requestId.current) setLoading(false)
+    }
+  }, [date])
+
+  useEffect(() => { void load() }, [load, refreshKey])
+  useEffect(() => { serviceStaffApi.list().then(setStaff).catch(() => {}) }, [])
+  const summary = useMemo(() => ({
+    pending: bookings.filter((b) => b.status === "PENDING").length,
+    confirmed: bookings.filter((b) => b.status === "CONFIRMED").length,
+    completed: bookings.filter((b) => b.status === "COMPLETED").length,
+    total: bookings.length,
+  }), [bookings])
+
+  async function runAction(id: string, action: () => Promise<unknown>, message: string) {
+    setBusy(id)
+    try { await action(); toast.success(message); await load(); return true }
+    catch (err) { toast.error(err instanceof Error ? err.message : "Could not update booking."); return false }
+    finally { setBusy(null) }
+  }
+  const setStatus = (booking: ServiceBookingDTO, status: ServiceBookingStatus) => runAction(booking.id, () => adminServiceBookingsApi.updateStatus(booking.id, status), "Booking updated.")
+
+  function moveDate(delta: number) {
+    const next = new Date(`${date}T12:00:00+03:00`)
+    next.setUTCDate(next.getUTCDate() + delta)
+    setDate(next.toISOString().slice(0, 10))
+  }
+
+  async function saveReschedule() {
+    if (!rescheduleFor) return
+    const start = new Date(`${newStart}+03:00`)
+    const end = new Date(`${newEnd}+03:00`)
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) {
+      toast.error("Choose an end time after the start time.")
+      return
+    }
+    const saved = await runAction(rescheduleFor.id, () => adminServiceBookingsApi.reschedule(rescheduleFor.id, start.toISOString(), end.toISOString()), "Appointment rescheduled.")
+    if (saved) setRescheduleFor(null)
+  }
+
+  return (
+    <div className="space-y-5">
+      <AdminSectionHeader title="Care appointments" subtitle="A calmer way to manage the day. Confirm visits, assign your team and keep every patient on track." action={<Button variant="outline" onClick={() => setDate(todayInNairobi())}><CalendarDays className="h-3.5 w-3.5" /> Today</Button>} />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-busy={loading}>
+        <KpiCard label="Appointments" value={loading ? "—" : summary.total} icon={CalendarDays} tone="teal" hint="For the selected day" />
+        <KpiCard label="Awaiting confirmation" value={loading ? "—" : summary.pending} icon={Clock3} tone="amber" hint="Ready for your review" />
+        <KpiCard label="Confirmed visits" value={loading ? "—" : summary.confirmed} icon={Users} tone="violet" hint="Patients expected today" />
+        <KpiCard label="Completed visits" value={loading ? "—" : summary.completed} icon={CheckCircle2} tone="emerald" hint="Care delivered" />
+      </div>
+      <Card><div className="admin-schedule-toolbar"><p>Daily schedule <span className="ml-1 text-[10px] font-normal text-muted-foreground">· Nairobi time (EAT)</span></p><Button variant="ghost" size="icon" onClick={() => moveDate(-1)} aria-label="Previous day"><ChevronLeft className="h-4 w-4" /></Button><Input aria-label="Appointment date" type="date" value={date} onChange={(event) => { if (event.target.value) setDate(event.target.value) }} className="w-auto" /><Button variant="ghost" size="icon" onClick={() => moveDate(1)} aria-label="Next day"><ChevronRight className="h-4 w-4" /></Button><Button variant="outline" size="icon" onClick={() => void load()} disabled={loading} aria-label="Refresh bookings"><RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} /></Button></div></Card>
+      {error ? <SectionError message={error} onRetry={() => void load()} /> : loading ? <TableSkeleton rows={3} /> : bookings.length === 0 ? <EmptyState icon={CalendarDays} title="A little space in the schedule" description="There are no appointments for this day. Choose another date to see upcoming or previous visits." /> : <div className="space-y-3">{bookings.map((booking) => (
+        <Card key={booking.id}><div className="admin-booking-card">
+          <div className="admin-booking-time"><strong>{timeLabel(booking.scheduledStart)}</strong><span>to {timeLabel(booking.scheduledEnd)}</span></div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2"><h2 className="text-sm font-semibold">{booking.serviceName}</h2><Badge className={statusClass(booking.status)} variant="outline">{booking.status.replaceAll("_", " ").toLowerCase()}</Badge>{busy === booking.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-label="Updating booking" /> : null}</div>
+            <p className="mt-2 text-xs">{booking.customerName || "Customer"}<span className="ml-2 font-mono text-[10px] text-muted-foreground">{booking.reference}</span></p>
+            {booking.customerPhone ? <a href={`tel:${booking.customerPhone}`} className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary"><Phone className="h-3 w-3" />{booking.customerPhone}</a> : null}
+            {booking.customerNotes ? <p className="mt-3 rounded-lg bg-muted p-3 text-xs leading-relaxed text-muted-foreground">{booking.customerNotes}</p> : null}
+            <div className="mt-3 max-w-64"><Label htmlFor={`booking-staff-${booking.id}`} className="mb-2 block text-[10px] text-muted-foreground">Assigned team member</Label><Select value={booking.assignedStaffId || "unassigned"} disabled={!!busy} onValueChange={(value) => void runAction(booking.id, () => adminServiceBookingsApi.assign(booking.id, value === "unassigned" ? null : value), "Staff assignment updated.")}><SelectTrigger id={`booking-staff-${booking.id}`} className="w-full"><SelectValue placeholder="Assign staff" /></SelectTrigger><SelectContent><SelectItem value="unassigned">Unassigned</SelectItem>{staff.filter((member) => member.active && ["ADMIN", "PHARMACIST", "STAFF"].includes(member.role)).map((member) => <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>)}</SelectContent></Select></div>
+          </div>
+          <div className="admin-booking-actions">
+            {["PENDING", "CONFIRMED", "RESCHEDULED"].includes(booking.status) ? <Button size="sm" variant="outline" onClick={() => { setRescheduleFor(booking); setNewStart(localInput(booking.scheduledStart)); setNewEnd(localInput(booking.scheduledEnd)) }} disabled={!!busy}>Reschedule</Button> : null}
+            {booking.status === "PENDING" ? <Button size="sm" onClick={() => void setStatus(booking, "CONFIRMED")} disabled={!!busy}><Check className="h-3.5 w-3.5" />Confirm visit</Button> : null}
+            {booking.status === "CONFIRMED" ? <Button size="sm" onClick={() => void setStatus(booking, "ARRIVED")} disabled={!!busy}>Mark arrived</Button> : null}
+            {booking.status === "ARRIVED" ? <Button size="sm" onClick={() => void setStatus(booking, "IN_PROGRESS")} disabled={!!busy}>Start visit</Button> : null}
+            {booking.status === "IN_PROGRESS" ? <Button size="sm" onClick={() => void setStatus(booking, "COMPLETED")} disabled={!!busy}>Complete visit</Button> : null}
+            {["PENDING", "CONFIRMED"].includes(booking.status) ? <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setCancelFor(booking)} disabled={!!busy}><X className="h-3.5 w-3.5" />Cancel</Button> : null}
+          </div>
+        </div></Card>
+      ))}</div>}
+      <Dialog open={rescheduleFor !== null} onOpenChange={(open) => { if (!open && !busy) setRescheduleFor(null) }}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>Find a better time</DialogTitle><DialogDescription>{rescheduleFor?.serviceName} · {rescheduleFor?.reference}<br />All times are in Nairobi (EAT).</DialogDescription></DialogHeader><div className="grid gap-4"><div className="space-y-2"><Label htmlFor="booking-new-start">Appointment start</Label><Input id="booking-new-start" type="datetime-local" value={newStart} onChange={(event) => setNewStart(event.target.value)} disabled={!!busy} /></div><div className="space-y-2"><Label htmlFor="booking-new-end">Appointment end</Label><Input id="booking-new-end" type="datetime-local" min={newStart} value={newEnd} onChange={(event) => setNewEnd(event.target.value)} disabled={!!busy} /></div></div><DialogFooter><Button variant="outline" onClick={() => setRescheduleFor(null)} disabled={!!busy}>Keep current time</Button><Button onClick={() => void saveReschedule()} disabled={!newStart || !newEnd || !!busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}Save new time</Button></DialogFooter></DialogContent></Dialog>
+      <Dialog open={cancelFor !== null} onOpenChange={(open) => { if (!open && !busy) setCancelFor(null) }}><DialogContent><DialogHeader><DialogTitle>Cancel this appointment?</DialogTitle><DialogDescription>{cancelFor?.customerName || "This patient"}'s {cancelFor?.serviceName} appointment will be cancelled. Check that your patient knows about the change.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setCancelFor(null)} disabled={!!busy}>Keep appointment</Button><Button variant="destructive" disabled={!!busy} onClick={async () => { if (cancelFor && await setStatus(cancelFor, "CANCELLED")) setCancelFor(null) }}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}Cancel appointment</Button></DialogFooter></DialogContent></Dialog>
+    </div>
+  )
 }

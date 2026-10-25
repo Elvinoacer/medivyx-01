@@ -16,6 +16,7 @@ import "./services-showcase.css"
 import "./premium-landing.css"
 import "./app-experience.css"
 import "./sphere-public.css"
+import "./admin-workspace.css"
 import { setupForegroundNotificationListener, enablePushNotifications, getPushPermissionState } from "@/lib/firebase/client"
 
 const ViewLoading = () => <div className="mx-auto min-h-[60vh] max-w-7xl animate-pulse px-4 py-12" aria-label="Loading"><div className="h-10 w-52 rounded-xl bg-muted" /><div className="mt-8 h-72 rounded-3xl bg-muted/70" /></div>
@@ -54,16 +55,18 @@ export default function Page() {
 
   const params = useAppStore((s) => s.params)
   const home = view === "home"
+  const authMode = useAppStore((s) => s.authMode)
+  const admin = view === "admin" || (view === "auth" && authMode === "staff")
 
   return (
-    <div className={`ambient-page-shell flex min-h-screen flex-col ${view !== "admin" ? "sphere-public" : ""}`}>
+    <div className={`ambient-page-shell flex min-h-screen flex-col ${admin ? "admin-experience" : "sphere-public"}`}>
       <a href="#main-content" className="sr-only z-50 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground focus:not-sr-only focus:absolute focus:left-4 focus:top-4">Skip to main content</a>
-      {!home ? <SphereHeader /> : null}
-      <main id="main-content" className={home ? "flex-1" : "flex-1 pb-28 md:pb-16"} data-view={view}>
+      {!home && !admin ? <SphereHeader /> : null}
+      <main id="main-content" className={home || admin ? "flex-1" : "flex-1 pb-28 md:pb-16"} data-view={view}>
         {(["account", "orders", "order", "prescriptions"] as const).includes(view as "account" | "orders" | "order" | "prescriptions") || (view === "services" && params.tab === "bookings") ? (
           <CustomerHubNav />
         ) : null}
-        <div className={view === "admin" || home ? undefined : "experience-view"}>
+        <div className={admin || home ? undefined : "experience-view"}>
         {home ? <SphereLanding /> : null}
         {view === "catalog" ? <CatalogView /> : null}
         {view === "product" ? <ProductView /> : null}
@@ -78,9 +81,9 @@ export default function Page() {
         {view === "admin" ? <AdminView /> : null}
         </div>
       </main>
-      {!home ? <Footer /> : null}
-      <AssistantWidget />
-      <MobileNav />
+      {!home && !admin ? <Footer /> : null}
+      {!admin ? <AssistantWidget /> : null}
+      {!admin ? <MobileNav /> : null}
     </div>
   )
 }
