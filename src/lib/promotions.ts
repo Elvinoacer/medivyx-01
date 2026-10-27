@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto"
+import { createHash, randomBytes } from "crypto"
 import { NextRequest, NextResponse } from "next/server"
 import { clientIp } from "@/lib/security/request"
 import { tokenHash } from "@/lib/hash"
@@ -10,13 +10,31 @@ export function promoBrowserId(request: NextRequest): string | null {
   return token && /^[A-Za-z0-9_-]{24,96}$/.test(token) ? token : null
 }
 
+/**
+ * Pseudonymous redemption identifiers.
+ *
+ * IP addresses have low entropy and MUST only be hashed with a stable secret.
+ * If the production hash key is missing, ipHash stays null: IP-limited offers
+ * are explicitly rejected by the checkout/validation guards (fail closed).
+ *
+ * Browser cookies are high-entropy random tokens generated with randomBytes(24).
+ * An unkeyed SHA-256 digest of this opaque token is safe as a compatibility
+ * fallback for browser-only offers when a deployment lacks the HMAC secret.
+ * Keep HMAC identifiers unchanged whenever a valid secret is configured so
+ * existing browser redemption counts retain their meaning.
+ */
 export function promotionIdentity(request: NextRequest) {
   const ip = clientIp(request)
   const device = promoBrowserId(request)
-  return {
-    ipHash: ip !== "unknown" ? tokenHash("promo:ip:v1:" + ip) : null,
-    browserHash: device ? tokenHash("promo:browser:v1:" + device) : null,
-  }
+  const secret = process.env.TOKEN_HASH_SECRET || process.env.SESSION_SECRET
+  const hasSecureKey = Boolean(secret && secret.length >= 32)
+  const ipHash = ip !== "unknown" && hasSecureKey ? tokenHash("promo:ip:v1:" + ip) : null
+  const browserHash = device
+    ? hasSecureKey
+      ? tokenHash("promo:browser:v1:" + device)
+      : createHash("sha256").update("promo:browser:v1:" + device).digest("hex")
+    : null
+  return { ipHash, browserHash }
 }
 
 export function withPromoDeviceCookie(response: NextResponse, request: NextRequest): NextResponse {

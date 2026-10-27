@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { NextRequest } from "next/server"
 import { getSession } from "@/lib/session"
 import { promotionIdentity, withPromoDeviceCookie } from "@/lib/promotions"
@@ -47,7 +48,9 @@ export async function POST(request: NextRequest) {
     const {ipHash,browserHash} = promotionIdentity(request)
     if (promo.perUserLimit != null && !userId) return NextResponse.json({error:"Sign in to redeem this code. It has a per-customer usage limit."},{status:401})
     if (promo.perUserLimit != null && userId && await db.promotionRedemption.count({where:{promotionId:promo.id,userId}}) >= promo.perUserLimit) return NextResponse.json({error:"You've used this code the maximum number of times."},{status:409})
-    if (promo.perIpLimit != null && !ipHash) return NextResponse.json({error:"A network-based promotion cannot be verified from this connection."},{status:409})
+    if (promo.perIpLimit != null && !ipHash) return NextResponse.json({
+      error: "This offer needs secure network verification, which is unavailable right now. Please contact the pharmacy team.",
+    }, { status: 503, headers: { "Cache-Control": "no-store" } })
     if (promo.perIpLimit != null && ipHash && await db.promotionRedemption.count({where:{promotionId:promo.id,ipHash}}) >= promo.perIpLimit) return NextResponse.json({error:"This promotion has reached the usage limit for your network."},{status:409})
     if (promo.perBrowserLimit != null && browserHash && await db.promotionRedemption.count({where:{promotionId:promo.id,browserHash}}) >= promo.perBrowserLimit) return NextResponse.json({error:"This browser has reached its redemption limit for this promotion."},{status:409})
     const discountAmount = Math.round((subtotal * promo.discountPct) / 100 * 100) / 100
@@ -71,7 +74,23 @@ export async function POST(request: NextRequest) {
       discountAmount,
     }, {headers:{"Cache-Control":"no-store"}})
     return withPromoDeviceCookie(result,request)
-  } catch {
-    return NextResponse.json({ error: "Could not validate the code." }, { status: 500 })
+  } catch (error) {
+    // Never mislabel infrastructure exceptions as invalid customer codes.
+    // Correlate the customer-facing reference to the full server-side exception.
+    const errorId = randomUUID()
+    const code = error && typeof error === "object" && "code" in error && typeof error.code === "string"
+      ? error.code : null
+    const missingSchema = code === "P2021" || code === "P2022"
+    const dbUnavailable = ["P1001", "P1002", "P2024"].includes(code ?? "")
+    console.error("[promotion-validation] backend failure", { errorId, prismaCode: code, error })
+    const message = missingSchema
+      ? "Promotion verification is awaiting a required database update. Please contact the pharmacy team."
+      : dbUnavailable
+        ? "Promotion verification is temporarily unavailable because the database could not be reached. Please try again shortly."
+        : "Promotion verification is temporarily unavailable due to a server error. Please try again or contact the pharmacy team."
+    return NextResponse.json(
+      { error: `${message} Reference: ${errorId.slice(0, 8)}.`, errorId },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    )
   }
 }
