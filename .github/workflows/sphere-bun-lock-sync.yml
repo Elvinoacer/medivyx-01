@@ -1,0 +1,42 @@
+name: Synchronize Bun security lockfile (temporary)
+on:
+  push:
+    branches:
+      - fix/sync-bun-lock-20261027
+permissions:
+  contents: write
+jobs:
+  synchronize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Regenerate Bun lock with patched package manifest
+        run: bun install --lockfile-only --ignore-scripts
+      - name: Verify immutable Bun install
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Confirm direct versions and overrides are synchronized
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const lock = JSON.parse(fs.readFileSync('bun.lock', 'utf8'));
+          const root = lock.workspaces[''];
+          for (const n of ['next', 'sharp', 'zod']) {
+            if (root.dependencies[n] !== p.dependencies[n]) {
+              throw new Error(n + ' not synchronized in Bun lock');
+            }
+          }
+          console.log('Bun root manifest synchronized with patched production dependencies');
+          NODE
+      - name: Commit synchronized Bun lock and self-remove temporary workflow
+        run: |
+          rm .github/workflows/sphere-bun-lock-sync.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bun.lock .github/workflows/sphere-bun-lock-sync.yml
+          git commit -m "fix(security): synchronize Bun lock with patched dependencies"
+          git push origin HEAD:fix/sync-bun-lock-20261027
