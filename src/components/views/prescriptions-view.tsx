@@ -652,7 +652,14 @@ function PrescriptionFileDialog({ rx, onClose }: { rx: PrescriptionDTO; onClose:
 
   function download() {
     if (detail?.fileUrl) {
-      window.location.assign(`/api/prescriptions/${encodeURIComponent(rx.id)}?download=1`)
+      // Trigger the authenticated file download without navigating away from
+      // the prescription workspace or losing the current page state.
+      const link = document.createElement("a")
+      link.href = `/api/prescriptions/${encodeURIComponent(rx.id)}?download=1`
+      link.download = "prescription"
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
       return
     }
     if (!detail?.fileData) return
