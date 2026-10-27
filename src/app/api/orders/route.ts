@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
       if (promotion) {
         // Serialize redemptions of this promotion so concurrent orders cannot pass
         // the same count-based quota before recording their usage.
-        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${promotion.id}))`
+        await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${promotion.id}))`
         const now = new Date()
         const current = await tx.promotion.findUnique({where:{id:promotion.id}})
         if(!current?.active || !current.discountPct || (current.startsAt && current.startsAt>now) || (current.endsAt && current.endsAt<now) || (current.minimumSpend && subtotal<Number(current.minimumSpend))) throw new Error("PROMOTION_UNAVAILABLE")
