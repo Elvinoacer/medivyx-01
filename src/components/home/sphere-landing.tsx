@@ -14,12 +14,14 @@ import {
   Truck,
   Heart,
   ChevronDown,
+  Ticket,
+  Copy,
 } from "lucide-react";
 import { useAppStore } from "@/store/use-app-store";
 import { SphereHeader } from "@/components/layout/sphere-header";
-import { servicesApi } from "@/lib/api-client";
+import { promotionsApi, servicesApi } from "@/lib/api-client";
 import { isImagePath } from "@/lib/image";
-import type { ServiceDTO } from "@/lib/types";
+import type { PromotionDTO, ServiceDTO } from "@/lib/types";
 import { PHARMACY, waLink } from "@/lib/constants";
 import styles from "./sphere-landing.module.css";
 
@@ -133,6 +135,15 @@ export function SphereLanding() {
   const resetFilters = useAppStore((s) => s.resetCatalogFilters);
   const [query, setQuery] = useState("");
   const [liveServices, setLiveServices] = useState<ServiceDTO[] | null>(null);
+  const [customerOffers, setCustomerOffers] = useState<PromotionDTO[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    promotionsApi.list().then(offers => {
+      if (!cancelled) setCustomerOffers(offers.filter(offer => offer.active && offer.code && offer.discountPct).slice(0, 3));
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -250,6 +261,38 @@ export function SphereLanding() {
           <span className={styles.artBottom}>ROOTED IN ROYSAMBU ↗</span>
         </div>
       </section>
+      {customerOffers.length > 0 ? (
+        <section aria-label="Current pharmacy offers" className="mx-auto w-full max-w-[1600px] px-[5%] py-8">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[.14em] text-primary">A little something extra</p>
+              <h2 className="mt-2 text-2xl font-semibold text-foreground sm:text-3xl">Offers worth knowing about</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Copy a code and enter it at checkout to claim an eligible offer.</p>
+            </div>
+            <button type="button" onClick={() => shop()} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">Shop products <ArrowUpRight size={16}/></button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {customerOffers.map(offer => (
+              <article key={offer.id} className="flex min-w-0 flex-col gap-3 rounded-2xl border border-[#a4c5b2] bg-[#eaf4e8] p-5 text-[#163e31] shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-full bg-[#163e31] px-2.5 py-1 text-[11px] font-bold text-white">{offer.discountPct}% off</span>
+                  {offer.badge ? <span className="truncate text-xs font-semibold">{offer.badge}</span> : null}
+                </div>
+                <h3 className="line-clamp-2 text-lg font-semibold">{offer.title}</h3>
+                <p className="line-clamp-2 text-sm text-[#3c5b4a]">{offer.description}</p>
+                {offer.minimumSpend != null ? <p className="text-xs text-[#3c5b4a]">Minimum spend: KSh {offer.minimumSpend.toLocaleString("en-KE")}</p> : null}
+                {offer.code ? (
+                  <button type="button" aria-label={"Copy code " + offer.code} onClick={() => { void navigator.clipboard.writeText(offer.code!); }} className="mt-auto flex min-h-11 items-center justify-between gap-3 rounded-xl border border-[#8fb6a1] bg-white px-3 py-2 text-left text-[#163e31] transition-colors hover:bg-[#f3fcf3]">
+                    <span className="flex min-w-0 items-center gap-2"><Ticket size={16} className="shrink-0"/><span className="truncate font-mono text-sm font-bold">{offer.code}</span></span>
+                    <Copy size={16} className="shrink-0"/>
+                  </button>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section
         className={styles.searchSection}
         aria-label="Find health products"
