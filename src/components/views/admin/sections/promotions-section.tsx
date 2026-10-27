@@ -21,7 +21,7 @@ import type { PromotionDTO } from "@/lib/types"
 import { formatDate } from "@/lib/format"
 import { toast } from "sonner"
 import { AdminSectionHeader, apiErrorMessage, type SectionProps } from "../admin-shared"
-import { Megaphone, Loader2, Plus, Pencil, Trash2, Ticket, CalendarDays, Copy, Search, RefreshCw } from "lucide-react"
+import { Megaphone, Loader2, Plus, Pencil, Trash2, Ticket, CalendarDays, Copy, Search, RefreshCw, Share2, MoreHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // Preset colour themes (mirrors storefront banner colours; no indigo/blue per theme rules)
@@ -104,13 +104,17 @@ export function PromotionsSection({ refreshKey, onRefresh }: SectionProps) {
   const [search,setSearch]=useState("")
   const [filter,setFilter]=useState<"all"|"active"|"paused">("all")
   const activeCount = promos.filter(p=>p.active).length
+  const activeNow = (p: PromotionDTO) => p.active && (!p.startsAt || new Date(p.startsAt)<=new Date()) && (!p.endsAt || new Date(p.endsAt)>=new Date())
+  const statusOf = (p: PromotionDTO) => !p.active ? "Paused" : p.startsAt && new Date(p.startsAt)>new Date() ? "Scheduled" : p.endsAt && new Date(p.endsAt)<new Date() ? "Expired" : "Live"
+  const shareText = (p: PromotionDTO) => [p.title,p.description,p.code?"Use code "+p.code+" at checkout":"",p.minimumSpend!=null?"Minimum order KSh "+p.minimumSpend:"","Shop at https://sphere-pharmacy.vercel.app/"].filter(Boolean).join("\n")
+  const sharePromo = (p: PromotionDTO) => window.open("https://wa.me/?text="+encodeURIComponent(shareText(p)),"_blank","noopener,noreferrer")
   const visible=useMemo(()=>promos.filter(p=>(filter==="all"||(filter==="active"?p.active:!p.active))&&[p.title,p.description,p.code,p.badge].some(v=>v?.toLowerCase().includes(search.toLowerCase().trim()))),[promos,filter,search])
 
   return (
     <div className="space-y-4">
       <AdminSectionHeader
         title="Promotions"
-        subtitle={`${activeCount} active campaign${activeCount === 1 ? "" : "s"} — banners and codes appear on the storefront homepage.`}
+        subtitle={`${activeCount} enabled campaign${activeCount === 1 ? "" : "s"} — share codes with customers and track their redemption rules.`}
         action={
           <Button className="gap-1.5" onClick={() => setEditor({ mode: "create" })}>
             <Plus className="h-4 w-4" /> New promotion
@@ -174,6 +178,13 @@ export function PromotionsSection({ refreshKey, onRefresh }: SectionProps) {
                     ) : null}
                   </div>
 
+                  {promo.code ? <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/35 px-3 py-2"><span className="text-[11px] text-muted-foreground">Checkout code</span><code className="min-w-0 break-all font-mono text-sm font-bold tracking-wide text-foreground">{promo.code}</code><Button size="icon" variant="outline" className="ml-auto h-8 w-8" aria-label={"Copy code "+promo.code} onClick={()=>{void navigator.clipboard.writeText(promo.code!);toast.success("Code copied")}}><Copy className="h-4 w-4"/></Button></div> : <p className="text-xs text-muted-foreground">Banner only · no checkout discount code</p>}
+                  <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                    <Badge variant="outline" className={activeNow(promo)?"border-emerald-300 bg-emerald-50 font-semibold text-emerald-900":"font-semibold"}>{statusOf(promo)}</Badge>
+                    {promo.discountPct != null?<span>{promo.discountPct}% off</span>:null}
+                    {promo.usageCount != null?<span>{promo.usageCount} used{promo.maxUses!=null?" / "+promo.maxUses:""}</span>:null}
+                    {promo.perUserLimit != null?<span>Up to {promo.perUserLimit}/customer</span>:null}
+                  </div>
                   {/* meta + controls */}
                   <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
@@ -213,6 +224,7 @@ export function PromotionsSection({ refreshKey, onRefresh }: SectionProps) {
                           <Copy className="h-4 w-4" />
                         </Button>
                       ) : null}
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={()=>sharePromo(promo)} aria-label={"Share "+promo.title+" on WhatsApp"}><Share2 className="h-4 w-4"/></Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditor({ mode: "edit", promo })} aria-label={`Edit ${promo.title}`}>
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -348,12 +360,14 @@ function PromotionEditorDialog({
     setForm(f=>({...f,code:prefix+"-"+random}))
   }
 
-  const valid = form.title.trim().length >= 3 && form.description.trim().length >= 5
+  const valid = form.title.trim().length >= 3 && form.description.trim().length >= 5 && (!form.code.trim() || Boolean(form.discountPct.trim()))
 
   async function save() {
     setFormError(null)
+    if(form.code && !form.discountPct.trim()){setFormError("Add a percentage discount for this checkout code.");return}
     if(form.startsAt && form.endsAt && form.endsAt < form.startsAt){setFormError("The end date must be on or after the start date.");return}
     if(form.discountPct && (!Number.isInteger(Number(form.discountPct)) || Number(form.discountPct)<1 || Number(form.discountPct)>90)){setFormError("Enter a whole-number discount between 1% and 90%.");return}
+    if(form.minimumSpend && (!Number.isFinite(Number(form.minimumSpend))||Number(form.minimumSpend)<0)){setFormError("Minimum spend must be zero or greater.");return}
     for(const value of [form.maxUses,form.perUserLimit,form.perIpLimit,form.perBrowserLimit])if(value && (!Number.isSafeInteger(Number(value))||Number(value)<1)){setFormError("Usage limits must be positive whole numbers.");return}
     setBusy(true)
     try {
@@ -432,7 +446,7 @@ function PromotionEditorDialog({
                 <Textarea id="pr-desc" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={2} placeholder="Shown under the banner title" />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="pr-discount">Discount % (optional)</Label>
+                <Label htmlFor="pr-discount">Discount % {form.code?"(required for codes)":"(optional)"}</Label>
                 <Input id="pr-discount" type="number" min={0} max={90} value={form.discountPct} onChange={(e) => setForm((f) => ({ ...f, discountPct: e.target.value }))} placeholder="15" />
               </div>
               <div className="space-y-1.5">
