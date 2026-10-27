@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/shared/empty-state"
 import { OrderStatusBadge } from "@/components/shared/status-badges"
-import { ordersApi } from "@/lib/api-client"
+import { ordersApi, paymentsApi } from "@/lib/api-client"
 import type { OrderDTO, StaffDTO } from "@/lib/types"
 import { formatKES, shortRef, timeAgo } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -185,6 +185,20 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
     } else if (c.riderId) {
       await apply(c.order, () => ordersApi.assignRider(c.order.id, c.riderId),
         "Active delivery reassigned to " + (riders.find((r) => r.id === c.riderId)?.name ?? "rider") + ".")
+    }
+  }
+
+  async function requestMpesa(order: OrderDTO) {
+    if (!order.customerPhone) { toast.error("Add a customer phone before requesting payment."); return }
+    setBusyId(order.id)
+    try {
+      const result = await paymentsApi.requestPayment(order.id, order.customerPhone)
+      toast.success(result.message || "M-Pesa payment prompt sent. Refresh after the customer approves.", { duration: 6000 })
+      await reload(true)
+    } catch (err) {
+      toast.error(apiErrorMessage(err))
+    } finally {
+      setBusyId(null)
     }
   }
 
@@ -469,6 +483,11 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
                         <Button size="sm" className="gap-2" disabled={busy} onClick={() => changeStatus(order, statusAction.status)}>
                           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
                           {statusAction.label}
+                        </Button>
+                      ) : null}
+                      {onRoad(order) && !paid(order) && !!order.customerPhone ? (
+                        <Button size="sm" variant="outline" className="gap-2" disabled={busy} onClick={() => void requestMpesa(order)}>
+                          <CreditCard className="h-4 w-4" /> Request M-Pesa
                         </Button>
                       ) : null}
                       {onRoad(order) && !paid(order) ? (
