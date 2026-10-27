@@ -158,7 +158,9 @@ DO $$ BEGIN
   ALTER TABLE "ServiceBooking" ADD CONSTRAINT "ServiceBooking_no_overlap"
     EXCLUDE USING gist (
       "serviceId" WITH =,
-      tstzrange("scheduledStart", "scheduledEnd", '[)') WITH &&
+      -- These columns are TIMESTAMP(3) without a zone; tsrange is IMMUTABLE
+      -- for these values while tstzrange requires a timezone-dependent cast.
+      tsrange("scheduledStart", "scheduledEnd", '[)') WITH &&
     ) WHERE ("status" IN ('PENDING', 'CONFIRMED', 'PAID'));
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
