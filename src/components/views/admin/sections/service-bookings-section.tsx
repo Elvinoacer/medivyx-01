@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { AlertCircle, Archive, ArrowRight, CalendarClock, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Filter, History, Loader2, Mail, MoreHorizontal, Phone, RefreshCw, Search, UserRound, X } from "lucide-react"
+import { Archive, ArrowRight, CalendarClock, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Filter, History, Loader2, Mail, Phone, RefreshCw, Search, UserRound, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -22,7 +22,6 @@ const statusNames: Record<ServiceBookingStatus, string> = {
   ARRIVED: "Arrived", IN_PROGRESS: "In progress", COMPLETED: "Completed",
   CANCELLED: "Cancelled", NO_SHOW: "No-show", REJECTED: "Declined",
 }
-const activeStates: ServiceBookingStatus[] = ["PENDING", "CONFIRMED", "RESCHEDULED", "ARRIVED", "IN_PROGRESS"]
 const nextAction: Partial<Record<ServiceBookingStatus, { status: ServiceBookingStatus; label: string }>> = {
   PENDING: { status: "CONFIRMED", label: "Confirm" },
   RESCHEDULED: { status: "CONFIRMED", label: "Confirm" },
@@ -382,7 +381,7 @@ export function ServiceBookingsSection({ refreshKey }: SectionProps) {
               {activeDetail.status === "ARRIVED" ? <Button variant="outline" disabled={busy !== null} onClick={() => {setNoShowFor(activeDetail);closeDetail()}}>Mark no-show</Button> : null}
             </div>
             <div className="border-t pt-4">
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><History className="h-4 w-4"/> Activity history {detailLoading ? <Loader2 className="h-3 w-3 animate-spin"/> : null}</h3>
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><History className="h-4 w-4"/> Recent activity (up to 100 changes) {detailLoading ? <Loader2 className="h-3 w-3 animate-spin"/> : null}</h3>
               {detail?.statusHistory.length ? <ol className="space-y-3">{detail.statusHistory.map(event => <li key={event.id} className="flex items-start gap-3 text-xs">
                 <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary"/>
                 <div className="min-w-0"><p className="font-semibold">{statusNames[event.status as ServiceBookingStatus] || event.status}</p><p className="mt-0.5 text-muted-foreground">{dateTimeText(event.createdAt)}</p>{event.note ? <p className="mt-1 whitespace-pre-wrap break-words text-muted-foreground">{event.note}</p> : null}</div>
