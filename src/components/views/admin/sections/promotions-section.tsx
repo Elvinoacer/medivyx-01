@@ -4,7 +4,7 @@
 // storefront, active toggle, create/edit dialog (title, badge, description, code,
 // discount %, colour, schedule) and delete with confirmation.
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -21,7 +21,7 @@ import type { PromotionDTO } from "@/lib/types"
 import { formatDate } from "@/lib/format"
 import { toast } from "sonner"
 import { AdminSectionHeader, apiErrorMessage, type SectionProps } from "../admin-shared"
-import { Megaphone, Loader2, Plus, Pencil, Trash2, Ticket, CalendarDays, Copy } from "lucide-react"
+import { Megaphone, Loader2, Plus, Pencil, Trash2, Ticket, CalendarDays, Copy, Search, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // Preset colour themes (mirrors storefront banner colours; no indigo/blue per theme rules)
@@ -101,7 +101,10 @@ export function PromotionsSection({ refreshKey, onRefresh }: SectionProps) {
     }
   }
 
-  const activeCount = promos.filter((p) => p.active).length
+  const [search,setSearch]=useState("")
+  const [filter,setFilter]=useState<"all"|"active"|"paused">("all")
+  const activeCount = promos.filter(p=>p.active).length
+  const visible=useMemo(()=>promos.filter(p=>(filter==="all"||(filter==="active"?p.active:!p.active))&&[p.title,p.description,p.code,p.badge].some(v=>v?.toLowerCase().includes(search.toLowerCase().trim()))),[promos,filter,search])
 
   return (
     <div className="space-y-4">
@@ -123,6 +126,7 @@ export function PromotionsSection({ refreshKey, onRefresh }: SectionProps) {
         </div>
       ) : null}
 
+      <div className="flex flex-wrap gap-2 rounded-xl border bg-card p-3"><div className="relative min-w-44 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><Input aria-label="Search promotions" placeholder="Search name, offer or code…" className="pl-9" value={search} onChange={e=>setSearch(e.target.value)}/></div><Select value={filter} onValueChange={v=>setFilter(v as typeof filter)}><SelectTrigger aria-label="Promotion status" className="w-36"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="active">Enabled</SelectItem><SelectItem value="paused">Paused</SelectItem></SelectContent></Select><p className="w-full text-xs text-muted-foreground">{visible.length} of {promos.length} campaigns · Share promo codes with customers to redeem at checkout</p></div>
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -138,7 +142,7 @@ export function PromotionsSection({ refreshKey, onRefresh }: SectionProps) {
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {promos.map((promo) => {
+          {visible.map((promo) => {
             const color = colorOf(promo.color)
             return (
               <Card key={promo.id} className="card-lift flex flex-col">
@@ -302,6 +306,11 @@ interface PromoForm {
   active: boolean
   startsAt: string
   endsAt: string
+  maxUses: string
+  perUserLimit: string
+  perIpLimit: string
+  perBrowserLimit: string
+  minimumSpend: string
 }
 
 function PromotionEditorDialog({
@@ -325,12 +334,27 @@ function PromotionEditorDialog({
     active: promo?.active ?? true,
     startsAt: dateValue(promo?.startsAt),
     endsAt: dateValue(promo?.endsAt),
+    maxUses: promo?.maxUses == null ? "" : String(promo.maxUses),
+    perUserLimit: promo?.perUserLimit == null ? "2" : String(promo.perUserLimit),
+    perIpLimit: promo?.perIpLimit == null ? "" : String(promo.perIpLimit),
+    perBrowserLimit: promo?.perBrowserLimit == null ? "2" : String(promo.perBrowserLimit),
+    minimumSpend: promo?.minimumSpend == null ? "" : String(promo.minimumSpend),
   })
   const [busy, setBusy] = useState(false)
+  const [formError,setFormError] = useState<string|null>(null)
+  const generateCode=()=> {
+    const prefix=form.title.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8)||"SPHERE"
+    const random=Array.from(crypto.getRandomValues(new Uint8Array(5)),b=>(b%36).toString(36)).join("").toUpperCase()
+    setForm(f=>({...f,code:prefix+"-"+random}))
+  }
 
-  const valid = form.title.trim().length >= 2 && form.description.trim().length >= 2
+  const valid = form.title.trim().length >= 3 && form.description.trim().length >= 5
 
   async function save() {
+    setFormError(null)
+    if(form.startsAt && form.endsAt && form.endsAt < form.startsAt){setFormError("The end date must be on or after the start date.");return}
+    if(form.discountPct && (!Number.isInteger(Number(form.discountPct)) || Number(form.discountPct)<1 || Number(form.discountPct)>90)){setFormError("Enter a whole-number discount between 1% and 90%.");return}
+    for(const value of [form.maxUses,form.perUserLimit,form.perIpLimit,form.perBrowserLimit])if(value && (!Number.isSafeInteger(Number(value))||Number(value)<1)){setFormError("Usage limits must be positive whole numbers.");return}
     setBusy(true)
     try {
       const payload = {
@@ -338,7 +362,12 @@ function PromotionEditorDialog({
         description: form.description.trim(),
         badge: form.badge.trim() || null,
         code: form.code.trim().toUpperCase() || null,
-        discountPct: form.discountPct.trim() ? Math.max(0, Math.min(90, Number(form.discountPct))) : null,
+        discountPct: form.discountPct.trim() ? Number(form.discountPct) : null,
+        maxUses: form.maxUses ? Number(form.maxUses) : null,
+        perUserLimit: form.perUserLimit ? Number(form.perUserLimit) : null,
+        perIpLimit: form.perIpLimit ? Number(form.perIpLimit) : null,
+        perBrowserLimit: form.perBrowserLimit ? Number(form.perBrowserLimit) : null,
+        minimumSpend: form.minimumSpend ? Number(form.minimumSpend) : null,
         color: form.color,
         active: form.active,
         startsAt: form.startsAt || null,
@@ -349,6 +378,7 @@ function PromotionEditorDialog({
       toast.success(mode === "create" ? `${saved.title} created.` : `${saved.title} updated.`)
       onSaved(saved, mode === "create")
     } catch (err) {
+      setFormError(apiErrorMessage(err))
       toast.error(apiErrorMessage(err))
     } finally {
       setBusy(false)
@@ -361,7 +391,7 @@ function PromotionEditorDialog({
         <DialogHeader className="shrink-0 border-b p-4 pb-3 pr-12 text-left">
           <DialogTitle>{mode === "create" ? "New promotion" : `Edit “${promo?.title}”`}</DialogTitle>
           <DialogDescription>
-            Banners show on the storefront homepage; codes apply at checkout once the backend promo engine lands.
+            Banners show on the storefront homepage; Customers can redeem active codes at checkout. Set usage limits to discourage repeat redemption.
           </DialogDescription>
         </DialogHeader>
 
@@ -395,7 +425,7 @@ function PromotionEditorDialog({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="pr-code">Promo code</Label>
-                <Input id="pr-code" value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g. FLU15" className="font-mono uppercase" />
+                <div className="flex gap-2"><Input id="pr-code" value={form.code} onChange={e=>setForm(f=>({...f,code:e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g,"")}))} placeholder="e.g. FLU15" className="min-w-0 font-mono uppercase"/><Button variant="outline" type="button" aria-label="Generate promo code" onClick={generateCode}><RefreshCw className="h-4 w-4"/></Button></div>
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="pr-desc">Description *</Label>
@@ -425,6 +455,8 @@ function PromotionEditorDialog({
                   ))}
                 </div>
               </div>
+              <div className="sm:col-span-2"><p className="text-sm font-semibold">Usage limits</p><p className="text-xs text-muted-foreground">Customer, browser and IP limits help reduce repeated use. IPs may be shared.</p></div>
+              {([["maxUses","Total uses"],["perUserLimit","Per customer"],["perBrowserLimit","Per browser"],["perIpLimit","Per IP / network"],["minimumSpend","Minimum spend (KSh)"]] as const).map(([field,label])=><div key={field} className="space-y-1.5"><Label htmlFor={"pr-"+field}>{label}</Label><Input id={"pr-"+field} type="number" min={field==="minimumSpend"?0:1} step={field==="minimumSpend"?"0.01":"1"} value={form[field]} onChange={e=>setForm(f=>({...f,[field]:e.target.value}))} placeholder="No limit"/></div>)}
               <div className="space-y-1.5">
                 <Label htmlFor="pr-start">Starts</Label>
                 <Input id="pr-start" type="date" value={form.startsAt} onChange={(e) => setForm((f) => ({ ...f, startsAt: e.target.value }))} />
@@ -444,6 +476,7 @@ function PromotionEditorDialog({
           </div>
         </div>
 
+        {formError ? <div role="alert" className="mx-4 rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm font-medium text-rose-900">{formError}</div>:null}
         <DialogFooter className="shrink-0 gap-2 border-t bg-background p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] sm:bg-muted/30 sm:p-4">
           <Button className="w-full sm:w-auto" variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button className="w-full sm:w-auto" onClick={() => void save()} disabled={busy || !valid}>
