@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { promotionIdentity } from "@/lib/promotions"
 import { DISPATCH_STATUSES, LOYALTY } from "@/lib/constants"
 import { db } from "@/lib/db"
 import { ORDER_INCLUDE, toOrderDTO } from "@/lib/dto"
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
   return NextResponse.json(orders.map(toOrderDTO), { headers: { "Cache-Control": "private, no-store" } })
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const tooLarge = rejectOversizedRequest(request, 64 * 1024)
     if (tooLarge) return tooLarge
@@ -127,10 +128,21 @@ export async function POST(request: Request) {
     const initialStatus = hasRx ? "UNDER_REVIEW" : paymentMethod === "MPESA" || paymentMethod === "CARD" ? "AWAITING_PAYMENT" : "RECEIVED"
     const type = hasRx ? (lines.every(({ product }) => product.requiresPrescription) ? "PRESCRIPTION" : "MIXED") : body.reservation ? "RESERVATION" : "OTC"
 
+    const {ipHash,browserHash}=promotionIdentity(request)
+    if (promotion?.perUserLimit != null && !userId) return NextResponse.json({error:"Sign in to redeem this promotion. Each customer has a redemption limit."},{status:401})
+    if (promotion?.perBrowserLimit != null && !browserHash) return NextResponse.json({error:"Validate the promotion code at checkout before placing the order."},{status:409})
     const order = await db.$transaction(async (tx) => {
       if (promotion) {
-        if (promotion.maxUses != null && await tx.promotionRedemption.count({ where: { promotionId: promotion.id } }) >= promotion.maxUses) throw new Error("PROMOTION_LIMIT")
-        if (userId && promotion.perUserLimit != null && await tx.promotionRedemption.count({ where: { promotionId: promotion.id, userId } }) >= promotion.perUserLimit) throw new Error("PROMOTION_LIMIT")
+        // Serialize redemptions of this promotion so concurrent orders cannot pass
+        // the same count-based quota before recording their usage.
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${promotion.id}))`
+        const now = new Date()
+        const current = await tx.promotion.findUnique({where:{id:promotion.id}})
+        if(!current?.active || !current.discountPct || (current.startsAt && current.startsAt>now) || (current.endsAt && current.endsAt<now) || (current.minimumSpend && subtotal<Number(current.minimumSpend))) throw new Error("PROMOTION_UNAVAILABLE")
+        if (current.maxUses != null && await tx.promotionRedemption.count({ where: { promotionId: current.id } }) >= current.maxUses) throw new Error("PROMOTION_LIMIT")
+        if (current.perUserLimit != null && userId && await tx.promotionRedemption.count({ where: { promotionId: current.id, userId } }) >= current.perUserLimit) throw new Error("PROMOTION_CUSTOMER_LIMIT")
+        if (current.perIpLimit != null && ipHash && await tx.promotionRedemption.count({ where: { promotionId: current.id, ipHash } }) >= current.perIpLimit) throw new Error("PROMOTION_NETWORK_LIMIT")
+        if (current.perBrowserLimit != null && browserHash && await tx.promotionRedemption.count({ where: { promotionId: current.id, browserHash } }) >= current.perBrowserLimit) throw new Error("PROMOTION_BROWSER_LIMIT")
       }
       // Reserve every cart line in one database round-trip. Performing one
       // update per product made larger carts exceed Prisma's default 5-second
@@ -170,7 +182,7 @@ export async function POST(request: Request) {
         statusHistory: { create: { status: initialStatus, actor: "System", note: hasRx ? "Prescription queued for pharmacist review" : "Order received" } },
       }, include: ORDER_INCLUDE })
       if (hasRx) await tx.prescription.updateMany({ where: { id: { in: rxIds }, userId, orderId: null }, data: { orderId: created.id } })
-      if (promotion) await tx.promotionRedemption.create({ data: { promotionId: promotion.id, orderId: created.id, userId } })
+      if (promotion) await tx.promotionRedemption.create({ data: { promotionId: promotion.id, orderId: created.id, userId, ipHash, browserHash } })
       if (pointsRedeemed && userId) await tx.loyaltyLedger.create({ data: { eventKey: `redeem:${created.id}`, userId, orderId: created.id, delta: -pointsRedeemed, reason: "ORDER_REDEMPTION" } })
       return created
     }, {
@@ -187,7 +199,11 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : ""
     if (message.startsWith("OUT_OF_STOCK:")) return NextResponse.json({ error: `${message.slice(13)} just went out of stock.` }, { status: 409 })
     if (message === "POINTS_CHANGED") return NextResponse.json({ error: "Your points balance changed. Review the total and try again." }, { status: 409 })
-    if (message === "PROMOTION_LIMIT") return NextResponse.json({ error: "This promotion has reached its usage limit." }, { status: 409 })
+    if (message === "PROMOTION_LIMIT") return NextResponse.json({ error: "This promotion has reached its total usage limit." }, { status: 409 })
+    if (message === "PROMOTION_CUSTOMER_LIMIT") return NextResponse.json({ error: "Your account has reached this promotion's redemption limit." }, { status: 409 })
+    if (message === "PROMOTION_NETWORK_LIMIT") return NextResponse.json({ error: "This promotion has reached its redemption limit for your network." }, { status: 409 })
+    if (message === "PROMOTION_BROWSER_LIMIT") return NextResponse.json({ error: "This browser has reached the promotion redemption limit." }, { status: 409 })
+    if (message === "PROMOTION_UNAVAILABLE") return NextResponse.json({ error: "This promotion changed or expired. Please review your discount." }, { status: 409 })
     return NextResponse.json({ error: "Could not place your order. No stock or points were deducted." }, { status: 500 })
   }
 }
