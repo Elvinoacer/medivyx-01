@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getSession } from "@/lib/session"
-import { validateServiceFields } from "@/lib/security/service"
+import { managedImage, validateServiceFields } from "@/lib/security/service"
 
 function dto(service:any){return {...service,createdAt:service.createdAt.toISOString(),updatedAt:service.updatedAt.toISOString()}}
 function canManage(session:any){return Boolean(session?.staffId&&["ADMIN","PHARMACIST","STAFF"].includes(session.staffRole))}
@@ -24,9 +24,21 @@ export async function POST(request:Request){
  const body=await request.json()
  const validated=validateServiceFields(body,false)
  if(validated.error)return NextResponse.json({error:validated.error},{status:400})
+ if(body.images!==undefined&&(!Array.isArray(body.images)||body.images.length>10||body.images.some((image:any)=>!managedImage(image?.url||image))))return NextResponse.json({error:"Every service image must be an owned upload or site image (up to 10)."}, {status:400})
+ const images:Array<{url:string;storageKey:string|null;alt:string|null;sortOrder:number}>=Array.isArray(body.images)
+   ?body.images.map((image:any,i:number)=>({
+     url:managedImage(image.url||image)!,
+     storageKey:typeof image.storageKey==="string"?image.storageKey:null,
+     alt:typeof image.alt==="string"?image.alt.slice(0,240):null,
+     sortOrder:i,
+   }))
+   :[]
  const name=String(validated.data.name)
  let slug=slugify(String(body.slug||name))
  if(await db.service.findUnique({where:{slug}}))slug=slug+"-"+Date.now().toString(36)
- const service=await db.service.create({data:{...validated.data,name,slug},include:{images:{orderBy:{sortOrder:"asc"}}}})
+ const service=await db.service.create({
+   data:{...validated.data,name,slug,images:{create:images}},
+   include:{images:{orderBy:{sortOrder:"asc"}}},
+ })
  return NextResponse.json(dto(service),{status:201})
 }
