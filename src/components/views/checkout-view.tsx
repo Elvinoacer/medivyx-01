@@ -145,6 +145,15 @@ export function CheckoutView() {
   const [promo, setPromo] = useState<{ code: string; discountPct: number; discountAmount: number } | null>(null)
   const [promoError, setPromoError] = useState<string | null>(null)
   const [promoBusy, setPromoBusy] = useState(false)
+  // Shareable promotion links pre-fill the real checkout field.
+  // The customer still confirms the code; validation remains server-side.
+  useEffect(() => {
+    const shared = new URLSearchParams(window.location.search).get("promo")
+    if (!shared) return
+    const normalized = shared.trim().toUpperCase()
+    if (/^[A-Z0-9_-]{3,32}$/.test(normalized)) setPromoInput(normalized)
+  }, [])
+
 
   // ---------- Sphere Points redemption state ----------
   const [redeemPoints, setRedeemPoints] = useState(false)
