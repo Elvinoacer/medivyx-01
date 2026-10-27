@@ -50,7 +50,7 @@ export function OffersView() {
     setRefresh((n) => n + 1);
   }
 
-  function useOffer(code: string, canApply: boolean) {
+  function selectOffer(code: string, canApply: boolean) {
     rememberOffer(code);
     if (lines.length && canApply) {
       navigate("checkout", { promo: code });
@@ -147,7 +147,7 @@ export function OffersView() {
                       {copied === code ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {copied === code ? "Copied" : "Copy"}
                     </button>
                   </div>
-                  <button type="button" onClick={() => useOffer(code, eligibleSubtotal)}
+                  <button type="button" onClick={() => selectOffer(code, eligibleSubtotal)}
                     className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90">
                     {eligibleSubtotal ? <ShoppingBag className="h-4 w-4" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
                     {eligibleSubtotal ? "Check this code at checkout" : "Shop with this offer"}

@@ -217,7 +217,6 @@ export function CheckoutView() {
     processedOfferLink.current = key
     void applyPromo(offerIntent)
     // Validate once for each incoming offer / cart amount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offerIntent, subtotal])
 
   useEffect(() => {
