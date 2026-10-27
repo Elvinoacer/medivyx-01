@@ -1,0 +1,80 @@
+name: Repair dependency lockfile (temporary)
+on:
+  push:
+    branches:
+      - fix/ci-audit-20261027
+permissions:
+  contents: write
+jobs:
+  remediate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sphere
+          POSTGRES_PASSWORD: sphere
+          POSTGRES_DB: sphere_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sphere -d sphere_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://sphere:sphere@localhost:5432/sphere_test
+      NODE_ENV: test
+      CRON_SECRET: ci-only-secret-that-is-at-least-thirty-two-characters
+      SESSION_SECRET: ci-only-session-secret-that-is-at-least-thirty-two-characters
+      OTP_HASH_SECRET: ci-only-otp-secret-that-is-at-least-thirty-two-characters
+      TOKEN_HASH_SECRET: ci-only-token-secret-that-is-at-least-thirty-two-characters
+      PRESCRIPTION_RETENTION_DAYS: "365"
+      ORDER_RESERVATION_TTL_MINUTES: "60"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Upgrade patched dependencies without forced application downgrades
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          Object.assign(p.dependencies, {
+            next: '^16.4.3',
+            sharp: '^0.35.5',
+            zod: '^4.6.7'
+          });
+          Object.assign(p.devDependencies, { 'eslint-config-next': '^16.4.3' });
+          p.overrides = {
+            ...(p.overrides || {}),
+            '@grpc/grpc-js': '1.14.6',
+            'deepmerge-ts': '8.0.2',
+            'js-yaml': '4.3.2',
+            'prismjs': '1.30.0',
+            'source-map-js': '1.2.2',
+            'sharp': '$sharp'
+          };
+          fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
+          NODE
+          npm install --package-lock-only --ignore-scripts --no-audit
+      - name: Verify reproducible install
+        run: npm ci
+      - name: Confirm no production high or critical security advisories
+        run: npm audit --omit=dev --audit-level=high
+      - run: npm run db:generate
+      - run: npm run typecheck
+      - run: npm run lint -- --max-warnings=0
+      - run: npx prisma migrate deploy
+      - run: npm test
+      - run: npm run build
+      - name: Commit verified dependency graph, remove temporary workflow
+        run: |
+          rm .github/workflows/sphere-audit-repair.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json .github/workflows/sphere-audit-repair.yml
+          git commit -m "fix(security): patch production dependencies and lockfile"
+          git push origin HEAD:fix/ci-audit-20261027
