@@ -37,6 +37,18 @@ export async function GET(request: Request) {
     const orders = await db.order.findMany({ where: { fulfillment: "DELIVERY", status: { in: DISPATCH_STATUSES } }, include: ORDER_INCLUDE, orderBy: [{ riderId: "asc" }, { createdAt: "asc" }], take })
     return NextResponse.json(orders.map(toOrderDTO), { headers: { "Cache-Control": "private, no-store" } })
   }
+  if (scope === "dispatch-history") {
+    const { error } = await requireStaff(["ADMIN", "PHARMACIST", "STAFF"])
+    if (error) return error
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const orders = await db.order.findMany({
+      where: { fulfillment: "DELIVERY", status: "COMPLETED_DELIVERY", updatedAt: { gte: since } },
+      include: ORDER_INCLUDE,
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take,
+    })
+    return NextResponse.json(orders.map(toOrderDTO), { headers: { "Cache-Control": "private, no-store" } })
+  }
   if (scope === "rider") {
     const { session, error } = await requireStaff(["RIDER"])
     if (error) return error
