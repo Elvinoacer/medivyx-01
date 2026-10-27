@@ -266,6 +266,9 @@ export interface PromotionDTO {
   endsAt: string | null
   maxUses?: number | null
   perUserLimit?: number | null
+  perIpLimit?: number | null
+  perBrowserLimit?: number | null
+  usageCount?: number
   minimumSpend?: number | null
 }
 

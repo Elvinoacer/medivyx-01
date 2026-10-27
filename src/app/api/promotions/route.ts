@@ -1,3 +1,5 @@
+import { isUniqueConstraintError } from "@/lib/security/request"
+import { promotionCode, promotionDate, promotionDiscount, promotionLimitFields } from "@/lib/promotions"
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { toPromotionDTO } from "@/lib/dto"
@@ -23,10 +25,15 @@ export async function GET(request: Request) {
             { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
           ],
         },
+    include: all ? { _count: { select: { redemptions: true } } } : undefined,
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: all ? 500 : 100,
   })
-  return NextResponse.json(promos.map(toPromotionDTO))
+  const visible = all ? promos : promos.filter(p => !p.code || p.maxUses == null || !("_count" in p) || (p._count as {redemptions:number}).redemptions < p.maxUses)
+  return NextResponse.json(visible.map(p => ({
+    ...toPromotionDTO(p),
+    ...(all && "_count" in p ? { usageCount: (p._count as { redemptions:number }).redemptions } : {}),
+  })), { headers: { "Cache-Control": "no-store" } })
 }
 
 export async function POST(request: Request) {
@@ -41,17 +48,15 @@ export async function POST(request: Request) {
     if (title.length < 3 || title.length > 160) return NextResponse.json({ error: "Promotion title must be 3–160 characters." }, { status: 400 })
     if (description.length < 5 || description.length > 2_000) return NextResponse.json({ error: "Promotion description must be 5–2,000 characters." }, { status: 400 })
 
-    const code = body.code ? String(body.code).trim().toUpperCase() : null
-    if (code && !/^[A-Z0-9_-]{3,32}$/.test(code)) return NextResponse.json({ error: "Promotion codes must be 3–32 letters, numbers, underscores or hyphens." }, { status: 400 })
-    const startsAt = body.startsAt ? new Date(String(body.startsAt)) : null
-    const endsAt = body.endsAt ? new Date(String(body.endsAt)) : null
-    if (startsAt && Number.isNaN(startsAt.getTime()) || endsAt && Number.isNaN(endsAt.getTime()) || startsAt && endsAt && endsAt <= startsAt) return NextResponse.json({ error: "Promotion dates are invalid or reversed." }, { status: 400 })
-    const maximum = body.maxUses == null || body.maxUses === "" ? null : Math.trunc(Number(body.maxUses))
-    const perUser = body.perUserLimit == null || body.perUserLimit === "" ? null : Math.trunc(Number(body.perUserLimit))
+    const code = promotionCode(body.code)
+    const startsAt = promotionDate(body.startsAt, false)
+    const endsAt = promotionDate(body.endsAt, true)
+    if (startsAt && endsAt && endsAt < startsAt) return NextResponse.json({error:"End date must be on or after start date.",field:"endsAt"},{status:400})
+    const discountPct = promotionDiscount(body.discountPct)
+    if (code && !discountPct) return NextResponse.json({error:"Set a discount percentage for this checkout code.",field:"discountPct"},{status:400})
+    const limits = promotionLimitFields(body)
     const minimumSpend = body.minimumSpend == null || body.minimumSpend === "" ? null : Number(body.minimumSpend)
-    if (maximum != null && (!Number.isSafeInteger(maximum) || maximum < 1) || perUser != null && (!Number.isSafeInteger(perUser) || perUser < 1) || minimumSpend != null && (!Number.isFinite(minimumSpend) || minimumSpend < 0)) return NextResponse.json({ error: "Promotion limits are invalid." }, { status: 400 })
-    const discountPct = body.discountPct == null || body.discountPct === "" ? null : Number(body.discountPct)
-    if (discountPct != null && (!Number.isSafeInteger(discountPct) || discountPct < 1 || discountPct > 90)) return NextResponse.json({ error: "Discount must be a whole percentage from 1 to 90." }, { status: 400 })
+    if (minimumSpend != null && (!Number.isFinite(minimumSpend) || minimumSpend < 0 || minimumSpend > 10000000)) return NextResponse.json({error:"Minimum spend must be between KSh 0 and KSh 10,000,000.",field:"minimumSpend"},{status:400})
     const promo = await db.promotion.create({
       data: {
         title,
@@ -59,14 +64,16 @@ export async function POST(request: Request) {
         badge: body.badge ? String(body.badge).trim().slice(0, 24) : null,
         code,
         discountPct,
-        color: ["teal", "amber", "rose"].includes(body.color) ? body.color : "teal",
+        color: ["teal", "emerald", "amber", "orange", "rose", "violet", "neutral"].includes(body.color) ? body.color : "teal",
         active: body.active !== false,
-        startsAt, endsAt, maxUses: maximum, perUserLimit: perUser, minimumSpend,
+        startsAt, endsAt, ...limits, minimumSpend,
       },
     })
     await audit(session.staffName ?? "Staff", session.staffRole, "PROMOTION_CREATED", "Promotion", promo.id, title)
     return NextResponse.json(toPromotionDTO(promo))
-  } catch {
-    return NextResponse.json({ error: "Could not create the promotion." }, { status: 500 })
+  } catch (err) {
+    if (isUniqueConstraintError(err)) return NextResponse.json({error:"This promo code is already in use. Generate a new code or choose a different one.",field:"code"},{status:409})
+    if (err instanceof Error && /^(Promo code|Choose a valid|Discount must|Total redemption|Per-customer|Per-network|Per-browser)/.test(err.message)) return NextResponse.json({error:err.message},{status:400})
+    return NextResponse.json({ error: "Could not create the promotion. Try again or contact support." }, { status: 500 })
   }
 }

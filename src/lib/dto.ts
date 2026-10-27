@@ -180,7 +180,7 @@ export function toPromotionDTO(p: {
   id: string; title: string; description: string; badge: string | null; code: string | null;
   discountPct: number | null; color: string | null; active: boolean;
   startsAt: Date | null; endsAt: Date | null;
-  maxUses?: number | null; perUserLimit?: number | null; minimumSpend?: DbMoney | null;
+  maxUses?: number | null; perUserLimit?: number | null; perIpLimit?: number | null; perBrowserLimit?: number | null; minimumSpend?: DbMoney | null;
 }): PromotionDTO {
   return {
     id: p.id, title: p.title, description: p.description, badge: p.badge, code: p.code,
@@ -189,6 +189,8 @@ export function toPromotionDTO(p: {
     endsAt: p.endsAt ? p.endsAt.toISOString() : null,
     maxUses: p.maxUses ?? null,
     perUserLimit: p.perUserLimit ?? null,
+    perIpLimit: p.perIpLimit ?? null,
+    perBrowserLimit: p.perBrowserLimit ?? null,
     minimumSpend: p.minimumSpend == null ? null : moneyNumber(p.minimumSpend),
   }
 }

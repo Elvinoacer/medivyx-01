@@ -385,7 +385,7 @@ export const promotionsApi = {
     req<PromotionDTO>("/api/promotions", { method: "POST", body: JSON.stringify(data) }),
   update: (id: string, data: Partial<PromotionDTO>) =>
     req<PromotionDTO>(`/api/promotions/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  remove: (id: string) => req<{ ok: boolean }>(`/api/promotions/${id}`, { method: "DELETE" }),
+  remove: (id: string) => req<{ ok: boolean; archived?: boolean }>(`/api/promotions/${id}`, { method: "DELETE" }),
 }
 
 export const settingsApi = {
