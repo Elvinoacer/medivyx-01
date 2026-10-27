@@ -284,12 +284,12 @@ function PromotionEditorDialog({mode,promo,onClose,onSaved}:{
   <p className="text-[11px] leading-relaxed text-muted-foreground">{hint}</p>{showError(field)}
  </div>
  return <Dialog open onOpenChange={open=>!open&&!busy&&onClose()}>
-  <DialogContent className="flex max-h-[94dvh] w-[calc(100%-1rem)] max-w-xl flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-h-[90dvh] sm:w-full">
+  <DialogContent className="flex h-[calc(100dvh-1rem)] max-h-[46rem] w-[calc(100%-1rem)] max-w-xl flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:w-full">
    <DialogHeader className="shrink-0 border-b px-5 py-4 pr-12 text-left">
     <DialogTitle>{mode==="create"?"Create promotion":"Edit promotion"}</DialogTitle>
     <DialogDescription>Design the offer, control when it runs and decide how many times customers can redeem it.</DialogDescription>
    </DialogHeader>
-   <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
+   <div className="scroll-slim min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-4" tabIndex={0} aria-label="Promotion editor fields">
     {serverError?<div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-sm font-semibold text-rose-900 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200">{serverError}</div>:null}
     <div className={cn("space-y-1 rounded-xl p-4",themeBg[form.color])}>
      <p className="text-[10px] font-bold uppercase tracking-widest opacity-90">{form.badge||"Offer preview"}</p>
@@ -351,9 +351,9 @@ function PromotionEditorDialog({mode,promo,onClose,onSaved}:{
      <Switch id="promo-active" checked={form.active} onCheckedChange={v=>set("active",v)}/>
     </div>
    </div>
-   <DialogFooter className="shrink-0 border-t bg-background p-3 sm:p-4">
-    <Button variant="outline" disabled={busy} onClick={onClose}>Cancel</Button>
-    <Button disabled={busy} onClick={()=>void save()}>{busy?<Loader2 className="mr-2 h-4 w-4 animate-spin"/>:<Check className="mr-2 h-4 w-4"/>}{mode==="create"?"Create promotion":"Save changes"}</Button>
+   <DialogFooter className="shrink-0 border-t bg-background p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] sm:p-4">
+    <Button className="w-full sm:w-auto" variant="outline" disabled={busy} onClick={onClose}>Cancel</Button>
+    <Button className="w-full sm:w-auto" disabled={busy} onClick={()=>void save()}>{busy?<Loader2 className="mr-2 h-4 w-4 animate-spin"/>:<Check className="mr-2 h-4 w-4"/>}{mode==="create"?"Create promotion":"Save changes"}</Button>
    </DialogFooter>
   </DialogContent>
  </Dialog>
