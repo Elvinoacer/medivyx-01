@@ -255,6 +255,18 @@ export function ServicesView() {
       setActiveTab("bookings")
     }
 
+    // Homepage image cards open the corresponding service details for guests and members.
+    // Booking deep links from sign-in keep their existing auto-book behavior.
+    const previewServiceId = params.previewServiceId
+    if (previewServiceId && services) {
+      const preview = services.find((item) => item.id === previewServiceId)
+      if (preview) {
+        setDetailService(preview)
+        replace("services", {})
+      }
+      return
+    }
+
     const pendingServiceId = params.serviceId
     if (!session?.user || !pendingServiceId || !services) return
     const service = services.find((item) => item.id === pendingServiceId)
@@ -262,7 +274,7 @@ export function ServicesView() {
     setBookingService(service)
     clearAuthIntent()
     replace("services", {})
-  }, [session?.user?.id, params.serviceId, params.tab, services, clearAuthIntent, replace])
+  }, [session?.user?.id, params.previewServiceId, params.serviceId, params.tab, services, clearAuthIntent, replace])
 
   // Extract distinct categories
   const categories = useMemo(() => {

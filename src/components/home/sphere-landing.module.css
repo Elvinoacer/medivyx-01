@@ -1298,59 +1298,164 @@
 .heroActions {
   animation: copyArrive 1.1s ease both;
 }
+
 .careServices {
-  padding: 75px 5% 10px;
+  padding: clamp(72px, 7.5vw, 116px) 5% 36px;
   max-width: 1600px;
-  margin: auto;
+  margin-inline: auto;
 }
 .careServiceGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: clamp(14px, 1.7vw, 22px);
+  min-height: 525px;
 }
 .careServiceCard {
-  text-align: left;
-  padding: 28px;
-  border: 1px solid #153d3230;
-  border-radius: 12px;
-  background: #edf0e1;
-  transition:
-    transform 0.3s,
-    background 0.3s;
-}
-.careServiceCard:hover {
-  transform: translateY(-7px);
-  background: #e2ebce;
-}
-.careServiceCard > div {
+  position: relative;
+  isolation: isolate;
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
+  min-width: 0;
+  min-height: 246px;
+  overflow: hidden;
+  padding: clamp(19px, 2.5vw, 32px);
+  text-align: left;
+  border: 1px solid rgb(21 61 50 / 16%);
+  border-radius: 22px;
+  background: #cdddc8;
+  color: #fff;
+  box-shadow: 0 15px 38px -26px rgb(13 43 32 / 37%);
+  transition: transform .32s cubic-bezier(.2,.8,.2,1), box-shadow .32s ease, border-color .32s ease;
 }
-.careServiceCard > div > span {
-  font-size: 11px;
-  color: #647657;
+.careServiceCard:first-child { grid-row: span 2; min-height: 525px; }
+.careServiceCard:nth-child(2) { background: #d5e7dd; }
+.careServiceCard:nth-child(3) { background: #cbdcc1; }
+.careServiceCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 28px 56px -28px rgb(13 43 32 / 50%);
+  border-color: rgb(21 61 50 / 35%);
+}
+.careServiceCard:focus-visible { outline: 3px solid #8baa43; outline-offset: 5px; }
+.careServiceImage, .careServiceShade {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+.careServiceImage { z-index: -2; overflow: hidden; }
+.careServiceImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .7s cubic-bezier(.2,.8,.2,1);
+}
+.careServiceCard:hover .careServiceImage img { transform: scale(1.055); }
+.careServiceShade {
+  z-index: -1;
+  background: linear-gradient(180deg, rgb(7 38 29 / 43%) 0%, transparent 36%, rgb(6 39 29 / 30%) 53%, rgb(6 36 28 / 94%) 100%);
+}
+.careServiceTop, .careServiceBody {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+}
+.careServiceTop { justify-content: space-between; align-items: flex-start; gap: 12px; }
+.careServiceCategory {
+  display: inline-flex;
+  align-items: center;
+  max-width: calc(100% - 52px);
+  min-height: 31px;
+  padding: 7px 12px;
+  border: 1px solid rgb(255 255 255 / 35%);
+  border-radius: 100px;
+  background: rgb(9 43 32 / 28%);
+  backdrop-filter: blur(10px);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .045em;
+  line-height: 1.3;
+}
+.careServiceNumber { padding-top: 6px; font-size: 11px; font-weight: 700; letter-spacing: .07em; opacity: .85; }
+.careServiceBody { margin-top: auto; flex-direction: column; align-items: stretch; }
+.careServiceDuration {
+  margin-bottom: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .075em;
+  text-transform: uppercase;
+  color: #d9efdd;
 }
 .careServiceCard h3 {
-  font-size: 23px;
-  letter-spacing: -0.8px;
+  margin: 0;
+  max-width: 95%;
+  color: #fff;
+  font-size: clamp(22px, 2vw, 30px);
   font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -.045em;
+  text-wrap: balance;
 }
-.careServiceCard p {
+.careServiceCard:first-child h3 { font-size: clamp(32px, 3.5vw, 49px); }
+.careServiceDescription {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  max-width: 45ch;
+  margin-top: 11px;
+  color: #edf4eb;
   font-size: 13px;
-  color: #566952;
-  line-height: 1.8;
-  margin: 15px 0 28px;
+  line-height: 1.55;
 }
+.careServiceCard:first-child .careServiceDescription { -webkit-line-clamp: 3; font-size: 14px; }
 .serviceExplore {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgb(255 255 255 / 32%);
   font-size: 12px;
-  border-top: 1px solid #153d3225;
-  padding-top: 17px;
+  font-weight: 700;
+  letter-spacing: .015em;
 }
+.careServiceArrow {
+  display: inline-grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #d9ee83;
+  color: #153d32;
+  transition: transform .25s ease, background .25s ease;
+}
+.careServiceCard:hover .careServiceArrow { transform: translate(2px, -2px); background: #e7f5ad; }
+@media (max-width: 960px) {
+  .careServiceGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto; min-height: 0; }
+  .careServiceCard:first-child { grid-column: 1 / -1; grid-row: auto; min-height: 350px; }
+  .careServiceCard:not(:first-child) { min-height: 310px; }
+  .careServiceCard:first-child h3 { font-size: clamp(30px, 4.4vw, 42px); }
+}
+@media (max-width: 640px) {
+  .careServices { padding-top: 60px; padding-bottom: 10px; }
+  .careServices .sectionHeading { align-items: flex-start; flex-direction: column; gap: 18px; }
+  .careServiceGrid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .careServiceCard, .careServiceCard:not(:first-child), .careServiceCard:first-child { grid-column: auto; min-height: 340px; padding: 23px; border-radius: 19px; }
+  .careServiceCard:first-child { min-height: 410px; }
+  .careServiceCard h3 { font-size: 26px; }
+  .careServiceCard:first-child h3 { font-size: 35px; }
+}
+@media (max-width: 380px) {
+  .careServiceCard, .careServiceCard:not(:first-child) { min-height: 310px; padding: 19px; }
+  .careServiceCard:first-child { min-height: 365px; }
+  .careServiceCard:first-child h3 { font-size: 30px; }
+}
+
 @keyframes satelliteSpin {
   to {
     transform: rotate(360deg);
@@ -1379,32 +1484,6 @@
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-@media (max-width: 760px) {
-  .careServices {
-    padding-top: 50px;
-  }
-  .careServices .sectionHeading {
-    align-items: start;
-    flex-direction: column;
-    gap: 18px;
-  }
-  .careServiceGrid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .careServiceCard {
-    padding: 24px;
-  }
-  .careServiceCard > div {
-    margin-bottom: 20px;
-  }
-  .careServiceCard h3 {
-    font-size: 23px;
-  }
-  .careServiceCard p {
-    margin: 12px 0 20px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

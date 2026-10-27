@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Image from "next/image";
 import {
   ArrowUpRight,
@@ -17,7 +17,9 @@ import {
 } from "lucide-react";
 import { useAppStore } from "@/store/use-app-store";
 import { SphereHeader } from "@/components/layout/sphere-header";
-import { HeartPulse, Stethoscope, Droplets } from "lucide-react";
+import { servicesApi } from "@/lib/api-client";
+import { isImagePath } from "@/lib/image";
+import type { ServiceDTO } from "@/lib/types";
 import { PHARMACY, waLink } from "@/lib/constants";
 import styles from "./sphere-landing.module.css";
 
@@ -52,11 +54,101 @@ const categories = [
   },
 ];
 
+
+type CarePreview = {
+  id?: string;
+  name: string;
+  description: string;
+  category: string;
+  image: string;
+  fallbackImage: string;
+  durationMinutes?: number;
+};
+
+const CARE_PREVIEWS: CarePreview[] = [
+  {
+    name: "Medication reviews",
+    description: "Talk through your medicines and dosage schedule with our pharmacy team.",
+    category: "Pharmacist consultation",
+    image: "/images/pharmacist-consult.png",
+    fallbackImage: "/images/pharmacist-consult.png",
+  },
+  {
+    name: "Blood pressure checks",
+    description: "A convenient blood pressure and pulse check, with guidance on your next steps.",
+    category: "Wellness checks",
+    image: "/images/categories/cat-heart-health.webp",
+    fallbackImage: "/images/categories/cat-heart-health.webp",
+  },
+  {
+    name: "Blood glucose screening",
+    description: "Check your blood sugar and discuss the results with the care team.",
+    category: "Health screening",
+    image: "/images/categories/cat-diabetes.webp",
+    fallbackImage: "/images/categories/cat-diabetes.webp",
+  },
+];
+
+function fallbackServiceImage(name: string, category?: string | null): string {
+  const label = `${name} ${category || ""}`.toLowerCase();
+  if (/blood pressure|heart|cardio/.test(label)) return "/images/categories/cat-heart-health.webp";
+  if (/glucose|diabet|blood sugar/.test(label)) return "/images/categories/cat-diabetes.webp";
+  if (/screen|test|diagnos|laboratory/.test(label)) return "/images/categories/cat-diagnostics.webp";
+  if (/prescription|refill/.test(label)) return "/images/categories/cat-prescription.webp";
+  return "/images/pharmacist-consult.png";
+}
+
+function servicePreview(service: ServiceDTO): CarePreview {
+  const fallbackImage = fallbackServiceImage(service.name, service.category);
+  const image = service.heroImage || service.images?.find((item) => isImagePath(item.url))?.url || fallbackImage;
+  return {
+    id: service.id,
+    name: service.name,
+    description: service.shortDescription || service.description || "Personalised care and guidance from our pharmacy team.",
+    category: service.category || "Pharmacy care",
+    image,
+    fallbackImage,
+    durationMinutes: service.durationMinutes,
+  };
+}
+
+function CareServicePhoto({ src, fallback, name }: { src: string; fallback: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  return (
+    <Image
+      src={!failed && isImagePath(src) ? src : fallback}
+      alt={`${name} care service`}
+      fill
+      unoptimized
+      sizes="(max-width: 640px) 92vw, (max-width: 960px) 46vw, 55vw"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export function SphereLanding() {
   const navigate = useAppStore((s) => s.navigate);
   const setFilters = useAppStore((s) => s.setCatalogFilters);
   const resetFilters = useAppStore((s) => s.resetCatalogFilters);
   const [query, setQuery] = useState("");
+  const [liveServices, setLiveServices] = useState<ServiceDTO[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    servicesApi.list()
+      .then((data) => {
+        if (!cancelled) setLiveServices(data.filter((service) => service.active).slice(0, 3));
+      })
+      .catch(() => {
+        // Keep the pictured care previews when the public service feed is temporarily unavailable.
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const careCards: CarePreview[] = liveServices?.length
+    ? liveServices.map(servicePreview)
+    : CARE_PREVIEWS;
   function shop(search = "") {
     resetFilters();
     setFilters({ search });
@@ -203,39 +295,32 @@ export function SphereLanding() {
           </button>
         </div>
         <div className={styles.careServiceGrid}>
-          {[
-            {
-              icon: Stethoscope,
-              name: "Medication reviews",
-              text: "Time with a pharmacist to talk through your medicines and dosage schedule.",
-              number: "01",
-            },
-            {
-              icon: HeartPulse,
-              name: "Blood pressure checks",
-              text: "A blood pressure and pulse check, with guidance on your next steps.",
-              number: "02",
-            },
-            {
-              icon: Droplets,
-              name: "Blood glucose screening",
-              text: "Check your blood sugar and discuss your results with the care team.",
-              number: "03",
-            },
-          ].map((service) => (
+          {careCards.map((service, index) => (
             <button
-              key={service.name}
-              onClick={() => navigate("services")}
+              key={service.id || service.name}
+              type="button"
+              aria-label={`Explore ${service.name}`}
+              onClick={() => navigate("services", service.id ? { previewServiceId: service.id } : {})}
               className={styles.careServiceCard}
             >
-              <div>
-                <service.icon size={28} strokeWidth={1.3} />
-                <span>{service.number}</span>
-              </div>
-              <h3>{service.name}</h3>
-              <p>{service.text}</p>
-              <span className={styles.serviceExplore}>
-                Explore & book <ArrowUpRight size={18} />
+              <span className={styles.careServiceImage} aria-hidden="true">
+                <CareServicePhoto src={service.image} fallback={service.fallbackImage} name={service.name} />
+              </span>
+              <span className={styles.careServiceShade} aria-hidden="true" />
+              <span className={styles.careServiceTop}>
+                <span className={styles.careServiceCategory}>{service.category}</span>
+                <span className={styles.careServiceNumber}>0{index + 1}</span>
+              </span>
+              <span className={styles.careServiceBody}>
+                {service.durationMinutes ? (
+                  <span className={styles.careServiceDuration}>{service.durationMinutes} min · In-pharmacy care</span>
+                ) : null}
+                <h3>{service.name}</h3>
+                <span className={styles.careServiceDescription}>{service.description}</span>
+                <span className={styles.serviceExplore}>
+                  <span>Explore &amp; book</span>
+                  <span className={styles.careServiceArrow}><ArrowUpRight size={19} strokeWidth={1.7} /></span>
+                </span>
               </span>
             </button>
           ))}
