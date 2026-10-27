@@ -1528,7 +1528,10 @@ export function CheckoutView() {
                         {promoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
                       </Button>
                     </div>
-                    {promoError ? <p className="text-xs text-destructive">{promoError}</p> : null}
+                    {promoError ? <div role="alert" className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs font-medium text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                      <p>{promoError}</p>
+                      {/sign in/i.test(promoError) ? <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => openAuth("login","checkout","Sign in to redeem your promotion.",{promo:promoInput.trim().toUpperCase()})}>Sign in to redeem</Button> : null}
+                    </div> : null}
                   </div>
                 )}
 
