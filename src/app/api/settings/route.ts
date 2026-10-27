@@ -7,8 +7,14 @@ import { rejectOversizedRequest } from "@/lib/security/request"
 export async function GET() {
   const { pharmacy, delivery, compliance } = await getSettings()
   const session = await getSession()
-  const canManage = session?.staffRole === "ADMIN"
-  return NextResponse.json({ pharmacy, delivery, compliance: canManage ? compliance : { premiseLicenceNumber: compliance.premiseLicenceNumber, premiseLicenceExpiry: compliance.premiseLicenceExpiry, superintendentName: "", superintendentReg: "", notes: "" } }, { headers: { "Cache-Control": canManage ? "private, no-store" : "public, s-maxage=300, stale-while-revalidate=600" } })
+  const canViewRecord = session?.staffRole === "ADMIN" || session?.staffRole === "PHARMACIST"
+  // Recording compliance details is not PPB verification or authorization to publish.
+  // Do not expose unverified licence or superintendent records to public clients.
+  const publicCompliance = { premiseLicenceNumber: "", premiseLicenceExpiry: "", superintendentName: "", superintendentReg: "", notes: "" }
+  return NextResponse.json(
+    { pharmacy, delivery, compliance: canViewRecord ? compliance : publicCompliance },
+    { headers: { "Cache-Control": "private, no-store" } }
+  )
 }
 
 export async function PUT(request: Request) {
@@ -73,9 +79,21 @@ export async function PUT(request: Request) {
     }
     if (body.compliance) {
       if (!body.compliance || typeof body.compliance !== "object" || Array.isArray(body.compliance)) return NextResponse.json({ error: "Invalid compliance settings." }, { status: 400 })
-      const compliance = Object.fromEntries(["premiseLicenceNumber", "premiseLicenceExpiry", "superintendentName", "superintendentReg", "notes"].filter((key) => body.compliance[key] !== undefined).map((key) => [key, String(body.compliance[key]).trim().slice(0, key === "notes" ? 1000 : 160)]))
+      const allowedKeys = ["premiseLicenceNumber", "premiseLicenceExpiry", "superintendentName", "superintendentReg", "notes"] as const
+      if (allowedKeys.some((key) => body.compliance[key] !== undefined && typeof body.compliance[key] !== "string")) {
+        return NextResponse.json({ error: "Compliance details must be text values." }, { status: 400 })
+      }
+      if (allowedKeys.some((key) => String(body.compliance[key] ?? "").length > (key === "notes" ? 1000 : 160))) {
+        return NextResponse.json({ error: "Some compliance fields exceed their maximum length." }, { status: 400 })
+      }
+      const compliance = Object.fromEntries(allowedKeys.filter((key) => body.compliance[key] !== undefined).map((key) => [key, String(body.compliance[key]).trim()]))
+      const expiry = compliance.premiseLicenceExpiry
+      if (expiry && (!/^\d{4}-\d{2}-\d{2}$/.test(expiry) || Number.isNaN(Date.parse(`${expiry}T00:00:00Z`)) || new Date(`${expiry}T00:00:00Z`).toISOString().slice(0, 10) !== expiry)) {
+        return NextResponse.json({ error: "Enter a valid licence expiry date." }, { status: 400 })
+      }
+      // These are internal draft records; updating them never constitutes verification or publication.
       await saveSettingsSection("compliance", compliance)
-      await audit(session.staffName ?? "Admin", "ADMIN", "COMPLIANCE_UPDATED", "Setting", "compliance", "Compliance/licence details updated")
+      await audit(session.staffName ?? "Admin", "ADMIN", "COMPLIANCE_UPDATED", "Setting", "compliance", "Internal compliance record updated (not PPB-verified)")
     }
     const settings = await getSettings()
     return NextResponse.json({ ok: true, ...settings })
