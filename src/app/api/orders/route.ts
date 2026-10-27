@@ -128,7 +128,14 @@ export async function POST(request: NextRequest) {
     if (code) {
       promotion = await db.promotion.findUnique({ where: { code } })
       const now = new Date()
-      if (!promotion?.active || !promotion.discountPct || promotion.startsAt && promotion.startsAt > now || promotion.endsAt && promotion.endsAt < now || promotion.minimumSpend && subtotal < Number(promotion.minimumSpend)) return NextResponse.json({ error: "This promotion is unavailable for the order." }, { status: 400 })
+      if (!promotion) return NextResponse.json({ error: "This promo code no longer exists. Remove it and choose another." }, { status: 404 })
+      if (!promotion.active) return NextResponse.json({ error: "This promotion has been paused. Remove the code before ordering." }, { status: 409 })
+      if (!promotion.discountPct) return NextResponse.json({ error: "This promotion has no checkout discount." }, { status: 409 })
+      if (promotion.startsAt && promotion.startsAt > now) return NextResponse.json({ error: "This offer has not started yet." }, { status: 409 })
+      if (promotion.endsAt && promotion.endsAt < now) return NextResponse.json({ error: "This offer expired before checkout. Remove it or choose a new code." }, { status: 409 })
+      if (promotion.minimumSpend && subtotal < Number(promotion.minimumSpend)) return NextResponse.json({
+        error: `Add KSh ${(Number(promotion.minimumSpend) - subtotal).toLocaleString("en-KE")} more to your bag to use this promotion.`,
+      }, { status: 409 })
     }
     const discountAmount = promotion ? money(Math.min(subtotal, subtotal * promotion.discountPct! / 100)) : 0
     let pointsRedeemed = 0

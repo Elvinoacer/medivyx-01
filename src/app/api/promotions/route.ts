@@ -25,14 +25,15 @@ export async function GET(request: Request) {
             { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
           ],
         },
-    include: all ? { _count: { select: { redemptions: true } } } : undefined,
+    // Public results must exclude exhausted promotions, not just expired ones.
+    include: { _count: { select: { redemptions: true } } },
     orderBy: { createdAt: "desc" },
     take: all ? 500 : 100,
   })
-  const visible = all ? promos : promos.filter(p => !p.code || p.maxUses == null || !("_count" in p) || (p._count as {redemptions:number}).redemptions < p.maxUses)
+  const visible = all ? promos : promos.filter(p => p.maxUses == null || p._count.redemptions < p.maxUses)
   return NextResponse.json(visible.map(p => ({
     ...toPromotionDTO(p),
-    ...(all && "_count" in p ? { usageCount: (p._count as { redemptions:number }).redemptions } : {}),
+    ...(all ? { usageCount: p._count.redemptions } : {}),
   })), { headers: { "Cache-Control": "no-store" } })
 }
 
