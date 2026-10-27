@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Archive, ArrowDownUp, CalendarDays, Camera, Check, CheckCircle2, Copy, Edit3, Grid2X2, ImagePlus, LayoutList, Loader2, MoreHorizontal, Plus, RotateCcw, Search, SlidersHorizontal, Star, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -173,19 +172,19 @@ export function ServicesSection({refreshKey,onRefresh}:SectionProps){
     <Button size="sm" variant="outline" disabled={busy} onClick={()=>void applyMany(selectedServices,"publish")}><CheckCircle2 className="mr-1.5 h-3.5 w-3.5"/> Publish</Button>
     <Button size="sm" variant="outline" disabled={busy} onClick={()=>void applyMany(selectedServices,"feature")}><Star className="mr-1.5 h-3.5 w-3.5"/> Feature</Button>
     <Button size="sm" variant="outline" disabled={busy} onClick={()=>void applyMany(selectedServices,"unfeature")}>Unfeature</Button>
-    <Button size="sm" variant="outline" disabled={busy} className="text-destructive hover:text-destructive" onClick={()=>setPendingArchive(selectedServices.filter(service=>service.active))} disabled={busy||!selectedServices.some(service=>service.active)}><Archive className="mr-1.5 h-3.5 w-3.5"/> Archive</Button>
+    <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={()=>setPendingArchive(selectedServices.filter(service=>service.active))} disabled={busy||!selectedServices.some(service=>service.active)}><Archive className="mr-1.5 h-3.5 w-3.5"/> Archive</Button>
     <button type="button" onClick={()=>setSelectedIds(new Set())} className="ml-auto text-xs font-medium text-muted-foreground hover:text-foreground">Clear selection</button>
    </div>:null}
    {services===null?<div className="space-y-2 border-t p-4">{Array.from({length:5}).map((_,i)=><div key={i} className="h-20 animate-pulse rounded-xl bg-muted/50"/>)}</div>
    :services.length===0?<div className="border-t px-6 py-14 text-center"><ImagePlus className="mx-auto h-9 w-9 text-muted-foreground"/><h3 className="mt-3 font-semibold">No care services yet</h3><p className="mt-1 text-sm text-muted-foreground">Create your first service to start taking bookings.</p><Button className="mt-5" onClick={openNew}><Plus className="mr-2 h-4 w-4"/> Create service</Button></div>
    :visible.length===0?<div className="border-t px-6 py-12 text-center"><Search className="mx-auto h-8 w-8 text-muted-foreground"/><h3 className="mt-3 font-semibold">No matching services</h3><p className="mt-1 text-sm text-muted-foreground">Try a different search or clear the filters.</p><Button variant="outline" size="sm" className="mt-4" onClick={clearFilters}>Reset filters</Button></div>
    :viewMode==="list"?<>
-    <div className="hidden items-center gap-3 border-y bg-muted/30 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground lg:grid lg:grid-cols-[32px_minmax(0,1fr)_95px_110px_132px] sm:px-5">
+    <div className="hidden items-center gap-3 border-y bg-muted/30 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground lg:grid lg:grid-cols-[32px_minmax(0,1fr)_95px_110px_132px] xl:grid-cols-[32px_minmax(0,1fr)_95px_110px_205px] sm:px-5">
      <Checkbox checked={allVisibleSelected?true:visibleIds.some(id=>selectedIds.has(id))?"indeterminate":false} onCheckedChange={value=>selectVisible(value===true)} aria-label="Select all visible services"/>
      <span>Service</span><span>Status</span><span>Price</span><span className="text-right">Manage</span>
     </div>
     <div className="divide-y">
-     {visible.map(service=><div key={service.id} className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/25 sm:px-5 lg:grid lg:grid-cols-[32px_minmax(0,1fr)_95px_110px_132px] lg:gap-3">
+     {visible.map(service=><div key={service.id} className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/25 sm:px-5 lg:grid lg:grid-cols-[32px_minmax(0,1fr)_95px_110px_132px] xl:grid-cols-[32px_minmax(0,1fr)_95px_110px_205px] lg:gap-3">
       <Checkbox checked={selectedIds.has(service.id)} onCheckedChange={value=>toggleSelected(service.id,value===true)} aria-label={"Select "+service.name}/>
       <div className="flex min-w-0 flex-1 items-center gap-3">
        <div className="relative h-[66px] w-[74px] shrink-0 overflow-hidden rounded-xl border bg-muted">
