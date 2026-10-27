@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
 import { getSession } from "@/lib/session"
 import { notifyServiceBooking, notifyStaff } from "@/lib/notify"
@@ -31,6 +32,136 @@ function dayBounds(date: string) {
 
 const activeBookingStatuses = ["PENDING", "CONFIRMED", "RESCHEDULED", "ARRIVED", "IN_PROGRESS"]
 
+// An indexed, paginated administrative view. Do not fetch the entire booking history
+// or full user/status-history relations just to render one page of the work queue.
+const bookingStatusValues = ["PENDING", "CONFIRMED", "RESCHEDULED", "ARRIVED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "NO_SHOW", "REJECTED"] as const
+const terminalStatuses = ["COMPLETED", "CANCELLED", "NO_SHOW", "REJECTED"]
+const selectedBookingRelations = {
+  service: { select: { name: true } },
+  user: { select: { name: true, phone: true, email: true } },
+} as const
+
+function manageDto(b: any, statusHistory: any[] = []) {
+  return {
+    id: b.id,
+    reference: b.reference,
+    serviceId: b.serviceId,
+    serviceName: b.service.name,
+    userId: b.userId,
+    customerName: b.user?.name || null,
+    customerPhone: b.user?.phone || null,
+    customerEmail: b.user?.email || null,
+    scheduledStart: b.scheduledStart.toISOString(),
+    scheduledEnd: b.scheduledEnd.toISOString(),
+    status: b.status,
+    assignedStaffId: b.assignedStaffId,
+    customerNotes: b.customerNotes,
+    staffNotes: b.staffNotes,
+    price: b.price == null ? null : Number(b.price),
+    paymentStatus: b.paymentStatus,
+    createdAt: b.createdAt.toISOString(),
+    updatedAt: b.updatedAt.toISOString(),
+    statusHistory: statusHistory.map((h: any) => ({
+      id: h.id, status: h.status, note: h.note,
+      actor: h.actor, createdAt: h.createdAt.toISOString(),
+    })),
+  }
+}
+
+async function manageBookings(url: URL) {
+  const params = url.searchParams
+  const view = params.get("view") || "queue"
+  if (!["queue", "upcoming", "history", "all"].includes(view))
+    return NextResponse.json({ error: "Invalid bookings view." }, { status: 400 })
+
+  const page = Math.min(100000, Math.max(1, Number.parseInt(params.get("page") || "1", 10) || 1))
+  const pageSize = Math.min(50, Math.max(5, Number.parseInt(params.get("pageSize") || "20", 10) || 20))
+  const status = params.get("status") || "all"
+  if (status !== "all" && !(bookingStatusValues as readonly string[]).includes(status))
+    return NextResponse.json({ error: "Invalid status filter." }, { status: 400 })
+  const range = params.get("range") || "any"
+  if (!["any", "today", "next7", "custom"].includes(range))
+    return NextResponse.json({ error: "Invalid date range." }, { status: 400 })
+
+  const today = dayBounds(nairobiDate(new Date()))!
+  const filters: Prisma.ServiceBookingWhereInput[] = []
+  if (view === "queue") filters.push({ status: "PENDING" })
+  if (view === "upcoming") filters.push({
+    status: { in: activeBookingStatuses },
+    scheduledStart: { gte: today.start },
+  })
+  if (view === "history") filters.push({ status: { in: terminalStatuses } })
+  if (status !== "all") filters.push({ status })
+
+  if (range === "today") {
+    filters.push({ scheduledStart: { gte: today.start, lt: today.end } })
+  } else if (range === "next7") {
+    filters.push({ scheduledStart: {
+      gte: today.start,
+      lt: new Date(today.start.getTime() + 7 * 86400000),
+    } })
+  } else if (range === "custom") {
+    const from = params.get("from")
+    const to = params.get("to")
+    const begin = from ? dayBounds(from) : null
+    const finish = to ? dayBounds(to) : null
+    if (!begin || !finish || begin.start > finish.start || finish.start.getTime() - begin.start.getTime() > 366 * 86400000)
+      return NextResponse.json({ error: "Choose a valid date range of up to one year." }, { status: 400 })
+    filters.push({ scheduledStart: { gte: begin.start, lt: finish.end } })
+  }
+
+  const staffId = params.get("staffId")
+  if (staffId && staffId !== "all") {
+    if (staffId.length > 100) return NextResponse.json({ error: "Invalid staff filter." }, { status: 400 })
+    filters.push({ assignedStaffId: staffId === "unassigned" ? null : staffId })
+  }
+  const query = (params.get("q") || "").trim().slice(0, 120)
+  if (query) {
+    filters.push({
+      OR: [
+        { reference: { contains: query, mode: "insensitive" } },
+        { service: { is: { name: { contains: query, mode: "insensitive" } } } },
+        { user: { is: { name: { contains: query, mode: "insensitive" } } } },
+        { user: { is: { phone: { contains: query, mode: "insensitive" } } } },
+        { user: { is: { email: { contains: query, mode: "insensitive" } } } },
+      ],
+    })
+  }
+  const where: Prisma.ServiceBookingWhereInput = { AND: filters }
+  const orderBy: Prisma.ServiceBookingOrderByWithRelationInput[] = view === "history" || view === "all"
+    ? [{ scheduledStart: "desc" }, { id: "desc" }]
+    : [{ scheduledStart: "asc" }, { id: "asc" }]
+
+  const [total, rows] = await Promise.all([
+    db.serviceBooking.count({ where }),
+    db.serviceBooking.findMany({
+      where,
+      include: selectedBookingRelations,
+      orderBy,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ])
+  return NextResponse.json({
+    items: rows.map((b) => manageDto(b)),
+    total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  }, { headers: { "Cache-Control": "no-store" } })
+}
+
+async function bookingDetail(id: string) {
+  if (!id || id.length > 100) return NextResponse.json({ error: "Invalid booking." }, { status: 400 })
+  const record = await db.serviceBooking.findUnique({
+    where: { id },
+    include: {
+      ...selectedBookingRelations,
+      statusHistory: { orderBy: { createdAt: "desc" }, take: 100 },
+    },
+  })
+  if (!record) return NextResponse.json({ error: "Booking not found." }, { status: 404 })
+  return NextResponse.json(manageDto(record, record.statusHistory), { headers: { "Cache-Control": "no-store" } })
+}
+
+
 export async function GET(request: Request) {
   const session = await getSession()
   if (!can(session)) return NextResponse.json({ error: "Staff access required." }, { status: 403 })
@@ -39,6 +170,9 @@ export async function GET(request: Request) {
   const date = url.searchParams.get("date")
   const bounds = date ? dayBounds(date) : null
   if (date && !bounds) return NextResponse.json({ error: "Invalid appointment date." }, { status: 400 })
+
+  if (url.searchParams.get("scope") === "manage") return manageBookings(url)
+  if (url.searchParams.get("scope") === "detail") return bookingDetail(url.searchParams.get("id") || "")
 
   if (url.searchParams.get("scope") === "overview") {
     const today = dayBounds(nairobiDate(new Date()))!
