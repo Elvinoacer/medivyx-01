@@ -27,6 +27,7 @@ import { DELIVERY_DEFAULTS, LOYALTY, PHARMACY, maxRedeemablePoints, pointsForAmo
 import { formatKES } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { pendingOffer, forgetOffer } from "@/lib/offer-intent"
 import { UseCurrentLocationButton } from "@/components/shared/use-current-location-button"
 import {
   MapPin, Truck, Store, ClipboardList, CreditCard, CheckCircle2, ChevronLeft, Loader2,
@@ -143,58 +144,100 @@ export function CheckoutView() {
 
   // ---------- promo code ----------
   const [promoInput, setPromoInput] = useState("")
-  const [promo, setPromo] = useState<{ code: string; discountPct: number; discountAmount: number } | null>(null)
+  const [promo, setPromo] = useState<{ code: string; discountPct: number; discountAmount: number; validatedSubtotal: number } | null>(null)
   const [promoError, setPromoError] = useState<string | null>(null)
   const [promoBusy, setPromoBusy] = useState(false)
   const [availableOffers, setAvailableOffers] = useState<PromotionDTO[]>([])
   const processedOfferLink = useRef<string | null>(null)
-  // Shareable promotion links pre-fill the real checkout field.
-  // The customer still confirms the code; validation remains server-side.
-  useEffect(() => {
-    const shared = new URLSearchParams(window.location.search).get("promo")
-    if (!shared) return
-    const normalized = shared.trim().toUpperCase()
-    if (/^[A-Z0-9_-]{3,32}$/.test(normalized)) setPromoInput(normalized)
-  }, [])
+  const promoRequestId = useRef(0)
+  const [offerIntent, setOfferIntent] = useState<string | null>(null)
 
+  // An offer selected before shopping remains available at checkout. Deep links
+  // also work after a page reload; validation is never inferred from URL data.
+  useEffect(() => {
+    const candidate = linkedPromo || new URLSearchParams(window.location.search).get("promo") || pendingOffer()
+    const code = candidate?.trim().toUpperCase()
+    if (code && /^[A-Z0-9_-]{3,32}$/.test(code)) {
+      setPromoInput(code)
+      setOfferIntent(code)
+    }
+  }, [linkedPromo])
 
   // ---------- Sphere Points redemption state ----------
   const [redeemPoints, setRedeemPoints] = useState(false)
 
-  const discountAmount = promo?.discountAmount ?? 0
+  // Prices can change with cart quantities. Never send or display a discount
+  // calculated for a different subtotal.
+  const activePromo = promo?.validatedSubtotal === subtotal ? promo : null
+  const discountAmount = activePromo?.discountAmount ?? 0
 
   async function applyPromo(candidate?: string) {
     const code = (candidate || promoInput).trim().toUpperCase()
     if (!code) { setPromoError("Enter a promo code."); return }
+    if (!/^[A-Z0-9_-]{3,32}$/.test(code)) {
+      setPromoError("Check the code: use 3–32 letters, numbers, underscores or hyphens.")
+      return
+    }
+    if (subtotal <= 0) { setPromoError("Add products to your bag before applying a code."); return }
+
+    const requestId = ++promoRequestId.current
     setPromoInput(code)
     setPromoBusy(true)
     setPromoError(null)
     try {
       const res = await promotionsApi.validate(code, subtotal)
-      setPromo({ code: res.promotion.code ?? code, discountPct: res.promotion.discountPct ?? 0, discountAmount: res.discountAmount })
-      toast.success(`Code ${res.promotion.code} applied — ${res.promotion.discountPct}% off your subtotal!`)
+      if (requestId !== promoRequestId.current) return
+      setPromo({ code: res.promotion.code ?? code, discountPct: res.promotion.discountPct ?? 0, discountAmount: res.discountAmount, validatedSubtotal: subtotal })
+      forgetOffer()
+      toast.success("Promotion applied", { description: `${code} saved you ${formatKES(res.discountAmount)}.` })
     } catch (err) {
+      if (requestId !== promoRequestId.current) return
+      const message = err instanceof Error ? err.message : "Could not validate this code. Try again."
       setPromo(null)
-      setPromoError(err instanceof Error ? err.message : "That code isn't valid.")
-    } finally {setPromoBusy(false)}
+      setPromoError(message)
+      forgetOffer()
+      toast.error("Offer could not be applied", { description: message })
+    } finally {
+      if (requestId === promoRequestId.current) setPromoBusy(false)
+    }
   }
-  useEffect(()=>{
-    let mounted=true
-    promotionsApi.list().then(list=>{if(mounted)setAvailableOffers(list.filter(p=>p.code&&p.discountPct).slice(0,4))}).catch(()=>{})
-    return()=>{mounted=false}
-  },[])
-  useEffect(()=>{
-    const code = linkedPromo?.trim().toUpperCase()
-    if (!code || subtotal<=0 || processedOfferLink.current===code) return
-    processedOfferLink.current=code
-    void applyPromo(code)
-  // Auto-apply each incoming share code once; subtotal is sourced from the cart.
-  },[linkedPromo,subtotal])
+
+  useEffect(() => {
+    let mounted = true
+    promotionsApi.list().then(list => {
+      if (mounted) setAvailableOffers(list.filter(p => p.code && p.discountPct).slice(0, 4))
+    }).catch(() => {})
+    return () => { mounted = false }
+  }, [])
+
+  useEffect(() => {
+    if (!offerIntent || subtotal <= 0) return
+    const key = `${offerIntent}:${subtotal}`
+    if (processedOfferLink.current === key) return
+    processedOfferLink.current = key
+    void applyPromo(offerIntent)
+    // Validate once for each incoming offer / cart amount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offerIntent, subtotal])
+
+  useEffect(() => {
+    if (!promo || promo.validatedSubtotal === subtotal) return
+    // Do not allow a stale validated code into the final order payload.
+    promoRequestId.current += 1
+    setPromo(null)
+    setPromoBusy(false)
+    setPromoInput(promo.code)
+    setPromoError("Your bag total changed. Please apply this code again to confirm your savings.")
+  }, [promo, subtotal])
 
   function removePromo() {
+    promoRequestId.current += 1
     setPromo(null)
     setPromoInput("")
     setPromoError(null)
+    setPromoBusy(false)
+    forgetOffer()
+    setOfferIntent(null)
   }
 
   // ---------- guest details ----------
@@ -433,7 +476,7 @@ export function CheckoutView() {
         : {}),
       ...(orderNotes.trim() ? { notes: orderNotes.trim() } : {}),
       ...(uploaded.length > 0 ? { prescriptionIds: uploaded.map((u) => u.id) } : {}),
-      ...(promo ? { promotionCode: promo.code } : {}),
+      ...(activePromo ? { promotionCode: activePromo.code } : {}),
       ...(redeemPoints && pointsEligible ? { redeemPoints: true } : {}),
       ...(deliveryCoordinates ? { deliveryLatitude: deliveryCoordinates.latitude, deliveryLongitude: deliveryCoordinates.longitude } : {}),
     }
@@ -472,6 +515,11 @@ export function CheckoutView() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Couldn't place your order — please try again."
       setInlineError(msg)
+      if (/promo|promotion|offer|redemption|code/i.test(msg)) {
+        setPromoError(msg)
+        setPromoInput(activePromo?.code ?? promoInput)
+        setPromo(null)
+      }
       toast.error(msg)
       return null
     } finally {
@@ -1500,10 +1548,10 @@ export function CheckoutView() {
                       <span className="tnum font-bold text-emerald-700 dark:text-emerald-300">−{formatKES(placedOrder.discountAmount)}</span>
                     </div>
                   ) : null
-                ) : promo ? (
+                ) : activePromo ? (
                   <div className="sphere-checkout-promo-notice flex items-center justify-between gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-sm dark:border-emerald-800 dark:bg-emerald-950/40">
                     <span className="flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-300">
-                      <Ticket className="h-4 w-4" aria-hidden /> {promo.code} · {promo.discountPct}% off
+                      <Ticket className="h-4 w-4" aria-hidden /> {activePromo.code} · {activePromo.discountPct}% off
                     </span>
                     <button onClick={removePromo} className="text-xs text-muted-foreground hover:text-foreground" aria-label="Remove promo code">
                       Remove
@@ -1516,7 +1564,7 @@ export function CheckoutView() {
                         <Ticket className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
                         <Input
                           value={promoInput}
-                          onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(null) }}
+                          onChange={(e) => { promoRequestId.current += 1; setPromoBusy(false); setPromoInput(e.target.value.toUpperCase()); setPromoError(null) }}
                           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), void applyPromo())}
                           placeholder="Promo code"
                           className="h-10 pl-9 text-sm uppercase tracking-wide"
@@ -1528,22 +1576,22 @@ export function CheckoutView() {
                         {promoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
                       </Button>
                     </div>
-                    {promoError ? <div role="alert" className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs font-medium text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                    {promoError ? <div role="alert" aria-live="assertive" className="space-y-2 rounded-lg border-2 border-amber-500 bg-amber-50 p-3 text-sm font-medium leading-5 text-amber-950 dark:border-amber-600 dark:bg-amber-950/60 dark:text-amber-100">
                       <p>{promoError}</p>
                       {/sign in/i.test(promoError) ? <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => openAuth("login","checkout","Sign in to redeem your promotion.",{promo:promoInput.trim().toUpperCase()})}>Sign in to redeem</Button> : null}
                     </div> : null}
                   </div>
                 )}
 
-                {!placedOrder && !promo && availableOffers.length > 0 ? (
+                {!placedOrder && !activePromo && availableOffers.length > 0 ? (
                   <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900 dark:bg-emerald-950/30">
-                    <p className="text-xs font-bold text-emerald-950 dark:text-emerald-100">Offers you can use</p>
-                    {availableOffers.filter(p=>!p.minimumSpend || subtotal>=p.minimumSpend).slice(0,2).map(p=>(
+                    <p className="text-xs font-bold text-emerald-950 dark:text-emerald-100">Available offers · validated at checkout</p>
+                    {availableOffers.slice(0,2).map(p=>(
                       <div key={p.id} className="flex items-center justify-between gap-2">
                         <p className="min-w-0 truncate text-xs text-emerald-900 dark:text-emerald-200">
-                          <span className="font-mono font-bold">{p.code}</span> · {p.discountPct}% off
+                          <span className="font-mono font-bold">{p.code}</span> · {p.discountPct}% off{p.minimumSpend && subtotal < p.minimumSpend ? ` · Add ${formatKES(p.minimumSpend-subtotal)} more` : ""}
                         </p>
-                        <Button size="sm" variant="outline" disabled={promoBusy} className="h-8 shrink-0" onClick={()=>void applyPromo(p.code!)}>Apply</Button>
+                        <Button size="sm" variant="outline" disabled={promoBusy || (!!p.minimumSpend && subtotal < p.minimumSpend)} className="h-8 shrink-0" onClick={()=>void applyPromo(p.code!)}>Apply</Button>
                       </div>
                     ))}
                   </div>
@@ -1603,7 +1651,7 @@ export function CheckoutView() {
                     <span className="text-muted-foreground">Subtotal</span>
                     <span className="tnum font-semibold">{formatKES(placedOrder ? placedOrder.subtotal : subtotal)}</span>
                   </div>
-                  {(placedOrder ? placedOrder.discountAmount > 0 : promo != null) ? (
+                  {(placedOrder ? placedOrder.discountAmount > 0 : activePromo != null) ? (
                     <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
                       <span>Promo discount</span>
                       <span className="tnum font-semibold">−{formatKES(placedOrder ? placedOrder.discountAmount : discountAmount)}</span>
