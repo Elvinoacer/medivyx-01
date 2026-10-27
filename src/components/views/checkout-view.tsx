@@ -22,7 +22,7 @@ import {
   ordersApi, paymentsApi, prescriptionsApi, settingsApi, addressesApi, promotionsApi, storageApi,
   type CreateOrderPayload,
 } from "@/lib/api-client"
-import type { AddressDTO, DeliverySettings, OrderDTO } from "@/lib/types"
+import type { AddressDTO, DeliverySettings, OrderDTO, PromotionDTO } from "@/lib/types"
 import { DELIVERY_DEFAULTS, LOYALTY, PHARMACY, maxRedeemablePoints, pointsForAmount, waLink } from "@/lib/constants"
 import { formatKES } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -77,6 +77,7 @@ function normalizePhone(raw: string): string | null {
 
 export function CheckoutView() {
   const navigate = useAppStore((s) => s.navigate)
+  const linkedPromo = useAppStore((s) => s.params.promo)
   const openAuth = useAppStore((s) => s.openAuth)
   const lines = useCartStore((s) => s.lines)
   const clearCart = useCartStore((s) => s.clear)
@@ -145,6 +146,8 @@ export function CheckoutView() {
   const [promo, setPromo] = useState<{ code: string; discountPct: number; discountAmount: number } | null>(null)
   const [promoError, setPromoError] = useState<string | null>(null)
   const [promoBusy, setPromoBusy] = useState(false)
+  const [availableOffers, setAvailableOffers] = useState<PromotionDTO[]>([])
+  const processedOfferLink = useRef<string | null>(null)
   // Shareable promotion links pre-fill the real checkout field.
   // The customer still confirms the code; validation remains server-side.
   useEffect(() => {
@@ -160,12 +163,10 @@ export function CheckoutView() {
 
   const discountAmount = promo?.discountAmount ?? 0
 
-  async function applyPromo() {
-    const code = promoInput.trim().toUpperCase()
-    if (!code) {
-      setPromoError("Enter a promo code.")
-      return
-    }
+  async function applyPromo(candidate?: string) {
+    const code = (candidate || promoInput).trim().toUpperCase()
+    if (!code) { setPromoError("Enter a promo code."); return }
+    setPromoInput(code)
     setPromoBusy(true)
     setPromoError(null)
     try {
@@ -175,10 +176,21 @@ export function CheckoutView() {
     } catch (err) {
       setPromo(null)
       setPromoError(err instanceof Error ? err.message : "That code isn't valid.")
-    } finally {
-      setPromoBusy(false)
-    }
+    } finally {setPromoBusy(false)}
   }
+  useEffect(()=>{
+    let mounted=true
+    promotionsApi.list().then(list=>{if(mounted)setAvailableOffers(list.filter(p=>p.code&&p.discountPct).slice(0,4))}).catch(()=>{})
+    return()=>{mounted=false}
+  },[])
+  useEffect(()=>{
+    const code = linkedPromo?.trim().toUpperCase()
+    if (!code || subtotal<=0 || processedOfferLink.current===code) return
+    processedOfferLink.current=code
+    void applyPromo(code)
+  // Auto-apply each incoming share code once; subtotal is sourced from the cart.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[linkedPromo,subtotal])
 
   function removePromo() {
     setPromo(null)
@@ -1520,6 +1532,20 @@ export function CheckoutView() {
                     {promoError ? <p className="text-xs text-destructive">{promoError}</p> : null}
                   </div>
                 )}
+
+                {!placedOrder && !promo && availableOffers.length > 0 ? (
+                  <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900 dark:bg-emerald-950/30">
+                    <p className="text-xs font-bold text-emerald-950 dark:text-emerald-100">Offers you can use</p>
+                    {availableOffers.filter(p=>!p.minimumSpend || subtotal>=p.minimumSpend).slice(0,2).map(p=>(
+                      <div key={p.id} className="flex items-center justify-between gap-2">
+                        <p className="min-w-0 truncate text-xs text-emerald-900 dark:text-emerald-200">
+                          <span className="font-mono font-bold">{p.code}</span> · {p.discountPct}% off
+                        </p>
+                        <Button size="sm" variant="outline" disabled={promoBusy} className="h-8 shrink-0" onClick={()=>void applyPromo(p.code!)}>Apply</Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
 
                 {!placedOrder && user && loyaltyBalance >= LOYALTY.minRedeem ? (
                   <div className="sphere-checkout-points-notice rounded-xl border border-teal-200 bg-teal-50 p-3 dark:border-teal-800 dark:bg-teal-950/40">

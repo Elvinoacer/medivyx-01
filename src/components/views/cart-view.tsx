@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,7 +14,9 @@ import { useAuthStore } from "@/store/use-auth-store"
 import { waLink, PHARMACY, DELIVERY_DEFAULTS } from "@/lib/constants"
 import { formatKES } from "@/lib/format"
 import { toast } from "sonner"
-import { ShoppingCart, Minus, Plus, Trash2, FileWarning, ArrowRight, MessageCircle, Info } from "lucide-react"
+import { promotionsApi } from "@/lib/api-client"
+import type { PromotionDTO } from "@/lib/types"
+import { ShoppingCart, Minus, Plus, Trash2, FileWarning, ArrowRight, MessageCircle, Info, Gift } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // ============================== VIEW ==============================
@@ -28,6 +30,12 @@ export function CartView() {
   const session = useAuthStore((s) => s.session)
 
   const [notice, setNotice] = useState<string | null>(null)
+  const [offers, setOffers] = useState<PromotionDTO[]>([])
+  useEffect(() => {
+    let active=true
+    promotionsApi.list().then(list=>{if(active)setOffers(list.filter(p=>p.code&&p.discountPct).slice(0,3))}).catch(()=>{})
+    return()=>{active=false}
+  }, [])
 
   const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0)
   const count = lines.reduce((n, l) => n + l.qty, 0)
@@ -190,6 +198,24 @@ export function CartView() {
                   </div>
                 ) : null}
 
+                {offers.length > 0 ? (
+                  <div className="space-y-2" aria-label="Available checkout offers">
+                    <p className="flex items-center gap-2 text-xs font-bold text-foreground"><Gift className="h-4 w-4 text-primary"/> Available offers</p>
+                    {offers.slice(0,2).map(offer=>(
+                      <div key={offer.id} className="flex items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 p-2.5 dark:border-emerald-800 dark:bg-emerald-950/30">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold text-emerald-950 dark:text-emerald-100">{offer.discountPct}% off · <span className="font-mono">{offer.code}</span></p>
+                          <p className="mt-0.5 text-[11px] text-emerald-800 dark:text-emerald-300">{offer.minimumSpend ? `Min. ${formatKES(offer.minimumSpend)}` : "No minimum spend"}</p>
+                        </div>
+                        <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 rounded-lg" onClick={()=>{
+                          if(!loggedIn&&offer.perUserLimit!=null){
+                            openAuth("login","checkout","Sign in to redeem this promotion.",{promo:offer.code!})
+                          }else navigate("checkout",{promo:offer.code!})
+                        }}>Use</Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <Separator />
 
                 <div className="space-y-2 text-sm">
