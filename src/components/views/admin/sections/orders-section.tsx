@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { EmptyState } from "@/components/shared/empty-state"
 import { OrderStatusBadge, PaymentStatusBadge, RxFlagBadge, RxStatusBadge } from "@/components/shared/status-badges"
-import { ordersApi, adminApi, paymentsApi } from "@/lib/api-client"
+import { ordersApi, paymentsApi } from "@/lib/api-client"
 import type { OrderDTO, PaymentDTO, StaffDTO } from "@/lib/types"
 import {
   ACTIVE_STATUSES, FULFILLMENT_LABELS, NEXT_STATUS, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS,
@@ -34,7 +34,7 @@ import { useAuthStore } from "@/store/use-auth-store"
 import { toast } from "sonner"
 import { AdminSectionHeader, KpiCard, apiErrorMessage, telHref, useDebounced, waHref, type SectionProps } from "../admin-shared"
 import {
-  Search, Package, Loader2, Truck, Store, Phone, MessageCircle, ChevronRight, Ban,
+  Search, Package, Loader2, Truck, Store, Phone, MessageCircle, ChevronRight, Ban, Bike,
   Banknote, Smartphone, CreditCard, ClipboardList, Wallet, Clock, CheckCircle2, User, X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -76,15 +76,59 @@ function latestPayment(order: OrderDTO): PaymentDTO | null {
 }
 
 function nextStatusesFor(order: OrderDTO, role: Role | "CUSTOMER" | undefined): OrderStatus[] {
-  const base = NEXT_STATUS[order.status] ?? []
-  if (role === "RIDER") return base.filter((s) => s === "COMPLETED_DELIVERY")
-  if (order.status === "PREPARING") {
-    // Only offer the branch matching the fulfillment method.
-    return base.filter((s) =>
-      order.fulfillment === "PICKUP" ? s === "READY_FOR_PICKUP" : s === "OUT_FOR_DELIVERY"
-    )
+  if (role === "RIDER") {
+    return order.fulfillment === "DELIVERY" && order.riderId && order.status === "READY_FOR_PICKUP"
+      ? ["OUT_FOR_DELIVERY"]
+      : order.fulfillment === "DELIVERY" && order.status === "OUT_FOR_DELIVERY"
+        ? ["COMPLETED_DELIVERY"]
+        : []
   }
-  return base
+  if (order.status === "READY_FOR_PICKUP") {
+    return order.fulfillment === "PICKUP" ? ["COMPLETED_PICKUP"]
+      : order.riderId ? ["OUT_FOR_DELIVERY"] : []
+  }
+  // Delivery must be checked and packed before it can leave the pharmacy.
+  return (NEXT_STATUS[order.status] ?? []).filter((status) => {
+    if (status === "PAID") return order.payments.some((payment) => payment.status === "SUCCESS")
+    return status !== "COMPLETED_DELIVERY" || order.fulfillment === "DELIVERY"
+  })
+}
+
+function workflowLabel(order: OrderDTO, status: OrderStatus): string {
+  if (status === "READY_FOR_PICKUP" && order.fulfillment === "DELIVERY") return "Mark ready for dispatch"
+  return TRANSITION_LABELS[status] ?? statusLabel(status)
+}
+
+function OrderFulfillmentStatus({ order }: { order: OrderDTO }) {
+  if (order.fulfillment === "DELIVERY" && order.status === "READY_FOR_PICKUP") {
+    return <Badge variant="outline" className="border-teal-300 bg-teal-50 text-teal-800 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-200">Ready for dispatch</Badge>
+  }
+  return <OrderStatusBadge status={order.status} />
+}
+
+function nextOrderActionLabel(order: OrderDTO): string {
+  if (order.fulfillment === "DELIVERY") {
+    if (order.status === "PAID") return "Start preparing"
+    if (order.status === "PREPARING") return "Mark ready for dispatch"
+    if (order.status === "READY_FOR_PICKUP") return order.riderId ? "Dispatch rider" : "Assign rider"
+    if (order.status === "OUT_FOR_DELIVERY") return "Track delivery"
+  }
+  if (order.status === "AWAITING_PAYMENT") return "Confirm payment"
+  if (order.status === "RECEIVED" || order.status === "UNDER_REVIEW") return "Review order"
+  return "View details"
+}
+
+function deliveryGuidance(order: OrderDTO): string {
+  switch (order.status) {
+    case "PAID": return "Payment is recorded. Start preparing, verify and pack the order."
+    case "PREPARING": return "After medicines are checked and securely packed, mark the order ready for dispatch. Rider assignment can happen now."
+    case "READY_FOR_PICKUP": return order.riderId
+      ? "Package ready and rider assigned. Hand over the package, then select Dispatch rider."
+      : "Package is ready. Assign an active rider below to unlock Dispatch rider."
+    case "OUT_FOR_DELIVERY": return "Order has left the pharmacy. Track the rider and confirm delivery when it reaches the customer."
+    case "COMPLETED_DELIVERY": return "The delivery is complete."
+    default: return "Complete prescription review, payment and order confirmation first. Preparation and rider assignment become available when the order reaches Paid."
+  }
 }
 
 type RangeKey = "today" | "7d" | "30d" | "all"
@@ -108,13 +152,13 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
   const role = useAuthStore((s) => s.session?.role)
   const isRider = role === "RIDER"
   const canManage = role === "ADMIN" || role === "PHARMACIST" || role === "STAFF"
-  const canAssignRider = role === "ADMIN" || role === "STAFF"
+  const canAssignRider = role === "ADMIN" || role === "STAFF" || role === "PHARMACIST"
 
   const [raw, setRaw] = useState<OrderDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [searchInput, setSearchInput] = useState("")
+  const [searchInput, setSearchInput] = useState(() => useAppStore.getState().params.search ?? "")
   const search = useDebounced(searchInput.trim(), 300)
 
   const [statusFilter, setStatusFilter] = useState<string>(() => { const value = useAppStore.getState().params.status; return value && [...ACTIVE_STATUSES, ...TERMINAL_STATUSES].includes(value as OrderStatus) ? value : "ALL" })
@@ -170,8 +214,9 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
     : [
         { label: "Awaiting review", value: queueCount((o) => o.status === "RECEIVED" || o.status === "UNDER_REVIEW"), tone: "amber" as const, icon: ClipboardList },
         { label: "Awaiting payment", value: queueCount((o) => o.status === "AWAITING_PAYMENT"), tone: "amber" as const, icon: Wallet },
-        { label: "Ready for pickup", value: queueCount((o) => o.status === "READY_FOR_PICKUP"), tone: "teal" as const, icon: Store },
+        { label: "Ready for dispatch", value: queueCount((o) => o.fulfillment === "DELIVERY" && o.status === "READY_FOR_PICKUP"), tone: "teal" as const, icon: Truck },
         { label: "Out for delivery", value: queueCount((o) => o.status === "OUT_FOR_DELIVERY"), tone: "teal" as const, icon: Truck },
+        { label: "Ready for pickup", value: queueCount((o) => o.fulfillment === "PICKUP" && o.status === "READY_FOR_PICKUP"), tone: "default" as const, icon: Store },
       ]
 
   function openDetail(order: OrderDTO) {
@@ -234,7 +279,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
       />
 
       {/* KPI queue snapshot */}
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
         {queueKpis.map((kpi) => <KpiCard key={kpi.label} label={kpi.label} value={loading ? "—" : kpi.value} icon={kpi.icon} tone={kpi.tone} hint="In the active order queue" />)}
       </div>
 
@@ -364,7 +409,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Age</TableHead>
-                    <TableHead className="w-12" />
+                    <TableHead className="min-w-36 text-right">Next step</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -413,11 +458,13 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                             <span className="text-xs text-muted-foreground">Not initiated</span>
                           )}
                         </TableCell>
-                        <TableCell><OrderStatusBadge status={order.status} /></TableCell>
+                        <TableCell><OrderFulfillmentStatus order={order} /></TableCell>
                         <TableCell className="text-right font-semibold tabular-nums">{formatKES(order.total)}</TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">{timeAgo(order.createdAt)}</TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" aria-label={`View order ${shortRef(order.reference)}`} onClick={(event) => { event.stopPropagation(); openDetail(order) }}><ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden /></Button>
+                          <Button variant="outline" size="sm" className="gap-1.5" aria-label={`Open order ${shortRef(order.reference)}: ${nextOrderActionLabel(order)}`} onClick={(event) => { event.stopPropagation(); openDetail(order) }}>
+                            {nextOrderActionLabel(order)} <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     )
@@ -436,7 +483,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-bold">{shortRef(order.reference)}</p>
-                      <OrderStatusBadge status={order.status} />
+                      <OrderFulfillmentStatus order={order} />
                     </div>
                     <div className="mt-2 flex items-center gap-2 text-sm">
                       <User className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
@@ -459,6 +506,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                           {order.items.length} item{order.items.length === 1 ? "" : "s"} · {order.items[0]?.name ?? "—"}
                         </p>
                         <p className="text-xs text-muted-foreground">{timeAgo(order.createdAt)}</p>
+                        <p className="mt-1 text-xs font-semibold text-primary">Next: {nextOrderActionLabel(order)}</p>
                       </div>
                       <p className="text-base font-bold tabular-nums">{formatKES(order.total)}</p>
                     </div>
@@ -472,6 +520,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
 
       {/* detail sheet */}
       <OrderDetailSheet
+        key={selected?.id ?? "no-order"}
         order={selected}
         open={sheetOpen}
         onOpenChange={(open) => {
@@ -562,21 +611,28 @@ function OrderDetailSheet({
 }) {
   const [riders, setRiders] = useState<StaffDTO[]>([])
   const [ridersLoading, setRidersLoading] = useState(true)
+  const [ridersError, setRidersError] = useState<string | null>(null)
+  const [riderPick, setRiderPick] = useState("")
 
   const needsRiders =
     Boolean(order) && canAssignRider && order?.fulfillment === "DELIVERY" &&
-    (order?.status === "PAID" || order?.status === "PREPARING")
+    ["PAID", "PREPARING", "READY_FOR_PICKUP"].includes(order.status)
 
   useEffect(() => {
     if (!open || !needsRiders || riders.length > 0) return
     let cancelled = false
-    adminApi
-      .staff()
+    ordersApi.dispatchRiders()
       .then((list) => {
-        if (!cancelled) setRiders(list.filter((s) => s.role === "RIDER" && s.active))
+        if (!cancelled) {
+          setRiders(list)
+          setRidersError(null)
+        }
       })
-      .catch(() => {
-        if (!cancelled) setRiders([])
+      .catch((err) => {
+        if (!cancelled) {
+          setRiders([])
+          setRidersError(apiErrorMessage(err))
+        }
       })
       .finally(() => {
         if (!cancelled) setRidersLoading(false)
@@ -599,7 +655,7 @@ function OrderDetailSheet({
         <SheetHeader className="shrink-0 space-y-1 border-b p-3 pr-12 text-left sm:p-4 sm:pr-12">
           <SheetTitle className="flex flex-wrap items-center gap-2 text-base">
             <span className="min-w-0 break-all font-bold">{order.reference}</span>
-            <OrderStatusBadge status={order.status} />
+            <OrderFulfillmentStatus order={order} />
           </SheetTitle>
           <SheetDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
             <span>{formatDateTime(order.createdAt)}</span>
@@ -711,12 +767,13 @@ function OrderDetailSheet({
                     })}
                 </ul>
               )}
-              {pay && order.status === "AWAITING_PAYMENT" && canManage ? (
+              {canManage && ["AVAILABILITY_CONFIRMED", "AWAITING_PAYMENT"].includes(order.status) && !order.payments.some((payment) => payment.status === "SUCCESS") ? (
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Button
                     size="sm"
                     className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                    disabled={actionBusy}
+                    disabled={actionBusy || !order.customerPhone}
+                    title={!order.customerPhone ? "A customer phone number is required to send M-Pesa" : undefined}
                     onClick={() => onPromptMpesa(order)}
                   >
                     <Smartphone className="h-4 w-4" /> Send M-Pesa STK prompt
@@ -763,6 +820,27 @@ function OrderDetailSheet({
               </section>
             )}
 
+            {/* Clear and actionable order-to-rider handoff */}
+            {order.fulfillment === "DELIVERY" ? (
+              <section aria-labelledby="od-dispatch-readiness">
+                <h3 id="od-dispatch-readiness" className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dispatch readiness</h3>
+                <div className="space-y-3 rounded-xl border border-teal-200 bg-teal-50/60 p-3 dark:border-teal-900 dark:bg-teal-950/20">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Truck className="h-4 w-4 text-teal-800 dark:text-teal-300" aria-hidden />
+                    <OrderFulfillmentStatus order={order} />
+                    {order.riderId ? (
+                      <Badge variant="outline" className="border-teal-300 bg-background text-teal-800 dark:border-teal-800 dark:text-teal-200"><Bike className="mr-1 h-3 w-3" /> Rider assigned</Badge>
+                    ) : null}
+                  </div>
+                  <p className="text-sm leading-relaxed text-foreground">{deliveryGuidance(order)}</p>
+                  <p className="text-xs text-muted-foreground">Preparation, readiness and rider assignment are distinct steps. Marking an order ready does not send it out for delivery.</p>
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onNavigateSection("dispatch", { search: order.reference })}>
+                    <Truck className="h-3.5 w-3.5" /> View in Dispatch <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </section>
+            ) : null}
+
             {/* order notes */}
             {order.notes ? (
               <section aria-labelledby="od-notes">
@@ -795,47 +873,44 @@ function OrderDetailSheet({
             {/* rider assignment */}
             {needsRiders ? (
               <section aria-labelledby="od-rider">
-                <h3 id="od-rider" className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Assign rider</h3>
+                <h3 id="od-rider" className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rider assignment</h3>
+                <p className="mb-2 text-xs text-muted-foreground">Assign a rider while the order is being prepared or once it is ready. Assignment does not dispatch the package.</p>
+                {order.riderId ? <p className="mb-2 flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-medium text-teal-900 dark:border-teal-800 dark:bg-teal-950/30 dark:text-teal-200"><Bike className="h-4 w-4" /> Currently assigned: {order.riderName || "Rider"}</p> : null}
                 {ridersLoading ? (
                   <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading riders…</p>
-                ) : riders.length === 0 ? (
-                  <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">No active riders on the team.</p>
+                ) : ridersError ? (
+                  <div className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-200">Could not load active riders: {ridersError}. Open Dispatch to try again.</div>
+                ) : riders.filter((r) => r.id !== order.riderId).length === 0 ? (
+                  <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">{order.riderId ? "No other active riders are available for reassignment." : "No active rider accounts are available. An admin can add riders in Staff."}</p>
                 ) : (
                   <div className="space-y-2">
-                    <Select value="" onValueChange={(staffId) => {
-                      const rider = riders.find((r) => r.id === staffId)
-                      void onAssignRider(order, staffId, rider?.name)
-                    }}>
-                      <SelectTrigger className="w-full" aria-label="Assign a rider to this delivery">
-                        <SelectValue placeholder="Choose a rider to assign…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {riders.map((rider) => (
-                          <SelectItem key={rider.id} value={rider.id}>
-                            {rider.name}
-                            {rider.phone ? ` · ${rider.phone}` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {actionBusy ? (
-                      <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Assigning rider…
-                      </p>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        {riders.map((rider) => (
-                          <a
-                            key={rider.id}
-                            href={telHref(rider.phone) ?? "#"}
-                            className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-accent/60"
-                            aria-label={`Call rider ${rider.name}`}
-                          >
-                            <Phone className="h-3 w-3" aria-hidden /> {rider.name}
-                          </a>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Select value={riderPick || undefined} onValueChange={setRiderPick} disabled={actionBusy}>
+                        <SelectTrigger className="w-full min-w-0 sm:flex-1" aria-label="Select an active delivery rider">
+                          <SelectValue placeholder={order.riderId ? "Choose a replacement rider…" : "Choose an active rider…"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {riders.filter((r) => r.id !== order.riderId).map((rider) => (
+                            <SelectItem key={rider.id} value={rider.id}>
+                              {rider.name}{rider.phone ? ` · ${rider.phone}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={actionBusy || !riderPick || riderPick === order.riderId}
+                        onClick={() => {
+                          const rider = riders.find((r) => r.id === riderPick)
+                          void onAssignRider(order, riderPick, rider?.name)
+                        }}
+                      >
+                        {actionBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bike className="h-4 w-4" />}
+                        {order.riderId ? "Reassign rider" : "Assign rider"}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Only active rider accounts are shown. Use Dispatch to manage assignments and see each rider’s workload.</p>
                   </div>
                 )}
               </section>
@@ -873,6 +948,9 @@ function OrderDetailSheet({
         <div className="scroll-slim max-h-[40dvh] shrink-0 space-y-2 overflow-y-auto border-t bg-background p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] sm:bg-muted/30 sm:p-4">
           {canManage || role === "RIDER" ? (
             <>
+              {order.fulfillment === "DELIVERY" ? (
+                <p className="text-xs font-semibold text-foreground">{order.status === "READY_FOR_PICKUP" && !order.riderId ? "Next: assign a rider before dispatching" : "Next order action"}</p>
+              ) : null}
               <div className="grid gap-2 sm:flex sm:flex-wrap">
                 {nexts.map((target, idx) => (
                   <Button
@@ -883,10 +961,15 @@ function OrderDetailSheet({
                     onClick={() => onStartTransition(order, target)}
                     className="w-full sm:w-auto"
                   >
-                    {TRANSITION_LABELS[target] ?? statusLabel(target)}
+                    {workflowLabel(order, target)}
                   </Button>
                 ))}
               </div>
+              {order.fulfillment === "DELIVERY" && order.status === "READY_FOR_PICKUP" && !order.riderId ? (
+                <Button size="sm" variant="outline" className="w-full gap-1.5 sm:w-auto" onClick={() => onNavigateSection("dispatch", { search: order.reference })}>
+                  <Bike className="h-4 w-4" /> Assign a rider in Dispatch
+                </Button>
+              ) : null}
               {canManage && ACTIVE_STATUSES.includes(order.status) ? (
                 <Button size="sm" variant="ghost" className="w-full gap-1.5 text-rose-600 hover:text-rose-700 sm:w-auto" disabled={actionBusy} onClick={() => onCancel(order)}>
                   <Ban className="h-4 w-4" /> Cancel order
@@ -928,12 +1011,16 @@ function TransitionDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {viaCash ? "Confirm cash payment" : `Move to “${statusLabel(target)}”?`}
+            {viaCash ? "Confirm cash payment" : `Confirm: ${workflowLabel(order, target)}?`}
           </DialogTitle>
           <DialogDescription>
             {viaCash
               ? `Mark order ${order.reference} as paid — confirm you received ${formatKES(order.total)} in cash.`
-              : `Order ${order.reference} will move from “${statusLabel(order.status)}” to “${statusLabel(target)}”. The customer is notified in-app.`}
+              : target === "READY_FOR_PICKUP" && order.fulfillment === "DELIVERY"
+                ? `Confirm all items in ${order.reference} have been checked, packed and are physically ready to hand over. This does not send the rider out yet.`
+                : target === "OUT_FOR_DELIVERY" && order.fulfillment === "DELIVERY"
+                  ? `Confirm the securely packed order ${order.reference} has been physically handed to ${order.riderName ?? "the assigned rider"}. This changes its status to Out for delivery.`
+                  : `Order ${order.reference} will move from “${statusLabel(order.status)}” to “${statusLabel(target)}”. The customer is notified in-app.`}
           </DialogDescription>
         </DialogHeader>
         {!viaCash ? (
@@ -952,7 +1039,7 @@ function TransitionDialog({
           <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button onClick={() => void onConfirm(note)} disabled={busy}>
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
-            {viaCash ? "Mark as paid" : `Confirm: ${TRANSITION_LABELS[target] ?? statusLabel(target)}`}
+            {viaCash ? "Mark as paid" : `Confirm: ${workflowLabel(order, target)}`}
           </Button>
         </DialogFooter>
       </DialogContent>

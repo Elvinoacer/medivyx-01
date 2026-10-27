@@ -62,6 +62,18 @@ export async function PATCH(request: Request, { params }: Params) {
     if (order.status === status) return NextResponse.json(toOrderDTO(order))
     if (status === "CANCELLED") return NextResponse.json({ error: "Use the cancellation action so reserved stock and loyalty are restored safely." }, { status: 409 })
     if (status === "REFUNDED") return NextResponse.json({ error: "Use the refund action so the payment provider confirms the refund." }, { status: 409 })
+    if (status === "PAID" && !order.payments.some((payment) => payment.status === "SUCCESS")) {
+      return NextResponse.json({ error: "Confirm the payment through M-Pesa, the provider webhook or the cash-received action before marking an order paid." }, { status: 409 })
+    }
+    if (status === "READY_FOR_PICKUP" && order.prescriptions.some((rx) => !["APPROVED", "PARTIALLY_APPROVED"].includes(rx.status))) {
+      return NextResponse.json({ error: "Review all prescription items before marking this order ready for collection or dispatch." }, { status: 409 })
+    }
+    if (status === "COMPLETED_PICKUP" && order.fulfillment !== "PICKUP") {
+      return NextResponse.json({ error: "Delivery orders must be dispatched to a rider, not completed as pickups." }, { status: 409 })
+    }
+    if (status === "COMPLETED_DELIVERY" && order.fulfillment !== "DELIVERY") {
+      return NextResponse.json({ error: "Pickup orders cannot be marked as delivered." }, { status: 409 })
+    }
     if (status === "OUT_FOR_DELIVERY" && (order.fulfillment !== "DELIVERY" || !order.riderId)) {
       return NextResponse.json({ error: "Assign an active rider to this delivery before dispatching it." }, { status: 409 })
     }
@@ -83,7 +95,9 @@ export async function PATCH(request: Request, { params }: Params) {
     }, { timeout: 15000, maxWait: 5000 })
     await audit(actor, role, `ORDER_STATUS_${status}`, "Order", order.reference, note)
 
-    const { title, message } = statusNotification(status, order.reference)
+    const { title, message } = status === "READY_FOR_PICKUP" && order.fulfillment === "DELIVERY"
+      ? { title: `Order ${order.reference}: Ready for dispatch`, message: `Your order ${order.reference} is packed and ready for dispatch. We will notify you when a rider starts delivery.` }
+      : statusNotification(status, order.reference)
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
     const orderUrl = `${appUrl}/orders/${order.id}`
     const customer = order.userId
@@ -92,7 +106,7 @@ export async function PATCH(request: Request, { params }: Params) {
     const email = orderStatusUpdateTemplate({
       orderReference: order.reference,
       customerName: customer?.name || order.guestName || "Valued Customer",
-      statusLabel: ORDER_STATUS_LABELS[status], message,
+      statusLabel: status === "READY_FOR_PICKUP" && order.fulfillment === "DELIVERY" ? "Ready for dispatch" : ORDER_STATUS_LABELS[status], message,
       pickupCode: status === "READY_FOR_PICKUP" ? order.pickupCode : null, orderUrl,
     })
     await notifyCustomer(order.userId, "ORDER_STATUS", title, message, "IN_APP", {

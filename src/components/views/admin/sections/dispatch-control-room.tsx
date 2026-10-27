@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/shared/empty-state"
 import { OrderStatusBadge } from "@/components/shared/status-badges"
 import { ordersApi, paymentsApi } from "@/lib/api-client"
+import { useAppStore } from "@/store/use-app-store"
 import type { OrderDTO, StaffDTO } from "@/lib/types"
 import { formatKES, shortRef, timeAgo } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -60,7 +61,7 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
   const [now, setNow] = useState(() => Date.now())
   const [refreshing, setRefreshing] = useState(false)
   const [view, setView] = useState<View>("all")
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(() => useAppStore.getState().params.search ?? "")
   const [riderFilter, setRiderFilter] = useState("all")
   const [sort, setSort] = useState<Sort>("oldest")
   const [selected, setSelected] = useState<string[]>([])
@@ -169,7 +170,7 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
 
   function changeStatus(order: OrderDTO, status: "PREPARING" | "READY_FOR_PICKUP" | "OUT_FOR_DELIVERY") {
     void apply(order, () => ordersApi.updateStatus(order.id, status),
-      status === "PREPARING" ? "Preparation started." : status === "READY_FOR_PICKUP" ? "Order is ready for rider handoff." : "Rider dispatched.")
+      status === "PREPARING" ? "Preparation started." : status === "READY_FOR_PICKUP" ? "Order is packed and ready for rider handoff." : "Rider dispatched.")
   }
 
   async function confirmAction() {
@@ -407,7 +408,7 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
               const currentRiderPick = picks[order.id] || ""
               const canAssign = !completed && riders.some((r) => r.id !== order.riderId)
               const statusAction = order.status === "PAID" ? { label: "Start preparing", status: "PREPARING" as const }
-                : order.status === "PREPARING" ? { label: "Mark ready for handoff", status: "READY_FOR_PICKUP" as const }
+                : order.status === "PREPARING" ? { label: "Mark ready for dispatch", status: "READY_FOR_PICKUP" as const }
                 : order.status === "READY_FOR_PICKUP" && !!order.riderId ? { label: "Dispatch rider", status: "OUT_FOR_DELIVERY" as const }
                 : null
               return (
@@ -421,7 +422,9 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-mono text-sm font-bold">{order.reference}</span>
-                          <OrderStatusBadge status={order.status} />
+                          {order.status === "READY_FOR_PICKUP"
+                            ? <Badge variant="outline" className="border-teal-300 bg-teal-50 text-teal-800 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-200">Ready for dispatch</Badge>
+                            : <OrderStatusBadge status={order.status} />}
                           {attention(order, now) && !completed ? <Badge variant="outline" className="gap-1 border-amber-300 text-amber-800 dark:text-amber-300"><Clock3 className="h-3 w-3" /> Check delay</Badge> : null}
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
