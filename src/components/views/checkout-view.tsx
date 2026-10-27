@@ -1568,7 +1568,7 @@ export function CheckoutView() {
                     </div>
                     {(promoError || promoNeedsReview) ? <div role="alert" aria-live="assertive" className="space-y-2 rounded-lg border-2 border-amber-500 bg-amber-50 p-3 text-sm font-medium leading-5 text-amber-950 dark:border-amber-600 dark:bg-amber-950/60 dark:text-amber-100">
                       <p>{promoError || "Your bag total changed. Apply the code again to confirm your savings."}</p>
-                      {/sign in/i.test(promoError) ? <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => openAuth("login","checkout","Sign in to redeem your promotion.",{promo:promoInput.trim().toUpperCase()})}>Sign in to redeem</Button> : null}
+                      {/sign in/i.test(promoError ?? "") ? <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => openAuth("login","checkout","Sign in to redeem your promotion.",{promo:promoInput.trim().toUpperCase()})}>Sign in to redeem</Button> : null}
                     </div> : null}
                   </div>
                 )}
