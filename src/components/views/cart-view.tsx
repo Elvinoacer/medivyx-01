@@ -205,9 +205,9 @@ export function CartView() {
                       <div key={offer.id} className="flex items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 p-2.5 dark:border-emerald-800 dark:bg-emerald-950/30">
                         <div className="min-w-0">
                           <p className="truncate text-xs font-semibold text-emerald-950 dark:text-emerald-100">{offer.discountPct}% off · <span className="font-mono">{offer.code}</span></p>
-                          <p className="mt-0.5 text-[11px] text-emerald-800 dark:text-emerald-300">{offer.minimumSpend ? `Min. ${formatKES(offer.minimumSpend)}` : "No minimum spend"}</p>
+                          <p className="mt-0.5 text-[11px] text-emerald-800 dark:text-emerald-300">{offer.minimumSpend && subtotal < offer.minimumSpend ? `Add ${formatKES(offer.minimumSpend-subtotal)} to qualify` : offer.minimumSpend ? `Min. ${formatKES(offer.minimumSpend)}` : "No minimum spend"}</p>
                         </div>
-                        <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 rounded-lg" onClick={()=>{
+                        <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 rounded-lg" disabled={!!offer.minimumSpend && subtotal < offer.minimumSpend} onClick={()=>{
                           if(!loggedIn&&offer.perUserLimit!=null){
                             openAuth("login","checkout","Sign in to redeem this promotion.",{promo:offer.code!})
                           }else navigate("checkout",{promo:offer.code!})
@@ -216,6 +216,9 @@ export function CartView() {
                     ))}
                   </div>
                 ) : null}
+                <button type="button" onClick={() => navigate("offers")} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                  View all current offers <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
                 <Separator />
 
                 <div className="space-y-2 text-sm">

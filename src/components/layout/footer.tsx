@@ -73,6 +73,7 @@ export function Footer() {
           <div className="space-y-2.5 text-sm">
             <h4 className="font-semibold">Quick links</h4>
             <button onClick={() => navigate("catalog")} className="block text-muted-foreground hover:text-foreground">Browse products</button>
+            <button onClick={() => navigate("offers")} className="block text-muted-foreground hover:text-foreground">Current offers</button>
             <button onClick={() => navigate("services")} className="block text-muted-foreground hover:text-foreground">Care services</button>
             <button onClick={() => navigate("prescriptions")} className="block text-muted-foreground hover:text-foreground">Upload a prescription</button>
             <button onClick={() => navigate("orders")} className="block text-muted-foreground hover:text-foreground">Track an order</button>
