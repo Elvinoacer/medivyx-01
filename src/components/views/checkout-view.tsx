@@ -189,7 +189,6 @@ export function CheckoutView() {
     processedOfferLink.current=code
     void applyPromo(code)
   // Auto-apply each incoming share code once; subtotal is sourced from the cart.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[linkedPromo,subtotal])
 
   function removePromo() {
