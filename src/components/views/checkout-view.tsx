@@ -1453,7 +1453,7 @@ export function CheckoutView() {
                         <span className="block truncate font-medium">
                           {row.qty} × {row.name}
                         </span>
-                        {row.requiresPrescription ? <span className="sphere-checkout-rx-label text-xs font-semibold text-rose-800 dark:text-rose-200">℞ prescription item</span> : null}
+                        {row.requiresPrescription ? <span className="sphere-checkout-rx-label inline-flex items-center rounded-md border border-rose-900 bg-rose-900 px-2 py-1 text-xs font-bold leading-tight text-white dark:border-rose-600 dark:bg-rose-900 dark:text-white">℞ prescription item</span> : null}
                       </span>
                       <span className="shrink-0 font-semibold">{formatKES(row.lineTotal)}</span>
                     </li>

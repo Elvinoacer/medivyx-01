@@ -559,7 +559,18 @@
   color: #875409 !important;
 }
 .sphere-public .app-page-checkout .sphere-checkout-rx-label {
-  color: #851630 !important;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border: 1px solid #811b38 !important;
+  border-radius: 6px;
+  background-color: #811b38 !important;
+  color: #ffffff !important;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
 }
 .sphere-public .app-page-checkout .sphere-checkout-promo-notice {
   background: #e3f5e7 !important;
@@ -612,7 +623,9 @@
   color: #f6cd7a !important;
 }
 .dark .sphere-public .app-page-checkout .sphere-checkout-rx-label {
-  color: #ffd5e1 !important;
+  background-color: #811b38 !important;
+  border-color: #e09aae !important;
+  color: #ffffff !important;
 }
 .dark .sphere-public .app-page-checkout .sphere-checkout-promo-notice {
   background: #163c2c !important;
