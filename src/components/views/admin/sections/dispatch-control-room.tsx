@@ -183,8 +183,9 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
       await apply(c.order, () => ordersApi.markPaidCash(c.order.id),
         "Cash receipt recorded for " + shortRef(c.order.reference) + ".")
     } else if (c.riderId) {
-      await apply(c.order, () => ordersApi.assignRider(c.order.id, c.riderId),
-        "Active delivery reassigned to " + (riders.find((r) => r.id === c.riderId)?.name ?? "rider") + ".")
+      const riderId = c.riderId
+      await apply(c.order, () => ordersApi.assignRider(c.order.id, riderId),
+        "Active delivery reassigned to " + (riders.find((r) => r.id === riderId)?.name ?? "rider") + ".")
     }
   }
 
