@@ -169,6 +169,7 @@ export function CheckoutView() {
   // Prices can change with cart quantities. Never send or display a discount
   // calculated for a different subtotal.
   const activePromo = promo?.validatedSubtotal === subtotal ? promo : null
+  const promoNeedsReview = !!promo && promo.validatedSubtotal !== subtotal
   const discountAmount = activePromo?.discountAmount ?? 0
 
   async function applyPromo(candidate?: string) {
@@ -218,16 +219,6 @@ export function CheckoutView() {
     void applyPromo(offerIntent)
     // Validate once for each incoming offer / cart amount.
   }, [offerIntent, subtotal])
-
-  useEffect(() => {
-    if (!promo || promo.validatedSubtotal === subtotal) return
-    // Do not allow a stale validated code into the final order payload.
-    promoRequestId.current += 1
-    setPromo(null)
-    setPromoBusy(false)
-    setPromoInput(promo.code)
-    setPromoError("Your bag total changed. Please apply this code again to confirm your savings.")
-  }, [promo, subtotal])
 
   function removePromo() {
     promoRequestId.current += 1
@@ -1563,7 +1554,7 @@ export function CheckoutView() {
                         <Ticket className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
                         <Input
                           value={promoInput}
-                          onChange={(e) => { promoRequestId.current += 1; setPromoBusy(false); setPromoInput(e.target.value.toUpperCase()); setPromoError(null) }}
+                          onChange={(e) => { promoRequestId.current += 1; setOfferIntent(null); setPromoBusy(false); setPromoInput(e.target.value.toUpperCase()); setPromoError(null) }}
                           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), void applyPromo())}
                           placeholder="Promo code"
                           className="h-10 pl-9 text-sm uppercase tracking-wide"
@@ -1575,8 +1566,8 @@ export function CheckoutView() {
                         {promoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
                       </Button>
                     </div>
-                    {promoError ? <div role="alert" aria-live="assertive" className="space-y-2 rounded-lg border-2 border-amber-500 bg-amber-50 p-3 text-sm font-medium leading-5 text-amber-950 dark:border-amber-600 dark:bg-amber-950/60 dark:text-amber-100">
-                      <p>{promoError}</p>
+                    {(promoError || promoNeedsReview) ? <div role="alert" aria-live="assertive" className="space-y-2 rounded-lg border-2 border-amber-500 bg-amber-50 p-3 text-sm font-medium leading-5 text-amber-950 dark:border-amber-600 dark:bg-amber-950/60 dark:text-amber-100">
+                      <p>{promoError || "Your bag total changed. Apply the code again to confirm your savings."}</p>
                       {/sign in/i.test(promoError) ? <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => openAuth("login","checkout","Sign in to redeem your promotion.",{promo:promoInput.trim().toUpperCase()})}>Sign in to redeem</Button> : null}
                     </div> : null}
                   </div>
@@ -1590,7 +1581,7 @@ export function CheckoutView() {
                         <p className="min-w-0 truncate text-xs text-emerald-900 dark:text-emerald-200">
                           <span className="font-mono font-bold">{p.code}</span> · {p.discountPct}% off{p.minimumSpend && subtotal < p.minimumSpend ? ` · Add ${formatKES(p.minimumSpend-subtotal)} more` : ""}
                         </p>
-                        <Button size="sm" variant="outline" disabled={promoBusy || (!!p.minimumSpend && subtotal < p.minimumSpend)} className="h-8 shrink-0" onClick={()=>void applyPromo(p.code!)}>Apply</Button>
+                        <Button size="sm" variant="outline" disabled={promoBusy || (!!p.minimumSpend && subtotal < p.minimumSpend)} className="h-8 shrink-0" onClick={()=>{setOfferIntent(null);void applyPromo(p.code!)}}>Apply</Button>
                       </div>
                     ))}
                   </div>
