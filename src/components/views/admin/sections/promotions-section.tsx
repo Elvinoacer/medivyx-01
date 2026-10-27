@@ -289,7 +289,7 @@ function PromotionEditorDialog({mode,promo,onClose,onSaved}:{
     <DialogTitle>{mode==="create"?"Create promotion":"Edit promotion"}</DialogTitle>
     <DialogDescription>Design the offer, control when it runs and decide how many times customers can redeem it.</DialogDescription>
    </DialogHeader>
-   <div className="scroll-slim min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-4" tabIndex={0} aria-label="Promotion editor fields">
+   <div className="scroll-slim min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-5 px-5 py-4" tabIndex={0} aria-label="Promotion editor fields">
     {serverError?<div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-sm font-semibold text-rose-900 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200">{serverError}</div>:null}
     <div className={cn("space-y-1 rounded-xl p-4",themeBg[form.color])}>
      <p className="text-[10px] font-bold uppercase tracking-widest opacity-90">{form.badge||"Offer preview"}</p>
