@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/shared/empty-state"
 import { ProductImage } from "@/components/shared/product-image"
-import { RxFlagBadge } from "@/components/shared/status-badges"
+import { OtcBadge, RxFlagBadge } from "@/components/shared/status-badges"
 import { useAppStore } from "@/store/use-app-store"
 import { useCartStore } from "@/store/use-cart-store"
 import { useAuthStore } from "@/store/use-auth-store"
@@ -109,9 +109,9 @@ export function CartView() {
                           </button>
                           <p className="mt-0.5 text-xs text-muted-foreground">{l.packSize ?? "Standard pack"}</p>
                           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                            {l.requiresPrescription ? <RxFlagBadge compact /> : <Badge variant="outline" className="bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300">OTC</Badge>}
+                            {l.requiresPrescription ? <RxFlagBadge compact className="sphere-cart-rx-badge" /> : <OtcBadge className="sphere-cart-otc-badge" />}
                             {unavailable ? (
-                              <Badge variant="outline" className="bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+                              <Badge variant="outline" className="sphere-cart-stock-badge border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200">
                                 Out of stock
                               </Badge>
                             ) : null}
@@ -169,7 +169,7 @@ export function CartView() {
                 <h2 className="text-base font-bold">Order summary</h2>
 
                 {rxLines.length > 0 ? (
-                  <div className="flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                  <div role="note" className="sphere-cart-rx-notice flex gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold leading-relaxed text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                     <FileWarning className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
                     <p>
                       Your cart includes prescription-only items. You&apos;ll upload your prescription at checkout — a

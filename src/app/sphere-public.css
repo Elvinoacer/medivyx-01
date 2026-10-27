@@ -524,3 +524,116 @@
 .sphere-assistant-panel[data-active-action="true"] .sphere-ai-action-workspace { flex:1 1 auto; min-height:0; max-height:none; }
 .sphere-public .premium-footer h4 { color:#153d32!important; opacity:1; }
 .sphere-public .premium-footer svg { color:currentColor; opacity:1; }
+
+/* High-contrast cart and checkout labels: scoped to the storefront to avoid
+   changing medication labels elsewhere. The hex values are intentional:
+   dark ink on lightly tinted backgrounds in the pharmacy's light experience. */
+.sphere-public .app-page-cart .sphere-cart-otc-badge {
+  background: #dbf5ed !important;
+  color: #155a49 !important;
+  border-color: #8abfad !important;
+  font-size: 12px;
+  font-weight: 700;
+}
+.sphere-public .app-page-cart :is(.sphere-cart-rx-badge, .sphere-cart-stock-badge) {
+  background: #ffe7ee !important;
+  color: #851630 !important;
+  border-color: #e6a6b4 !important;
+  font-size: 12px;
+  font-weight: 700;
+}
+.sphere-public .app-page-cart .sphere-cart-rx-notice,
+.sphere-public .app-page-checkout .sphere-checkout-rx-notice {
+  background: #fff8e5 !important;
+  color: #553608 !important;
+  border-color: #cba04e !important;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.sphere-public .app-page-cart .sphere-cart-rx-notice :is(p,span),
+.sphere-public .app-page-checkout .sphere-checkout-rx-notice :is(p,span) {
+  color: #553608 !important;
+}
+.sphere-public .app-page-cart .sphere-cart-rx-notice svg,
+.sphere-public .app-page-checkout .sphere-checkout-rx-notice svg {
+  color: #875409 !important;
+}
+.sphere-public .app-page-checkout .sphere-checkout-rx-label {
+  color: #851630 !important;
+}
+.sphere-public .app-page-checkout .sphere-checkout-promo-notice {
+  background: #e3f5e7 !important;
+  border-color: #97c4a2 !important;
+  color: #155b37 !important;
+}
+.sphere-public .app-page-checkout .sphere-checkout-promo-notice :is(span,svg) {
+  color: #155b37 !important;
+}
+.sphere-public .app-page-checkout .sphere-checkout-promo-notice button {
+  color: #365743 !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.sphere-public .app-page-checkout .sphere-checkout-points-notice {
+  background: #e2f3ed !important;
+  border-color: #91c4b0 !important;
+}
+.sphere-public .app-page-checkout .sphere-checkout-points-notice :is(p,span) {
+  color: #20503f !important;
+}
+.sphere-public .app-page-checkout .sphere-checkout-fulfillment-badge {
+  background: #e8f2e9 !important;
+  border-color: #a4c4ac !important;
+  color: #24543a !important;
+  font-weight: 700;
+}
+.dark .sphere-public .app-page-cart .sphere-cart-otc-badge {
+  background: #173e35 !important;
+  border-color: #498d78 !important;
+  color: #c6f4e5 !important;
+}
+.dark .sphere-public .app-page-cart :is(.sphere-cart-rx-badge, .sphere-cart-stock-badge) {
+  background: #4b2030 !important;
+  border-color: #9d4964 !important;
+  color: #ffe1eb !important;
+}
+.dark .sphere-public .app-page-cart .sphere-cart-rx-notice,
+.dark .sphere-public .app-page-checkout .sphere-checkout-rx-notice {
+  background: #372a17 !important;
+  border-color: #92713a !important;
+  color: #ffeabd !important;
+}
+.dark .sphere-public .app-page-cart .sphere-cart-rx-notice :is(p,span),
+.dark .sphere-public .app-page-checkout .sphere-checkout-rx-notice :is(p,span) {
+  color: #ffeabd !important;
+}
+.dark .sphere-public .app-page-cart .sphere-cart-rx-notice svg,
+.dark .sphere-public .app-page-checkout .sphere-checkout-rx-notice svg {
+  color: #f6cd7a !important;
+}
+.dark .sphere-public .app-page-checkout .sphere-checkout-rx-label {
+  color: #ffd5e1 !important;
+}
+.dark .sphere-public .app-page-checkout .sphere-checkout-promo-notice {
+  background: #163c2c !important;
+  border-color: #528c69 !important;
+  color: #d5f9e2 !important;
+}
+.dark .sphere-public .app-page-checkout .sphere-checkout-promo-notice :is(span,svg) {
+  color: #d5f9e2 !important;
+}
+.dark .sphere-public .app-page-checkout .sphere-checkout-promo-notice button {
+  color: #bfe6d0 !important;
+}
+.dark .sphere-public .app-page-checkout .sphere-checkout-points-notice {
+  background: #1b4134 !important;
+  border-color: #518d78 !important;
+}
+.dark .sphere-public .app-page-checkout .sphere-checkout-points-notice :is(p,span) {
+  color: #d3f5e6 !important;
+}
+.dark .sphere-public .app-page-checkout .sphere-checkout-fulfillment-badge {
+  background: #234634 !important;
+  border-color: #78a48a !important;
+  color: #e0f8e7 !important;
+}

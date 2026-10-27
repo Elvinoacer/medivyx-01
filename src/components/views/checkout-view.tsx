@@ -1453,7 +1453,7 @@ export function CheckoutView() {
                         <span className="block truncate font-medium">
                           {row.qty} × {row.name}
                         </span>
-                        {row.requiresPrescription ? <span className="text-xs text-rose-600">℞ prescription item</span> : null}
+                        {row.requiresPrescription ? <span className="sphere-checkout-rx-label text-xs font-semibold text-rose-800 dark:text-rose-200">℞ prescription item</span> : null}
                       </span>
                       <span className="shrink-0 font-semibold">{formatKES(row.lineTotal)}</span>
                     </li>
@@ -1461,7 +1461,7 @@ export function CheckoutView() {
                 </ul>
 
                 {hasRx && step < 4 ? (
-                  <p className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50/70 p-2.5 text-[11px] text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                  <p role="note" className="sphere-checkout-rx-notice flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs font-semibold leading-relaxed text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                     <FileWarning className="h-3.5 w-3.5 shrink-0" aria-hidden />
                     {uploaded.length > 0
                       ? `${uploaded.length} prescription${uploaded.length === 1 ? "" : "s"} uploaded · pending review`
@@ -1473,7 +1473,7 @@ export function CheckoutView() {
 
                 {placedOrder ? (
                   placedOrder.promotionCode ? (
-                    <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-sm dark:border-emerald-800 dark:bg-emerald-950/40">
+                    <div className="sphere-checkout-promo-notice flex items-center justify-between gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-sm dark:border-emerald-800 dark:bg-emerald-950/40">
                       <span className="flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-300">
                         <Ticket className="h-4 w-4" aria-hidden /> {placedOrder.promotionCode}
                       </span>
@@ -1481,7 +1481,7 @@ export function CheckoutView() {
                     </div>
                   ) : null
                 ) : promo ? (
-                  <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-sm dark:border-emerald-800 dark:bg-emerald-950/40">
+                  <div className="sphere-checkout-promo-notice flex items-center justify-between gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-sm dark:border-emerald-800 dark:bg-emerald-950/40">
                     <span className="flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-300">
                       <Ticket className="h-4 w-4" aria-hidden /> {promo.code} · {promo.discountPct}% off
                     </span>
@@ -1513,7 +1513,7 @@ export function CheckoutView() {
                 )}
 
                 {!placedOrder && user && loyaltyBalance >= LOYALTY.minRedeem ? (
-                  <div className="rounded-xl border border-teal-200 bg-teal-50/60 p-3 dark:border-teal-800 dark:bg-teal-950/30">
+                  <div className="sphere-checkout-points-notice rounded-xl border border-teal-200 bg-teal-50 p-3 dark:border-teal-800 dark:bg-teal-950/40">
                     <div className="flex items-start gap-2.5">
                       <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
                       <div className="min-w-0 flex-1">
@@ -1665,7 +1665,7 @@ function FulfillmentCard({
           <Icon className="h-5 w-5" aria-hidden />
         </span>
         {badge ? (
-          <Badge variant="outline" className={cn(selected ? "border-primary/40 text-primary" : "text-muted-foreground")}>
+          <Badge variant="outline" className={cn("sphere-checkout-fulfillment-badge font-semibold", selected ? "border-primary/40 text-primary" : "text-muted-foreground")}>
             {badge}
           </Badge>
         ) : null}
