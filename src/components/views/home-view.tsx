@@ -15,8 +15,8 @@ import { PriorityProductsSection } from "@/components/home/priority-products-sec
 import { LogoMark } from "@/components/shared/logo"
 import { useAppStore } from "@/store/use-app-store"
 import { useRecentStore } from "@/store/use-wish-store"
-import { catalogApi, promotionsApi } from "@/lib/api-client"
-import type { CategoryDTO, ProductDTO, ProductsResponse, PromotionDTO } from "@/lib/types"
+import { catalogApi } from "@/lib/api-client"
+import type { CategoryDTO, ProductDTO, ProductsResponse } from "@/lib/types"
 import { PHARMACY, waLink, DELIVERY_DEFAULTS } from "@/lib/constants"
 import { formatKES, isOpenNow } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -55,18 +55,6 @@ function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): AsyncState<T> & { r
     }
   }, [...deps, nonce])
   return { ...state, reload: () => setNonce((n) => n + 1) }
-}
-
-// ---------- promotion color accents ----------
-
-const promoThemes: Record<string, string> = {
-  teal: "from-teal-600 via-emerald-600 to-teal-700",
-  emerald: "from-emerald-600 via-teal-600 to-emerald-700",
-  amber: "from-amber-500 via-orange-500 to-amber-600",
-  rose: "from-rose-500 via-pink-500 to-rose-600",
-  orange: "from-orange-500 via-amber-500 to-orange-600",
-  stone: "from-stone-600 via-stone-500 to-stone-700",
-  neutral: "from-stone-600 via-neutral-600 to-stone-700",
 }
 
 const HOW_IT_WORKS = [
@@ -150,7 +138,6 @@ export function HomeView() {
   const open = isOpenNow()
 
   const categories = useAsync<CategoryDTO[]>(() => catalogApi.categories(), [])
-  const promotions = useAsync<PromotionDTO[]>(() => promotionsApi.list(), [])
   const popular = useAsync<ProductsResponse>(() => catalogApi.products({ sort: "popular", pageSize: 10 }), [])
   const recent = useAsync<ProductDTO[]>(
     () =>
@@ -198,69 +185,6 @@ export function HomeView() {
           onRetry={categories.reload}
         />
       </section>
-
-      {/* ============ PROMOTIONS ============ */}
-      {(promotions.loading || (promotions.data && promotions.data.length > 0)) && (
-        <section className="landing-section landing-promotions mx-auto max-w-7xl px-4 py-6" aria-labelledby="promotions-heading">
-          <SectionHeader
-            title="Offers & promotions"
-            subtitle="Seasonal deals and health campaigns running right now"
-          />
-          <h2 id="promotions-heading" className="sr-only">
-            Current promotions
-          </h2>
-
-          {promotions.loading ? (
-            <div className="flex gap-4 overflow-hidden">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-36 w-full min-w-[280px] max-w-sm rounded-2xl sm:min-w-[320px]" />
-              ))}
-            </div>
-          ) : (
-            <div className="scroll-slim flex snap-x gap-4 overflow-x-auto pb-2">
-              {promotions.data?.map((p) => (
-                <article
-                  key={p.id}
-                  className={cn(
-                    "relative w-full min-w-[280px] max-w-sm flex-1 snap-start overflow-hidden rounded-2xl bg-gradient-to-br p-5 text-white shadow-md sm:min-w-[320px]",
-                    promoThemes[p.color ?? "teal"] ?? promoThemes.teal
-                  )}
-                >
-                  <Sparkles className="absolute -right-4 -top-4 h-20 w-20 text-white/15" aria-hidden />
-                  {p.badge ? (
-                    <span className="inline-block rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide backdrop-blur">
-                      {p.badge}
-                    </span>
-                  ) : null}
-                  <h3 className="mt-2.5 text-lg font-bold leading-snug">{p.title}</h3>
-                  <p className="mt-1.5 line-clamp-2 text-sm text-white/90">{p.description}</p>
-                  <div className="mt-3.5 flex items-center gap-2">
-                    {p.discountPct ? (
-                      <span className="rounded-md bg-white px-2 py-0.5 text-xs font-extrabold text-emerald-700">
-                        {p.discountPct}% OFF
-                      </span>
-                    ) : null}
-                    {p.code ? (
-                      <button
-                        className="flex items-center gap-1.5 rounded-md border border-dashed border-white/60 px-2 py-0.5 text-xs font-semibold tracking-wider transition-colors hover:bg-white/15"
-                        onClick={() => {
-                          void navigator.clipboard?.writeText(p.code!).then(
-                            () => toast.success(`Code ${p.code} copied — apply it at checkout`),
-                            () => toast(`Code: ${p.code}`)
-                          )
-                        }}
-                        aria-label={`Copy promo code ${p.code}`}
-                      >
-                        <Copy className="h-3 w-3" aria-hidden /> {p.code}
-                      </button>
-                    ) : null}
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
 
       {/* ============ CURATED PRIORITY PRODUCTS ============ */}
       <section className="landing-section mx-auto max-w-7xl px-4 py-12" aria-labelledby="popular-heading">

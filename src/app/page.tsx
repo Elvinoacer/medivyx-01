@@ -22,6 +22,7 @@ import { setupForegroundNotificationListener, enablePushNotifications, getPushPe
 const ViewLoading = () => <div className="mx-auto min-h-[60vh] max-w-7xl animate-pulse px-4 py-12" aria-label="Loading"><div className="h-10 w-52 rounded-xl bg-muted" /><div className="mt-8 h-72 rounded-3xl bg-muted/70" /></div>
 const ServicesView = dynamic(() => import("@/components/views/services-view").then((m) => m.ServicesView), { loading: ViewLoading })
 const CatalogView = dynamic(() => import("@/components/views/catalog-view").then((m) => m.CatalogView), { loading: ViewLoading })
+const OffersView = dynamic(() => import("@/components/views/offers-view").then((m) => m.OffersView), { loading: ViewLoading })
 const ProductView = dynamic(() => import("@/components/views/product-view").then((m) => m.ProductView), { loading: ViewLoading })
 const CartView = dynamic(() => import("@/components/views/cart-view").then((m) => m.CartView), { loading: ViewLoading })
 const CheckoutView = dynamic(() => import("@/components/views/checkout-view").then((m) => m.CheckoutView), { loading: ViewLoading })
@@ -69,6 +70,7 @@ export default function Page() {
         <div className={admin || home ? undefined : "experience-view"}>
         {home ? <SphereLanding /> : null}
         {view === "catalog" ? <CatalogView /> : null}
+        {view === "offers" ? <OffersView /> : null}
         {view === "product" ? <ProductView /> : null}
         {view === "services" ? <ServicesView /> : null}
         {view === "cart" ? <CartView /> : null}

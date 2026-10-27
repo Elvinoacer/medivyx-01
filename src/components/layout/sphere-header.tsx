@@ -38,6 +38,7 @@ export function SphereHeader() {
           {(
             [
               { name: "Shop health", view: "catalog" },
+              { name: "Offers", view: "offers" },
               { name: "Care services", view: "services" },
               { name: "Prescriptions", view: "prescriptions" },
             ] as const
@@ -90,6 +91,9 @@ export function SphereHeader() {
         >
           <button onClick={() => go("prescriptions")}>
             <Upload size={18} /> Upload prescription <ArrowUpRight size={16} />
+          </button>
+          <button onClick={() => go("offers")}>
+            Current offers <ArrowUpRight size={16} />
           </button>
           <button onClick={() => go("services")}>
             Explore care services <ArrowUpRight size={16} />

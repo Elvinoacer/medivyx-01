@@ -14,6 +14,7 @@ import { create } from "zustand"
 export type ViewName =
   | "home"
   | "catalog"
+  | "offers"
   | "product"
   | "services"
   | "cart"
@@ -113,7 +114,7 @@ function mirrorParams(params: ViewParams): Pick<AppState, "selectedProductId" | 
 }
 
 const SIMPLE_PATHS: Partial<Record<ViewName, string>> = {
-  home: "/", catalog: "/catalog", services: "/services", cart: "/cart",
+  home: "/", catalog: "/catalog", offers: "/offers", services: "/services", cart: "/cart",
   checkout: "/checkout", auth: "/auth", orders: "/orders",
   prescriptions: "/prescriptions", account: "/account", admin: "/admin",
 }
@@ -140,7 +141,7 @@ function stateFromLocation(): HistoryEntry {
   const order = /^\/orders\/([^/]+)$/.exec(path)
   if (order) return { view: "order", params: { ...params, orderId: decodeURIComponent(order[1]) } }
   const routes: Record<string, ViewName> = {
-    "/": "home", "/catalog": "catalog", "/services": "services", "/cart": "cart",
+    "/": "home", "/catalog": "catalog", "/offers": "offers", "/services": "services", "/cart": "cart",
     "/checkout": "checkout", "/auth": "auth", "/orders": "orders",
     "/prescriptions": "prescriptions", "/account": "account", "/admin": "admin",
   }
