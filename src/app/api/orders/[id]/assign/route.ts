@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { ORDER_INCLUDE, toOrderDTO } from "@/lib/dto"
 import { addStatusEvent, audit, notifyCustomer } from "@/lib/notify"
 import { requireStaff } from "@/lib/session"
+import { DISPATCH_STATUSES } from "@/lib/constants"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -16,6 +17,10 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Riders can only be assigned to delivery orders." }, { status: 400 })
   }
 
+  if (!DISPATCH_STATUSES.includes(order.status as (typeof DISPATCH_STATUSES)[number])) {
+    return NextResponse.json({ error: "Only active delivery orders can be assigned or reassigned." }, { status: 409 })
+  }
+
   const body = await request.json().catch(() => ({}))
   const staffId = String(body.staffId ?? "")
   const rider = await db.staffUser.findUnique({ where: { id: staffId } })
@@ -23,9 +28,14 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Select an active rider account." }, { status: 400 })
   }
 
+  if (order.riderId === rider.id) return NextResponse.json(toOrderDTO(order))
   const actor = session.staffName ?? "Staff"
-  await db.order.update({ where: { id: order.id }, data: { riderId: rider.id, riderName: rider.name } })
-  await addStatusEvent(order.id, order.status, actor, `Rider assigned: ${rider.name}`)
+  const updatedCount = await db.order.updateMany({
+    where: { id: order.id, version: order.version, status: order.status },
+    data: { riderId: rider.id, riderName: rider.name, version: { increment: 1 } },
+  })
+  if (updatedCount.count !== 1) return NextResponse.json({ error: "This delivery changed. Refresh and try assigning again." }, { status: 409 })
+  await addStatusEvent(order.id, order.status, actor, order.riderName ? `Rider reassigned: ${order.riderName} → ${rider.name}` : `Rider assigned: ${rider.name}`)
   await audit(actor, session.staffRole, "RIDER_ASSIGNED", "Order", order.reference, `${rider.name} → ${order.reference}`)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
   const orderUrl = `${appUrl}/#order-${order.id}`
