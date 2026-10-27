@@ -38,9 +38,9 @@ function paid(order: OrderDTO) {
 function onRoad(order: OrderDTO) {
   return order.status === "OUT_FOR_DELIVERY"
 }
-function attention(order: OrderDTO) {
+function attention(order: OrderDTO, now: number) {
   // Triage indicator, not a promised delivery SLA.
-  return Date.now() - new Date(onRoad(order) ? order.updatedAt : order.createdAt).getTime() > 2 * 60 * 60 * 1000
+  return now - new Date(onRoad(order) ? order.updatedAt : order.createdAt).getTime() > 2 * 60 * 60 * 1000
 }
 function mapsHref(order: OrderDTO) {
   const location = [order.deliveryAddress, order.deliveryArea, "Nairobi, Kenya"].filter(Boolean).join(", ")
@@ -57,6 +57,7 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
   const [loadError, setLoadError] = useState<string | null>(null)
   const [rosterError, setRosterError] = useState(false)
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
+  const [now, setNow] = useState(() => Date.now())
   const [refreshing, setRefreshing] = useState(false)
   const [view, setView] = useState<View>("all")
   const [search, setSearch] = useState("")
@@ -90,6 +91,7 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
       setRosterError(true)
     }
     setUpdatedAt(new Date())
+    setNow(Date.now())
     setRefreshing(false)
   }, [])
 
@@ -101,14 +103,14 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
     return () => window.clearInterval(ticker)
   }, [reload, refreshKey])
 
-  const open = active ?? []
+  const open = useMemo(() => active ?? [], [active])
   const unassigned = open.filter((o) => !o.riderId)
   const handoff = open.filter((o) => o.riderId && !onRoad(o))
   const road = open.filter(onRoad)
   const ready = open.filter((o) => o.riderId && o.status === "READY_FOR_PICKUP")
-  const completedToday = history.filter((o) => new Date(o.updatedAt).toDateString() === new Date().toDateString())
+  const completedToday = history.filter((o) => new Date(o.updatedAt).toDateString() === new Date(now).toDateString())
   const pendingPayment = road.filter((o) => !paid(o))
-  const exceptions = open.filter(attention)
+  const exceptions = open.filter((order) => attention(order, now))
   const counts: Record<View, number> = {
     all: open.length, unassigned: unassigned.length, handoff: handoff.length,
     "on-road": road.length, completed: history.length,
@@ -394,7 +396,7 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
                 : order.status === "READY_FOR_PICKUP" && !!order.riderId ? { label: "Dispatch rider", status: "OUT_FOR_DELIVERY" as const }
                 : null
               return (
-                <Card key={order.id} className={cn("overflow-hidden border-border/80 shadow-sm", attention(order) && !completed && "border-amber-300 dark:border-amber-800")}>
+                <Card key={order.id} className={cn("overflow-hidden border-border/80 shadow-sm", attention(order, now) && !completed && "border-amber-300 dark:border-amber-800")}>
                   <CardContent className="space-y-4 p-4 sm:p-5">
                     <div className="flex flex-wrap items-start gap-2">
                       {!order.riderId && !completed && riders.length ? (
@@ -405,7 +407,7 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-mono text-sm font-bold">{order.reference}</span>
                           <OrderStatusBadge status={order.status} />
-                          {attention(order) && !completed ? <Badge variant="outline" className="gap-1 border-amber-300 text-amber-800 dark:text-amber-300"><Clock3 className="h-3 w-3" /> Check delay</Badge> : null}
+                          {attention(order, now) && !completed ? <Badge variant="outline" className="gap-1 border-amber-300 text-amber-800 dark:text-amber-300"><Clock3 className="h-3 w-3" /> Check delay</Badge> : null}
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
                           Placed {dateTime(order.createdAt)} · {timeAgo(order.createdAt)}
