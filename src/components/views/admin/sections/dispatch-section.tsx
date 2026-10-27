@@ -414,8 +414,8 @@ function RiderDeliveryCard({
   const tel = telHref(order.customerPhone)
   const payable = payMethodLabel(order)
   const canStart = order.status === "READY_FOR_PICKUP"
-  const canComplete = order.status === "OUT_FOR_DELIVERY"
-  const isUnpaid = canComplete && !order.payments.some((payment) => payment.status === "SUCCESS")
+  const isUnpaid = order.status === "OUT_FOR_DELIVERY" && !order.payments.some((payment) => payment.status === "SUCCESS")
+  const canComplete = order.status === "OUT_FOR_DELIVERY" && !isUnpaid
 
   return (
     <Card className="card-lift">
