@@ -147,9 +147,10 @@ export async function POST(request: NextRequest) {
     const initialStatus = hasRx ? "UNDER_REVIEW" : paymentMethod === "MPESA" || paymentMethod === "CARD" ? "AWAITING_PAYMENT" : "RECEIVED"
     const type = hasRx ? (lines.every(({ product }) => product.requiresPrescription) ? "PRESCRIPTION" : "MIXED") : body.reservation ? "RESERVATION" : "OTC"
 
-    const {ipHash,browserHash}=promotionIdentity(request)
+    // No coupon means no redemption identity needs hashing or storing.
+    const {ipHash,browserHash}=promotion ? promotionIdentity(request) : {ipHash:null,browserHash:null}
     if (promotion?.perUserLimit != null && !userId) return NextResponse.json({error:"Sign in to redeem this promotion. Each customer has a redemption limit."},{status:401})
-    if (promotion?.perIpLimit != null && !ipHash) return NextResponse.json({error:"Cannot verify this network-limited promotion from this connection."},{status:409})
+    if (promotion?.perIpLimit != null && !ipHash) return NextResponse.json({error:"This offer requires secure network verification that is currently unavailable. Please contact the pharmacy team."},{status:503})
     if (promotion?.perBrowserLimit != null && !browserHash) return NextResponse.json({error:"Validate the promotion code at checkout before placing the order."},{status:409})
     const order = await db.$transaction(async (tx) => {
       if (promotion) {
