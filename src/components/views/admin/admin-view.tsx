@@ -36,6 +36,7 @@ import {
 import { OverviewSection } from "./sections/overview-section"
 import { OrdersSection } from "./sections/orders-section"
 import { DispatchSection } from "./sections/dispatch-section"
+import { DispatchControlRoom } from "./sections/dispatch-control-room"
 import { PrescriptionsSection } from "./sections/prescriptions-section"
 import { MedicineRequestsSection } from "./sections/medicine-requests-section"
 import { CatalogueSection } from "./sections/catalogue-section"
@@ -274,7 +275,7 @@ export function AdminView() {
       case "orders":
         return <OrdersSection {...sectionProps} />
       case "dispatch":
-        return <DispatchSection {...sectionProps} />
+        return role === "RIDER" ? <DispatchSection {...sectionProps} /> : <DispatchControlRoom {...sectionProps} />
       case "prescriptions":
         return <PrescriptionsSection {...sectionProps} />
       case "medicine-requests":
