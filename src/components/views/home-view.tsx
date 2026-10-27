@@ -20,10 +20,9 @@ import type { CategoryDTO, ProductDTO, ProductsResponse } from "@/lib/types"
 import { PHARMACY, waLink, DELIVERY_DEFAULTS } from "@/lib/constants"
 import { formatKES, isOpenNow } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { toast } from "sonner"
 import {
   Search, Upload, ShieldCheck, Wallet, MapPin, Phone, MessageCircle, Clock,
-  ShieldAlert, ArrowRight, Truck, Sparkles, RefreshCw, Bot, Copy, History,
+  ShieldAlert, ArrowRight, Truck, RefreshCw, Bot, History,
 } from "lucide-react"
 
 // ---------- tiny async hook (exhaustive-deps handled per call) ----------
