@@ -311,7 +311,7 @@ export function SphereLanding() {
                 <span className={styles.careServiceCategory}>{service.category}</span>
                 <span className={styles.careServiceNumber}>0{index + 1}</span>
               </span>
-              <span className={styles.careServiceBody}>
+              <div className={styles.careServiceBody}>
                 {service.durationMinutes ? (
                   <span className={styles.careServiceDuration}>{service.durationMinutes} min · In-pharmacy care</span>
                 ) : null}
@@ -321,7 +321,7 @@ export function SphereLanding() {
                   <span>Explore &amp; book</span>
                   <span className={styles.careServiceArrow}><ArrowUpRight size={19} strokeWidth={1.7} /></span>
                 </span>
-              </span>
+              </div>
             </button>
           ))}
         </div>
