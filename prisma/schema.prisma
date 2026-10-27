@@ -331,6 +331,8 @@ model Promotion {
   createdAt    DateTime              @default(now())
   maxUses      Int?
   perUserLimit Int?
+  perIpLimit   Int?
+  perBrowserLimit Int?
   minimumSpend Decimal?              @db.Decimal(12, 2)
   redemptions  PromotionRedemption[]
 }
@@ -340,11 +342,15 @@ model PromotionRedemption {
   promotionId String
   orderId     String    @unique
   userId      String?
+  ipHash      String?
+  browserHash String?
   createdAt   DateTime  @default(now())
   promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
 
   @@index([promotionId, createdAt])
   @@index([promotionId, userId])
+  @@index([promotionId, ipHash])
+  @@index([promotionId, browserHash])
 }
 
 model LoyaltyLedger {
