@@ -452,6 +452,15 @@ export const serviceBookingsApi = {
 export const serviceStaffApi = { list: () => req<import("./types").StaffDTO[]>("/api/admin/service-staff") }
 
 export const adminServiceBookingsApi = {
+  search: (query: import("./types").AdminServiceBookingQuery) => {
+    const params = new URLSearchParams({ scope: "manage", view: query.view, page: String(query.page), pageSize: String(query.pageSize || 20) })
+    for (const key of ["q", "range", "from", "to", "status", "staffId"] as const) {
+      const value = query[key]
+      if (value) params.set(key, value)
+    }
+    return req<import("./types").AdminServiceBookingPage>("/api/admin/service-bookings?" + params.toString())
+  },
+  detail: (id: string) => req<import("./types").ServiceBookingDTO>("/api/admin/service-bookings?scope=detail&id=" + encodeURIComponent(id)),
   list: (date?: string) =>
     req<import("./types").ServiceBookingDTO[]>(`/api/admin/service-bookings${date ? `?date=${encodeURIComponent(date)}` : ""}`),
   overview: (date: string) =>

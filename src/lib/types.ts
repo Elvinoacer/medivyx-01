@@ -406,6 +406,29 @@ export interface ServiceBookingDTO {
   statusHistory: { id: string; status: string; note?: string | null; actor: string; createdAt: string }[]
 }
 
+export type AdminBookingView = "queue" | "upcoming" | "history" | "all"
+export type AdminBookingRange = "any" | "today" | "next7" | "custom"
+
+export interface AdminServiceBookingQuery {
+  view: AdminBookingView
+  page: number
+  pageSize?: number
+  q?: string
+  range?: AdminBookingRange
+  from?: string
+  to?: string
+  status?: string
+  staffId?: string
+}
+
+export interface AdminServiceBookingPage {
+  items: ServiceBookingDTO[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
 export interface AdminServiceBookingOverviewDTO {
   pendingCount: number
   upcomingCount: number
