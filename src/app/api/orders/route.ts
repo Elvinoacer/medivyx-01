@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
 
     const {ipHash,browserHash}=promotionIdentity(request)
     if (promotion?.perUserLimit != null && !userId) return NextResponse.json({error:"Sign in to redeem this promotion. Each customer has a redemption limit."},{status:401})
+    if (promotion?.perIpLimit != null && !ipHash) return NextResponse.json({error:"Cannot verify this network-limited promotion from this connection."},{status:409})
     if (promotion?.perBrowserLimit != null && !browserHash) return NextResponse.json({error:"Validate the promotion code at checkout before placing the order."},{status:409})
     const order = await db.$transaction(async (tx) => {
       if (promotion) {

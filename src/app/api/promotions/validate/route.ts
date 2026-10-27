@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
     const {ipHash,browserHash} = promotionIdentity(request)
     if (promo.perUserLimit != null && !userId) return NextResponse.json({error:"Sign in to use this code. The promotion has a per-customer redemption limit."},{status:401})
     if (promo.perUserLimit != null && userId && await db.promotionRedemption.count({where:{promotionId:promo.id,userId}}) >= promo.perUserLimit) return NextResponse.json({error:"You've used this code the maximum number of times."},{status:409})
+    if (promo.perIpLimit != null && !ipHash) return NextResponse.json({error:"A network-based promotion cannot be verified from this connection."},{status:409})
     if (promo.perIpLimit != null && ipHash && await db.promotionRedemption.count({where:{promotionId:promo.id,ipHash}}) >= promo.perIpLimit) return NextResponse.json({error:"This promotion has reached the usage limit for your network."},{status:409})
     if (promo.perBrowserLimit != null && browserHash && await db.promotionRedemption.count({where:{promotionId:promo.id,browserHash}}) >= promo.perBrowserLimit) return NextResponse.json({error:"This browser has reached its redemption limit for this promotion."},{status:409})
     const discountAmount = Math.round((subtotal * promo.discountPct) / 100 * 100) / 100
