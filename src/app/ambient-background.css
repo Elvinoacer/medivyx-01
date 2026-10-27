@@ -25,3 +25,60 @@ header nav button[class~="bg-accent"][class~="text-accent-foreground"]:focus-vis
     radial-gradient(740px 400px at 96% 72%, rgb(48 157 105 / 6%), transparent 72%),
     var(--background);
 }
+
+/*
+ * Retain the subtle light-mode animation from feat/light-mode-ambient-bg
+ * without restoring the old blanket child-positioning/stacking rules.
+ * Disabled on small screens and when reduced motion is requested.
+ */
+@media (prefers-reduced-motion: no-preference) and (min-width: 801px) {
+  .ambient-page-shell::before,
+  .ambient-page-shell::after {
+    content: "";
+    position: fixed;
+    inset: -18%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .ambient-page-shell::before {
+    background:
+      radial-gradient(46% 34% at 12% 14%, hsl(154 52% 54% / 0.095), transparent 68%),
+      radial-gradient(38% 30% at 88% 18%, hsl(172 48% 58% / 0.075), transparent 70%),
+      radial-gradient(44% 36% at 58% 88%, hsl(142 48% 58% / 0.065), transparent 72%);
+    filter: blur(54px);
+    animation: sphere-ambient-drift 24s ease-in-out infinite alternate;
+  }
+
+  .ambient-page-shell::after {
+    background: conic-gradient(
+      from 220deg at 50% 50%,
+      transparent 0deg,
+      hsl(154 48% 52% / 0.035) 50deg,
+      transparent 118deg,
+      hsl(178 44% 56% / 0.03) 190deg,
+      transparent 258deg,
+      hsl(139 46% 54% / 0.025) 320deg,
+      transparent 360deg
+    );
+    mix-blend-mode: multiply;
+    opacity: 0.6;
+    filter: blur(36px);
+    animation: sphere-ambient-rotate 38s linear infinite;
+  }
+
+  .dark .ambient-page-shell::before,
+  .dark .ambient-page-shell::after {
+    display: none;
+  }
+}
+
+@keyframes sphere-ambient-drift {
+  from { transform: translate3d(-3%, -2%, 0) scale(1); }
+  to { transform: translate3d(4%, -1%, 0) scale(1.02); }
+}
+
+@keyframes sphere-ambient-rotate {
+  from { transform: rotate(0deg) scale(1); }
+  to { transform: rotate(360deg) scale(1); }
+}
