@@ -413,9 +413,9 @@ function RiderDeliveryCard({
   const wa = waHref(order.customerPhone, `Hello ${order.customerName ?? "there"}, this is Sphere Pharmacy — I'm on my way with your order ${order.reference}.`)
   const tel = telHref(order.customerPhone)
   const payable = payMethodLabel(order)
-  const canStart = ["PAID", "PREPARING", "READY_FOR_PICKUP"].includes(order.status)
-  const canComplete = order.status === "OUT_FOR_DELIVERY"
-  const isUnpaid = order.status !== "PAID" && !order.status.startsWith("COMPLETED")
+  const canStart = order.status === "READY_FOR_PICKUP"
+  const isUnpaid = order.status === "OUT_FOR_DELIVERY" && !order.payments.some((payment) => payment.status === "SUCCESS")
+  const canComplete = order.status === "OUT_FOR_DELIVERY" && !isUnpaid
 
   return (
     <Card className="card-lift">

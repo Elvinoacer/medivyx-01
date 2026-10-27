@@ -62,6 +62,12 @@ export async function PATCH(request: Request, { params }: Params) {
     if (order.status === status) return NextResponse.json(toOrderDTO(order))
     if (status === "CANCELLED") return NextResponse.json({ error: "Use the cancellation action so reserved stock and loyalty are restored safely." }, { status: 409 })
     if (status === "REFUNDED") return NextResponse.json({ error: "Use the refund action so the payment provider confirms the refund." }, { status: 409 })
+    if (status === "OUT_FOR_DELIVERY" && (order.fulfillment !== "DELIVERY" || !order.riderId)) {
+      return NextResponse.json({ error: "Assign an active rider to this delivery before dispatching it." }, { status: 409 })
+    }
+    if (status === "COMPLETED_DELIVERY" && !order.payments.some((payment) => payment.status === "SUCCESS")) {
+      return NextResponse.json({ error: "Confirm the customer's M-Pesa or cash payment before marking the delivery complete." }, { status: 409 })
+    }
     if (!canTransitionOrder(order.status as OrderStatus, status, role)) {
       return NextResponse.json({ error: `The order cannot move from ${order.status} to ${status}.` }, { status: 409 })
     }
