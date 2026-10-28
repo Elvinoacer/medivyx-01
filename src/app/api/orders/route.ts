@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     let latitude: number | null = null, longitude: number | null = null
     if (fulfillment === "DELIVERY" && userId && body.addressId) {
       const address = await db.address.findFirst({ where: { id: String(body.addressId), userId } })
-      if (address) { deliveryAddress = address.text; deliveryArea = address.area; deliveryNotes = address.notes; latitude = address.latitude; longitude = address.longitude }
+      if (address) { deliveryAddress = address.text; deliveryArea = address.area || (body.deliveryArea ? String(body.deliveryArea).trim().slice(0, 100) : null); deliveryNotes = address.notes; latitude = address.latitude; longitude = address.longitude }
     }
     if (fulfillment === "DELIVERY" && !deliveryAddress) {
       deliveryAddress = String(body.deliveryAddress || "").trim().slice(0, 300) || null
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
         reference: orderReference(), userId, guestName, guestPhone, guestEmail,
         guestAccessTokenHash: guestAccessToken ? tokenHash(guestAccessToken) : null,
         guestAccessExpiresAt: guestAccessToken ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : null,
-        type, status: initialStatus, fulfillment, deliveryAddress, deliveryArea, deliveryNotes,
+        type, status: initialStatus, fulfillment, paymentMethod: paymentMethod === "CASH" ? (fulfillment === "DELIVERY" ? "CASH_ON_DELIVERY" : "CASH_ON_PICKUP") : paymentMethod, deliveryAddress, deliveryArea, deliveryNotes,
         deliveryLatitude: latitude, deliveryLongitude: longitude, deliveryFee, subtotal, discountAmount,
         promotionCode: promotion?.code || null, total, pointsRedeemed,
         notes: body.notes ? String(body.notes).trim().slice(0, 1000) : null,
