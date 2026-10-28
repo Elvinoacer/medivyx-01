@@ -265,6 +265,7 @@ export interface PromotionDTO {
   discountPct: number | null
   color: string | null
   active: boolean
+  isPublic: boolean
   startsAt: string | null
   endsAt: string | null
   maxUses?: number | null

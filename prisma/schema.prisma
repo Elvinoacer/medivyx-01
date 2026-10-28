@@ -327,6 +327,7 @@ model Promotion {
   discountPct  Int?
   color        String?
   active       Boolean               @default(true)
+  isPublic     Boolean               @default(true)
   startsAt     DateTime?
   endsAt       DateTime?
   createdAt    DateTime              @default(now())

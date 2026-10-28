@@ -182,13 +182,13 @@ export function toAddressDTO(a: { id: string; label: string; text: string; area:
 
 export function toPromotionDTO(p: {
   id: string; title: string; description: string; badge: string | null; code: string | null;
-  discountPct: number | null; color: string | null; active: boolean;
+  discountPct: number | null; color: string | null; active: boolean; isPublic: boolean;
   startsAt: Date | null; endsAt: Date | null;
   maxUses?: number | null; perUserLimit?: number | null; perIpLimit?: number | null; perBrowserLimit?: number | null; minimumSpend?: DbMoney | null;
 }): PromotionDTO {
   return {
     id: p.id, title: p.title, description: p.description, badge: p.badge, code: p.code,
-    discountPct: p.discountPct, color: p.color, active: p.active,
+    discountPct: p.discountPct, color: p.color, active: p.active, isPublic: p.isPublic,
     startsAt: p.startsAt ? p.startsAt.toISOString() : null,
     endsAt: p.endsAt ? p.endsAt.toISOString() : null,
     maxUses: p.maxUses ?? null,

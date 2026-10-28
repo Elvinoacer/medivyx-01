@@ -64,13 +64,13 @@ async function copyText(value:string){
 function shareLink(code:string){return window.location.origin+"/checkout?promo="+encodeURIComponent(code)}
 const asInt=(n:number|null|undefined)=>n==null?"":String(n)
 const blank = ():PromoForm=>({
-  title:"",description:"",badge:"",code:"",discountPct:"",color:"teal",active:true,
+  title:"",description:"",badge:"",code:"",discountPct:"",color:"teal",active:true,isPublic:true,
   startsAt:"",endsAt:"",minimumSpend:"",maxUses:"",perUserLimit:"2",
   perIpLimit:"",perBrowserLimit:"2",
 })
 interface PromoForm {
   title:string;description:string;badge:string;code:string;discountPct:string;
-  color:ColorPreset;active:boolean;startsAt:string;endsAt:string;
+  color:ColorPreset;active:boolean;isPublic:boolean;startsAt:string;endsAt:string;
   minimumSpend:string;maxUses:string;perUserLimit:string;perIpLimit:string;perBrowserLimit:string
 }
 function fromPromo(p?:PromotionDTO):PromoForm{
@@ -78,7 +78,7 @@ function fromPromo(p?:PromotionDTO):PromoForm{
   return {
     title:p.title,description:p.description,badge:p.badge||"",code:p.code||"",
     discountPct:asInt(p.discountPct),color:(COLORS as readonly string[]).includes(p.color||"")?p.color as ColorPreset:"teal",
-    active:p.active,startsAt:dateOnly(p.startsAt),endsAt:dateOnly(p.endsAt),
+    active:p.active,isPublic:p.isPublic,startsAt:dateOnly(p.startsAt),endsAt:dateOnly(p.endsAt),
     minimumSpend:asInt(p.minimumSpend),maxUses:asInt(p.maxUses),
     perUserLimit:asInt(p.perUserLimit),perIpLimit:asInt(p.perIpLimit),perBrowserLimit:asInt(p.perBrowserLimit),
   }
@@ -158,7 +158,8 @@ export function PromotionsSection({refreshKey,onRefresh}:SectionProps){
       <div className="min-w-0 flex-1">
        <div className="flex flex-wrap items-center gap-2">
         <button onClick={()=>setEditor({mode:"edit",promo:p})} className="max-w-full truncate text-left text-sm font-semibold hover:underline">{p.title}</button>
-        <Badge variant="outline" className={statusTone[st]}>{statusLabel[st]}</Badge>
+<Badge variant="outline" className={statusTone[st]}>{statusLabel[st]}</Badge>
+        <Badge variant={p.isPublic ? "secondary" : "outline"}>{p.isPublic ? "Public" : "Private · share code"}</Badge>
         {p.code?<Badge variant="secondary" className="font-medium">Checkout code</Badge>:<Badge variant="outline">Banner only</Badge>}
        </div>
        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{p.description}</p>
@@ -243,6 +244,7 @@ function PromotionEditorDialog({mode,promo,onClose,onSaved}:{
   const code=form.code.trim().toUpperCase()
   if(code&&!/^[A-Z0-9_-]{3,32}$/.test(code))next.code="Use 3–32 letters, numbers, underscores or hyphens."
   if(code&&!form.discountPct)next.discountPct="A checkout code needs a discount percentage."
+  if(!form.isPublic&&!code)next.code="Private promotions need a code to share."
   if(form.discountPct&&(!Number.isInteger(Number(form.discountPct))||Number(form.discountPct)<1||Number(form.discountPct)>90))next.discountPct="Enter a whole number from 1 to 90."
   for(const field of ["maxUses","perUserLimit","perIpLimit","perBrowserLimit"] as const){
    if(!form[field])continue
@@ -262,7 +264,7 @@ function PromotionEditorDialog({mode,promo,onClose,onSaved}:{
     title:form.title.trim(),description:form.description.trim(),badge:form.badge.trim()||null,
     code:form.code.trim().toUpperCase()||null,
     discountPct:form.discountPct?Number(form.discountPct):null,
-    color:form.color,active:form.active,startsAt:form.startsAt||null,endsAt:form.endsAt||null,
+    color:form.color,active:form.active,isPublic:form.isPublic,startsAt:form.startsAt||null,endsAt:form.endsAt||null,
     maxUses:form.maxUses?Number(form.maxUses):null,perUserLimit:form.perUserLimit?Number(form.perUserLimit):null,
     perIpLimit:form.perIpLimit?Number(form.perIpLimit):null,perBrowserLimit:form.perBrowserLimit?Number(form.perBrowserLimit):null,
     minimumSpend:form.minimumSpend?Number(form.minimumSpend):null,
@@ -326,6 +328,17 @@ function PromotionEditorDialog({mode,promo,onClose,onSaved}:{
       </div>
       {labelledNumber("promo-minimum","Minimum order (KSh)","minimumSpend","Optional minimum order subtotal.")}
      </div>
+    </section>
+    <section className="space-y-3 border-t pt-4">
+     <h3 className="text-sm font-bold">Who can see this promotion?</h3>
+     <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Promotion visibility">
+      {([true,false] as const).map(value=><button key={String(value)} type="button" role="radio" aria-checked={form.isPublic===value}
+       onClick={()=>set("isPublic",value)} className={cn("rounded-xl border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-primary",form.isPublic===value?"border-primary bg-primary/5":"hover:bg-muted/50")}>
+       <span className="block text-sm font-semibold">{value?"Public offer":"Private code"}</span>
+       <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{value?"Display on the website and in checkout suggestions.":"Do not show publicly. Only customers given the code or link can redeem."}</span>
+      </button>)}
+     </div>
+     {!form.isPublic && !form.code ? <p role="alert" className="text-xs font-medium text-amber-800 dark:text-amber-300">Enter a code above before saving a private promotion.</p> : null}
     </section>
     <section className="space-y-3 border-t pt-4"><h3 className="text-sm font-bold">Availability</h3>
      <div className="grid gap-3 sm:grid-cols-2">

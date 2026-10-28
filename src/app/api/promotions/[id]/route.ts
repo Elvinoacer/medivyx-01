@@ -26,6 +26,10 @@ export async function PATCH(request: Request, { params }: Params) {
     if (body.code !== undefined) data.code = promotionCode(body.code)
     if (body.discountPct !== undefined) data.discountPct = promotionDiscount(body.discountPct)
     if (body.color !== undefined && ["teal","emerald","amber","orange","rose","violet","neutral"].includes(body.color)) data.color = body.color
+    if (body.isPublic !== undefined) {
+      if (typeof body.isPublic !== "boolean") return NextResponse.json({error:"Visibility must be public or private."},{status:400})
+      data.isPublic = body.isPublic
+    }
     if (body.active !== undefined) {
       if (typeof body.active !== "boolean") return NextResponse.json({ error: "Active must be true or false." }, { status: 400 })
       data.active = body.active
@@ -44,6 +48,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
     const nextCode = (data.code === undefined ? promo.code : data.code) as string|null
     const nextPct = (data.discountPct === undefined ? promo.discountPct : data.discountPct) as number|null
+    if ((data.isPublic === undefined ? promo.isPublic : data.isPublic) === false && !nextCode) return NextResponse.json({error:"Private promotions require a redeemable code.",field:"code"},{status:400})
     if (nextCode && !nextPct) return NextResponse.json({error:"A checkout code needs a percentage discount.",field:"discountPct"},{status:400})
     const updated = await db.promotion.update({ where: { id }, data })
     await audit(session.staffName ?? "Staff", session.staffRole, "PROMOTION_UPDATED", "Promotion", id, updated.title)

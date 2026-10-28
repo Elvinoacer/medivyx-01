@@ -20,6 +20,7 @@ export async function GET(request: Request) {
       ? {}
       : {
           active: true,
+          isPublic: true,
           AND: [
             { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
             { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
@@ -54,6 +55,8 @@ export async function POST(request: Request) {
     const endsAt = promotionDate(body.endsAt, true)
     if (startsAt && endsAt && endsAt < startsAt) return NextResponse.json({error:"End date must be on or after start date.",field:"endsAt"},{status:400})
     const discountPct = promotionDiscount(body.discountPct)
+    if (body.isPublic !== undefined && typeof body.isPublic !== "boolean") return NextResponse.json({error:"Visibility must be public or private."},{status:400})
+    if (body.isPublic === false && !code) return NextResponse.json({error:"Private promotions require a redeemable code.",field:"code"},{status:400})
     if (code && !discountPct) return NextResponse.json({error:"Set a discount percentage for this checkout code.",field:"discountPct"},{status:400})
     const limits = promotionLimitFields(body)
     const minimumSpend = body.minimumSpend == null || body.minimumSpend === "" ? null : Number(body.minimumSpend)
@@ -67,6 +70,7 @@ export async function POST(request: Request) {
         discountPct,
         color: ["teal", "emerald", "amber", "orange", "rose", "violet", "neutral"].includes(body.color) ? body.color : "teal",
         active: body.active !== false,
+        isPublic: body.isPublic !== false,
         startsAt, endsAt, ...limits, minimumSpend,
       },
     })
