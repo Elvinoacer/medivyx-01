@@ -222,6 +222,8 @@ export const ordersApi = {
     req<OrderDTO & { guestAccessToken?: string }>("/api/orders", { method: "POST", body: JSON.stringify(payload) }),
   updateStatus: (id: string, status: OrderStatus, note?: string) =>
     req<OrderDTO>(`/api/orders/${id}`, { method: "PATCH", body: JSON.stringify({ status, note }) }),
+  startPreparing: (id: string) =>
+    req<OrderDTO>(`/api/orders/${id}/prepare`, { method: "POST" }),
   cancel: (id: string, reason?: string, accessToken?: string) =>
     req<OrderDTO>(`/api/orders/${id}/cancel`, { method: "POST", body: JSON.stringify({ reason }), ...(accessToken ? { headers: { "x-order-access-token": accessToken } } : {}) }),
   markPaidCash: (id: string) =>
