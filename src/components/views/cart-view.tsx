@@ -202,12 +202,12 @@ export function CartView() {
                   <div className="space-y-2" aria-label="Available checkout offers">
                     <p className="flex items-center gap-2 text-xs font-bold text-foreground"><Gift className="h-4 w-4 text-primary"/> Available offers</p>
                     {offers.slice(0,2).map(offer=>(
-                      <div key={offer.id} className="flex items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 p-2.5 dark:border-emerald-800 dark:bg-emerald-950/30">
+                      <div key={offer.id} className="sphere-cart-offer flex items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 p-2.5 dark:border-emerald-800 dark:bg-emerald-950/30">
                         <div className="min-w-0">
-                          <p className="truncate text-xs font-semibold text-emerald-950 dark:text-emerald-100">{offer.discountPct}% off · <span className="font-mono">{offer.code}</span></p>
-                          <p className="mt-0.5 text-[11px] text-emerald-800 dark:text-emerald-300">{offer.minimumSpend && subtotal < offer.minimumSpend ? `Add ${formatKES(offer.minimumSpend-subtotal)} to qualify` : offer.minimumSpend ? `Min. ${formatKES(offer.minimumSpend)}` : "No minimum spend"}</p>
+                          <p className="sphere-offer-title truncate text-xs font-semibold text-emerald-950 dark:text-emerald-100">{offer.discountPct}% off · <span className="font-mono">{offer.code}</span></p>
+                          <p className="sphere-offer-detail mt-0.5 text-xs text-emerald-800 dark:text-emerald-300">{offer.minimumSpend && subtotal < offer.minimumSpend ? `Add ${formatKES(offer.minimumSpend-subtotal)} to qualify` : offer.minimumSpend ? `Min. ${formatKES(offer.minimumSpend)}` : "No minimum spend"}</p>
                         </div>
-                        <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 rounded-lg" disabled={!!offer.minimumSpend && subtotal < offer.minimumSpend} onClick={()=>{
+                        <Button type="button" variant="outline" size="sm" className="sphere-offer-action h-8 shrink-0 rounded-lg" disabled={!!offer.minimumSpend && subtotal < offer.minimumSpend} onClick={()=>{
                           if(!loggedIn&&offer.perUserLimit!=null){
                             openAuth("login","checkout","Sign in to redeem this promotion.",{promo:offer.code!})
                           }else navigate("checkout",{promo:offer.code!})
