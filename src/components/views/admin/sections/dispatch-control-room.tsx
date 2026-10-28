@@ -18,7 +18,7 @@ import type { OrderDTO, StaffDTO } from "@/lib/types"
 import { formatKES, shortRef, timeAgo } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { AdminSectionHeader, apiErrorMessage, SectionError, telHref, waHref, type SectionProps } from "../admin-shared"
+import { AdminSectionHeader, apiErrorMessage, SectionError, telHref, waHref, useDebounced, type SectionProps } from "../admin-shared"
 import {
   AlertCircle, ArrowRight, Bike, CheckCircle2, ChevronDown, ChevronUp, Clock3,
   CreditCard, ExternalLink, ListFilter, Loader2, MapPin, MessageCircle, Navigation,
@@ -65,7 +65,10 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
   const [view, setView] = useState<View>("all")
   const [search, setSearch] = useState(() => useAppStore.getState().params.search ?? "")
   const [riderFilter, setRiderFilter] = useState("all")
-  const [sort, setSort] = useState<Sort>("oldest")
+  const [sort, setSort] = useState<Sort>("newest")
+  const [compact, setCompact] = useState(false)
+  const [searchMatches, setSearchMatches] = useState<OrderDTO[]>([])
+  const searchTerm = useDebounced(search.trim(), 300)
   const [selected, setSelected] = useState<string[]>([])
   const [bulkRider, setBulkRider] = useState("")
   const [bulkBusy, setBulkBusy] = useState(false)
@@ -106,7 +109,24 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
     return () => window.clearInterval(ticker)
   }, [reload, refreshKey])
 
-  const open = useMemo(() => active ?? [], [active])
+  // Searching must reach the server: the live board is capped for performance.
+  // Merge direct matches so an Orders -> Dispatch handoff never loses an eligible order.
+  useEffect(() => {
+    if (!searchTerm) { setSearchMatches([]); return }
+    let cancelled = false
+    ordersApi.dispatchBoard(searchTerm).then((matches) => {
+      if (!cancelled) setSearchMatches(matches)
+    }).catch((error) => {
+      if (!cancelled) { setSearchMatches([]); toast.error("Could not search all deliveries: " + apiErrorMessage(error)) }
+    })
+    return () => { cancelled = true }
+  }, [searchTerm, refreshKey])
+
+  const open = useMemo(() => {
+    const byId = new Map((active ?? []).map((order) => [order.id, order]))
+    for (const order of searchMatches) byId.set(order.id, order)
+    return [...byId.values()]
+  }, [active, searchMatches])
   const unassigned = open.filter((o) => !o.riderId)
   const handoff = open.filter((o) => o.riderId && !onRoad(o))
   const road = open.filter(onRoad)
@@ -358,9 +378,10 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+          <Button variant="outline" size="sm" aria-pressed={compact} className="h-8" onClick={() => setCompact((current) => !current)}>{compact ? "Comfortable cards" : "Compact review"}</Button>
           <span>{visible.length} shown · {view === "completed" ? "last 7 days" : "live deliveries"}</span>
           {isFiltered ? <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setRiderFilter("all") }}>Clear filters</Button> : null}
-          {(view === "completed" ? history.length : open.length) >= 100 ? <span className="text-amber-700 dark:text-amber-300">Showing latest 100; narrow search in Orders for older entries.</span> : null}
+          {(view === "completed" ? history.length : (active?.length ?? 0)) >= 100 ? <span className="text-amber-700 dark:text-amber-300">Showing the latest 100 plus matching search results. Search by reference for older deliveries.</span> : null}
         </div>
 
         {eligible.length > 0 && riders.length > 0 && view !== "completed" ? (
@@ -398,7 +419,7 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
               view !== "all" && open.length > 0 ? { label: "View all active deliveries", onClick: () => setView("all") } :
                 { label: "Open orders", onClick: () => onNavigateSection("orders") }} />
         ) : (
-          <div className="grid items-start gap-3 xl:grid-cols-2">
+          <div className={cn("grid items-start gap-3", compact ? "grid-cols-1" : "xl:grid-cols-2")}>
             {visible.map((order) => {
               const completed = order.status === "COMPLETED_DELIVERY"
               const busy = busyId === order.id || bulkBusy
@@ -415,7 +436,7 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
                 : null
               return (
                 <Card key={order.id} className={cn("overflow-hidden border-border/80 shadow-sm", attention(order, now) && !completed && "border-amber-300 dark:border-amber-800")}>
-                  <CardContent className="space-y-4 p-4 sm:p-5">
+                  <CardContent className={cn("space-y-4 p-4 sm:p-5", compact && "space-y-2 p-3 sm:p-3")}>
                     <div className="flex flex-wrap items-start gap-2">
                       {!order.riderId && !completed && riders.length ? (
                         <Checkbox checked={selected.includes(order.id)} onCheckedChange={(v) => toggleSelected(order.id, v === true)}

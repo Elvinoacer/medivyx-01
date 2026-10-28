@@ -211,7 +211,7 @@ export const ordersApi = {
     return req<OrderDTO[]>(`/api/orders?scope=all&limit=100&${params.toString()}`)
   },
   // Dispatch board — delivery orders for staff (assign + track riders)
-  dispatchBoard: () => req<OrderDTO[]>("/api/orders?scope=dispatch&limit=100"),
+  dispatchBoard: (search?: string) => req<OrderDTO[]>(`/api/orders?scope=dispatch&limit=100${search ? "&search=" + encodeURIComponent(search) : ""}`),
   dispatchHistory: () => req<OrderDTO[]>("/api/orders?scope=dispatch-history&limit=100"),
   dispatchRiders: () => req<StaffDTO[]>("/api/orders/riders"),
   // Rider board — orders assigned to the signed-in rider

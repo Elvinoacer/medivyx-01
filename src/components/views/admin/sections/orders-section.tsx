@@ -24,9 +24,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { EmptyState } from "@/components/shared/empty-state"
 import { OrderStatusBadge, PaymentStatusBadge, RxFlagBadge, RxStatusBadge } from "@/components/shared/status-badges"
 import { ordersApi, paymentsApi } from "@/lib/api-client"
+import { ReviewDialog } from "./prescriptions-section"
 import type { OrderDTO, PaymentDTO, StaffDTO } from "@/lib/types"
 import {
-  ACTIVE_STATUSES, FULFILLMENT_LABELS, NEXT_STATUS, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS,
+  ACTIVE_STATUSES, DISPATCH_STATUSES, FULFILLMENT_LABELS, NEXT_STATUS, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS,
   PAYMENT_METHOD_LABELS, TERMINAL_STATUSES, type OrderStatus, type OrderType, type Role,
 } from "@/lib/constants"
 import { formatDateTime, formatKES, shortRef, statusLabel, timeAgo } from "@/lib/format"
@@ -204,11 +205,13 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
   const [statusFilter, setStatusFilter] = useState<string>(() => { const value = useAppStore.getState().params.status; return value && [...ACTIVE_STATUSES, ...TERMINAL_STATUSES].includes(value as OrderStatus) ? value : "ALL" })
   const [typeFilter, setTypeFilter] = useState<string>("ALL")
   const [range, setRange] = useState<RangeKey>("all")
+  const [sort, setSort] = useState<"newest" | "oldest" | "attention">("newest")
   const [focus, setFocus] = useState<"all" | "review" | "pack" | "handoff" | "collect">("all")
   const [tab, setTab] = useState<"queue" | "all">(() => TERMINAL_STATUSES.includes(useAppStore.getState().params.status as OrderStatus) ? "all" : "queue")
 
   const [selected, setSelected] = useState<OrderDTO | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [reviewId, setReviewId] = useState<string | null>(null)
 
   const [transition, setTransition] = useState<{ order: OrderDTO; target: OrderStatus; viaCash?: boolean } | null>(null)
   const [cancelFor, setCancelFor] = useState<OrderDTO | null>(null)
@@ -249,10 +252,16 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
         (focus === "handoff" && o.fulfillment === "DELIVERY" && o.status === "READY_FOR_PICKUP") ||
         (focus === "collect" && o.fulfillment === "DELIVERY" && o.status === "OUT_FOR_DELIVERY" && !isPaid(o)))
       .sort((a, b) => {
-        const priority = (o: OrderDTO) => readyToPack(o) ? 0 : o.status === "PREPARING" ? 1 : o.status === "READY_FOR_PICKUP" ? 2 : o.status === "UNDER_REVIEW" ? 3 : 4
-        return priority(a) - priority(b) || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        const difference = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        if (sort === "newest") return difference || b.id.localeCompare(a.id)
+        if (sort === "oldest") return -difference || a.id.localeCompare(b.id)
+        const priority = (o: OrderDTO) =>
+          o.status === "UNDER_REVIEW" || (o.status === "RECEIVED" && !readyToPack(o)) ? 0
+            : readyToPack(o) ? 1 : o.status === "PREPARING" ? 2
+              : o.status === "READY_FOR_PICKUP" ? 3 : o.status === "OUT_FOR_DELIVERY" ? 4 : 5
+        return priority(a) - priority(b) || -difference
       })
-  }, [raw, tab, statusFilter, typeFilter, range, focus])
+  }, [raw, tab, statusFilter, typeFilter, range, focus, sort])
 
   const activeOrders = useMemo(() => raw.filter((o) => ACTIVE_STATUSES.includes(o.status)), [raw])
   const queueCount = (fn: (o: OrderDTO) => boolean) => activeOrders.filter(fn).length
@@ -439,7 +448,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                 aria-label="Search orders"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setFocus("all"); if (TERMINAL_STATUSES.includes(value as OrderStatus)) setTab("all"); setBatchIds([]) }}>
               <SelectTrigger className="sm:w-52" aria-label="Filter by status">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -475,7 +484,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Tabs value={tab} onValueChange={(v) => setTab(v as "queue" | "all")}>
+            <Tabs value={tab} onValueChange={(v) => { setTab(v as "queue" | "all"); setFocus("all"); setBatchIds([]) }}>
               <TabsList>
                 <TabsTrigger value="queue" className="gap-1.5">
                   Queue
@@ -484,6 +493,14 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                 <TabsTrigger value="all">All ({raw.length})</TabsTrigger>
               </TabsList>
             </Tabs>
+            <Select value={sort} onValueChange={(value) => setSort(value as typeof sort)}>
+              <SelectTrigger className="w-full sm:w-48" aria-label="Sort orders"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest arrivals first</SelectItem>
+                <SelectItem value="oldest">Longest waiting first</SelectItem>
+                <SelectItem value="attention">Needs attention first</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="ml-auto flex items-center gap-1 rounded-lg border p-0.5" role="group" aria-label="Date range filter">
               {([["today", "Today"], ["7d", "7 days"], ["30d", "30 days"], ["all", "All time"]] as const).map(([key, label]) => (
                 <button
@@ -533,7 +550,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
           icon={Package}
           title={raw.length === 0 ? "No orders yet" : "No orders match these filters"}
           description={raw.length === 0 ? "New orders appear here as customers check out." : "Try clearing the search or switching to the All tab."}
-          action={raw.length > 0 ? { label: "Clear filters", onClick: () => { setSearchInput(""); setStatusFilter("ALL"); setTypeFilter("ALL"); setRange("all"); setTab("all") } } : undefined}
+          action={raw.length > 0 ? { label: "Clear filters", onClick: () => { setSearchInput(""); setStatusFilter("ALL"); setTypeFilter("ALL"); setRange("all"); setTab("all"); setFocus("all"); setBatchIds([]) } } : undefined}
         />
       ) : (
         <>
@@ -551,7 +568,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                     <TableHead>Payment</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Age</TableHead>
+                    <TableHead className="text-right">Time in queue</TableHead>
                     <TableHead className="min-w-36 text-right">Next step</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -609,7 +626,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                         </TableCell>
                         <TableCell><OrderFulfillmentStatus order={order} /></TableCell>
                         <TableCell className="text-right font-semibold tabular-nums">{formatKES(order.total)}</TableCell>
-                        <TableCell className="text-right text-xs text-muted-foreground">{timeAgo(order.createdAt)}</TableCell>
+                        <TableCell className="text-right text-xs" title={formatDateTime(order.createdAt)}><span className="font-semibold tabular-nums">{timeAgo(order.createdAt)}</span><span className="block text-muted-foreground">{formatDateTime(order.createdAt)}</span></TableCell>
                         <TableCell>
                           {canManage && quickAction(order) ? (
                             <Button variant={quickAction(order) === "prepare" ? "default" : "outline"} size="sm"
@@ -676,7 +693,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                         <p className="truncate text-xs text-muted-foreground">
                           {order.items.length} item{order.items.length === 1 ? "" : "s"} · {order.items[0]?.name ?? "—"}
                         </p>
-                        <p className="text-xs text-muted-foreground">{timeAgo(order.createdAt)}</p>
+                        <p className="text-xs text-muted-foreground" title={formatDateTime(order.createdAt)}>In queue {timeAgo(order.createdAt)} · {formatDateTime(order.createdAt)}</p>
                         <p className="mt-1 text-xs font-semibold text-primary">Next: {nextOrderActionLabel(order)}</p>
                         {order.fulfillment === "DELIVERY" ? <p className="mt-1 text-xs"><MapPin className="mr-1 inline h-3 w-3" />{order.deliveryArea || "Zone missing"} · {paymentSummary(order)}</p> : null}
                       </div>
@@ -725,6 +742,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
         onPromptMpesa={(order) => void handlePromptMpesa(order)}
         onStartPreparing={(order) => void runAction(() => ordersApi.startPreparing(order.id), `${shortRef(order.reference)} is now being packed.`)}
         onNavigateSection={onNavigateSection}
+        onReviewPrescription={setReviewId}
         onAssignRider={async (order, staffId, riderName) => {
           await runAction(
             () => ordersApi.assignRider(order.id, staffId),
@@ -732,6 +750,19 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
           )
         }}
       />
+
+      {reviewId ? <ReviewDialog
+        rxId={reviewId}
+        canReview={role === "ADMIN" || role === "PHARMACIST"}
+        onClose={() => setReviewId(null)}
+        onSubmitted={() => {
+          const currentOrderId = selected?.id
+          setReviewId(null)
+          if (currentOrderId) void ordersApi.get(currentOrderId).then(setSelected).catch((error) => toast.error(apiErrorMessage(error)))
+          void load(search)
+          onRefresh()
+        }}
+      /> : null}
 
       {/* transition confirm dialog (mounted fresh per action so state resets) */}
       {transition ? (
@@ -785,6 +816,7 @@ function OrderDetailSheet({
   onPromptMpesa,
   onStartPreparing,
   onNavigateSection,
+  onReviewPrescription,
   onAssignRider,
 }: {
   order: OrderDTO | null
@@ -799,6 +831,7 @@ function OrderDetailSheet({
   onPromptMpesa: (order: OrderDTO) => void
   onStartPreparing: (order: OrderDTO) => void
   onNavigateSection: SectionProps["onNavigateSection"]
+  onReviewPrescription: (id: string) => void
   onAssignRider: (order: OrderDTO, staffId: string, riderName?: string) => Promise<void>
 }) {
   const [riders, setRiders] = useState<StaffDTO[]>([])
@@ -1041,9 +1074,13 @@ function OrderDetailSheet({
                   </div>
                   <p className="text-sm leading-relaxed text-foreground">{deliveryGuidance(order)}</p>
                   <p className="text-xs text-muted-foreground">Order checks are grouped into one acceptance action. Physical packing, rider handoff and cash receipt remain separate confirmations.</p>
-                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onNavigateSection("dispatch", { search: order.reference })}>
-                    <Truck className="h-3.5 w-3.5" /> View in Dispatch <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
+                  {DISPATCH_STATUSES.includes(order.status) ? (
+                    <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onNavigateSection("dispatch", { search: order.reference })}>
+                      <Truck className="h-3.5 w-3.5" /> View in Dispatch <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
+                  ) : (
+                    <p className="text-xs font-medium text-muted-foreground">Not on Dispatch yet. Complete order review and accept the order for packing first; it will appear on Dispatch automatically when eligible.</p>
+                  )}
                 </div>
               </section>
             ) : null}
@@ -1067,8 +1104,8 @@ function OrderDetailSheet({
                       <span className="min-w-0 flex-1 break-all text-sm font-medium">{rx.fileName}</span>
                       <RxStatusBadge status={rx.status} />
                       {role === "ADMIN" || role === "PHARMACIST" ? (
-                        <Button size="sm" variant="outline" onClick={() => onNavigateSection("prescriptions")}>
-                          Review
+                        <Button size="sm" variant="outline" onClick={() => onReviewPrescription(rx.id)}>
+                          Review here
                         </Button>
                       ) : null}
                     </li>

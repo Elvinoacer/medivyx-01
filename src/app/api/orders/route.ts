@@ -34,7 +34,17 @@ export async function GET(request: Request) {
   if (scope === "dispatch") {
     const { error } = await requireStaff(["ADMIN", "PHARMACIST", "STAFF"])
     if (error) return error
-    const orders = await db.order.findMany({ where: { fulfillment: "DELIVERY", status: { in: DISPATCH_STATUSES } }, include: ORDER_INCLUDE, orderBy: [{ riderId: "asc" }, { createdAt: "asc" }], take })
+    const search = url.searchParams.get("search")?.trim().slice(0, 80)
+    const orders = await db.order.findMany({ where: {
+      fulfillment: "DELIVERY", status: { in: DISPATCH_STATUSES },
+      ...(search ? { OR: [
+        { reference: { contains: search.toUpperCase() } },
+        { guestName: { contains: search, mode: "insensitive" } },
+        { guestPhone: { contains: search } },
+        { deliveryArea: { contains: search, mode: "insensitive" } },
+        { user: { is: { name: { contains: search, mode: "insensitive" } } } },
+      ] } : {}),
+    }, include: ORDER_INCLUDE, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take })
     return NextResponse.json(orders.map(toOrderDTO), { headers: { "Cache-Control": "private, no-store" } })
   }
   if (scope === "dispatch-history") {

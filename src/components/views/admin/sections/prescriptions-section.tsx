@@ -288,7 +288,7 @@ function HistoryCard({ rx }: { rx: PrescriptionDTO }) {
 
 // ---------- review dialog ----------
 
-function ReviewDialog({
+export function ReviewDialog({
   rxId,
   canReview,
   onClose,
