@@ -79,11 +79,14 @@ export function ServiceBookingsSection({ refreshKey }: SectionProps) {
   const [noShowFor, setNoShowFor] = useState<ServiceBookingDTO | null>(null)
   const rowsRequest = useRef(0)
   const detailRequest = useRef(0)
+  const lastRefreshKey = useRef(refreshKey)
 
-  const loadRows = useCallback(async () => {
+  const loadRows = useCallback(async (background = false) => {
     const request = ++rowsRequest.current
-    setLoading(true)
-    setError(null)
+    if (!background) {
+      setLoading(true)
+      setError(null)
+    }
     try {
       const result = await adminServiceBookingsApi.search({
         view, page, pageSize: PAGE_SIZE, q: debouncedSearch,
@@ -92,13 +95,15 @@ export function ServiceBookingsSection({ refreshKey }: SectionProps) {
       })
       if (request === rowsRequest.current) {
         setData(result)
+        setError(null)
         if (result.totalPages < page) setPage(result.totalPages)
       }
     } catch (err) {
-      if (request === rowsRequest.current) {
+      if (request === rowsRequest.current && !background) {
         setError(err instanceof Error ? err.message : "Could not load appointments.")
         setData(null)
       }
+      // Background failures do not hide rows or interrupt another staff task.
     } finally {
       if (request === rowsRequest.current) setLoading(false)
     }
@@ -114,8 +119,14 @@ export function ServiceBookingsSection({ refreshKey }: SectionProps) {
     }
   }, [])
 
-  useEffect(() => { void loadRows() }, [loadRows, refreshKey])
-  useEffect(() => { void loadOverview() }, [loadOverview, refreshKey])
+  useEffect(() => { void loadRows() }, [loadRows])
+  useEffect(() => { void loadOverview() }, [loadOverview])
+  useEffect(() => {
+    if (lastRefreshKey.current === refreshKey) return
+    lastRefreshKey.current = refreshKey
+    void loadRows(true)
+    void loadOverview()
+  }, [refreshKey, loadRows, loadOverview])
   useEffect(() => { serviceStaffApi.list().then(setStaff).catch(() => {}) }, [])
 
   const loadDetail = useCallback(async (id: string) => {
@@ -163,16 +174,40 @@ export function ServiceBookingsSection({ refreshKey }: SectionProps) {
   const staffOptions = useMemo(() => staff.filter(member => member.active && ["ADMIN", "PHARMACIST", "STAFF"].includes(member.role)), [staff])
   const staffName = (id: string | null | undefined) => staff.find(member => member.id === id)?.name || "Unassigned"
 
-  async function runAction(id: string, action: () => Promise<unknown>, success: string) {
+  async function runAction(
+    id: string,
+    action: () => Promise<unknown>,
+    success: string,
+    optimistic?: Partial<Pick<ServiceBookingDTO, "status" | "assignedStaffId">>,
+  ) {
     if (busy) return false
     setBusy(id)
+    const oldRow = data?.items.find((booking) => booking.id === id)
+    const oldDetail = detail?.id === id ? detail : null
+    // Staff actions feel immediate. On failure, restore the previous local
+    // state and never claim success until the server confirms the action.
+    if (optimistic) {
+      setData((current) => current ? {
+        ...current,
+        items: current.items.map((booking) => booking.id === id ? { ...booking, ...optimistic } : booking),
+      } : current)
+      setDetail((current) => current?.id === id ? { ...current, ...optimistic } : current)
+    }
     try {
       await action()
       toast.success(success)
-      await Promise.all([loadRows(), loadOverview()])
+      await Promise.all([loadRows(true), loadOverview()])
       if (selectedId === id) await loadDetail(id)
       return true
     } catch (err) {
+      if (optimistic) {
+        if (oldRow) setData((current) => current ? {
+          ...current,
+          items: current.items.map((booking) => booking.id === id ? oldRow : booking),
+        } : current)
+        if (oldDetail) setDetail((current) => current?.id === id ? oldDetail : current)
+        void loadRows(true)
+      }
       toast.error(err instanceof Error ? err.message : "Unable to update appointment.")
       return false
     } finally {
@@ -322,7 +357,7 @@ export function ServiceBookingsSection({ refreshKey }: SectionProps) {
                 </div>
                 <div className="hidden space-y-1 md:block">{statusBadge(booking.status)}{overdue ? <p className="text-[10px] font-semibold text-rose-700 dark:text-rose-300">Past appointment</p> : null}</div>
                 <div className="flex items-center justify-end gap-1 md:justify-end">
-                  {action ? <Button size="sm" className="h-8 rounded-lg px-2.5 text-xs" disabled={busy !== null} onClick={() => void runAction(booking.id, () => adminServiceBookingsApi.updateStatus(booking.id, action.status), statusNames[action.status] + ".")}>{busy === booking.id ? <Loader2 className="mr-1 h-3 w-3 animate-spin"/> : null}{action.label}</Button> : null}
+                  {action ? <Button size="sm" className="h-8 rounded-lg px-2.5 text-xs" disabled={busy !== null} onClick={() => void runAction(booking.id, () => adminServiceBookingsApi.updateStatus(booking.id, action.status), statusNames[action.status] + ".", { status: action.status })}>{busy === booking.id ? <Loader2 className="mr-1 h-3 w-3 animate-spin"/> : null}{action.label}</Button> : null}
                   <Button size="sm" variant="outline" className="h-8 rounded-lg px-2.5 text-xs" onClick={() => openDetail(booking.id)}>Details</Button>
                 </div>
               </div>
@@ -360,7 +395,7 @@ export function ServiceBookingsSection({ refreshKey }: SectionProps) {
               </div>
               <div className="space-y-2">
                 <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Assigned team member</h3>
-                <Select value={activeDetail.assignedStaffId || "unassigned"} disabled={busy !== null || detailLoading} onValueChange={value => void runAction(activeDetail.id, () => adminServiceBookingsApi.assign(activeDetail.id, value === "unassigned" ? null : value), "Team member updated.")}>
+                <Select value={activeDetail.assignedStaffId || "unassigned"} disabled={busy !== null || detailLoading} onValueChange={value => void runAction(activeDetail.id, () => adminServiceBookingsApi.assign(activeDetail.id, value === "unassigned" ? null : value), "Team member updated.", { assignedStaffId: value === "unassigned" ? null : value })}>
                   <SelectTrigger aria-label="Assign team member" className="h-10 w-full rounded-xl"><SelectValue placeholder="Choose staff"/></SelectTrigger>
                   <SelectContent><SelectItem value="unassigned">Unassigned</SelectItem>{staffOptions.map(member => <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>)}</SelectContent>
                 </Select>
@@ -374,7 +409,7 @@ export function ServiceBookingsSection({ refreshKey }: SectionProps) {
             <div className="flex flex-wrap items-center gap-2 border-t pt-4">
               {nextAction[activeDetail.status] ? <Button className="gap-2" disabled={busy !== null || detailLoading} onClick={() => {
                 const next = nextAction[activeDetail.status]
-                if (next) void runAction(activeDetail.id, () => adminServiceBookingsApi.updateStatus(activeDetail.id, next.status), "Appointment updated.")
+                if (next) void runAction(activeDetail.id, () => adminServiceBookingsApi.updateStatus(activeDetail.id, next.status), "Appointment updated.", { status: next.status })
               }}><Check className="h-4 w-4"/>{nextAction[activeDetail.status]?.label}</Button> : null}
               {["PENDING", "CONFIRMED", "RESCHEDULED"].includes(activeDetail.status) ? <Button variant="outline" disabled={busy !== null} onClick={() => openReschedule(activeDetail)}><CalendarClock className="mr-2 h-4 w-4"/> Reschedule</Button> : null}
               {["PENDING", "CONFIRMED", "RESCHEDULED"].includes(activeDetail.status) ? <Button variant="outline" className="text-destructive hover:text-destructive" disabled={busy !== null} onClick={() => {setCancelFor(activeDetail);closeDetail()}}><X className="mr-2 h-4 w-4"/> Cancel</Button> : null}
@@ -400,10 +435,10 @@ export function ServiceBookingsSection({ refreshKey }: SectionProps) {
         </DialogContent>
       </Dialog>
       <Dialog open={cancelFor !== null} onOpenChange={open => { if (!open && !busy) setCancelFor(null) }}>
-        <DialogContent className="rounded-2xl sm:max-w-md"><DialogHeader><DialogTitle>Cancel this appointment?</DialogTitle><DialogDescription>{cancelFor?.customerName || "This patient"}'s appointment will be cancelled and they will be notified. This cannot be undone.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" disabled={busy !== null} onClick={() => setCancelFor(null)}>Keep appointment</Button><Button variant="destructive" disabled={busy !== null} onClick={async () => { if (cancelFor && await runAction(cancelFor.id, () => adminServiceBookingsApi.updateStatus(cancelFor.id, "CANCELLED"), "Appointment cancelled.")) setCancelFor(null) }}>Confirm cancellation</Button></DialogFooter></DialogContent>
+        <DialogContent className="rounded-2xl sm:max-w-md"><DialogHeader><DialogTitle>Cancel this appointment?</DialogTitle><DialogDescription>{cancelFor?.customerName || "This patient"}'s appointment will be cancelled and they will be notified. This cannot be undone.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" disabled={busy !== null} onClick={() => setCancelFor(null)}>Keep appointment</Button><Button variant="destructive" disabled={busy !== null} onClick={async () => { if (cancelFor && await runAction(cancelFor.id, () => adminServiceBookingsApi.updateStatus(cancelFor.id, "CANCELLED"), "Appointment cancelled.", { status: "CANCELLED" })) setCancelFor(null) }}>Confirm cancellation</Button></DialogFooter></DialogContent>
       </Dialog>
       <Dialog open={noShowFor !== null} onOpenChange={open => { if (!open && !busy) setNoShowFor(null) }}>
-        <DialogContent className="rounded-2xl sm:max-w-md"><DialogHeader><DialogTitle>Mark as no-show?</DialogTitle><DialogDescription>This records that {noShowFor?.customerName || "the patient"} did not attend and sends them an update.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" disabled={busy !== null} onClick={() => setNoShowFor(null)}>Keep status</Button><Button variant="destructive" disabled={busy !== null} onClick={async () => { if (noShowFor && await runAction(noShowFor.id, () => adminServiceBookingsApi.updateStatus(noShowFor.id, "NO_SHOW"), "Marked as no-show.")) setNoShowFor(null) }}>Mark no-show</Button></DialogFooter></DialogContent>
+        <DialogContent className="rounded-2xl sm:max-w-md"><DialogHeader><DialogTitle>Mark as no-show?</DialogTitle><DialogDescription>This records that {noShowFor?.customerName || "the patient"} did not attend and sends them an update.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" disabled={busy !== null} onClick={() => setNoShowFor(null)}>Keep status</Button><Button variant="destructive" disabled={busy !== null} onClick={async () => { if (noShowFor && await runAction(noShowFor.id, () => adminServiceBookingsApi.updateStatus(noShowFor.id, "NO_SHOW"), "Marked as no-show.", { status: "NO_SHOW" })) setNoShowFor(null) }}>Mark no-show</Button></DialogFooter></DialogContent>
       </Dialog>
     </div>
   )
