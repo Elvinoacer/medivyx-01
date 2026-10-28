@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -48,6 +49,7 @@ export function DispatchSection({ refreshKey, onRefresh }: SectionProps) {
   const [orders, setOrders] = useState<OrderDTO[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [cashDeliveryConfirm, setCashDeliveryConfirm] = useState<OrderDTO | null>(null)
 
   // staff board state
   const [tab, setTab] = useState<"unassigned" | "assigned">("unassigned")
@@ -172,15 +174,19 @@ export function DispatchSection({ refreshKey, onRefresh }: SectionProps) {
   }
 
   async function confirmCashOnDelivery(order: OrderDTO) {
+    setCashDeliveryConfirm(null)
     setBusyId(order.id)
     try {
+      // Payment is recorded before delivery; a partially successful action
+      // leaves an auditable paid order pending final drop-off confirmation.
       await ordersApi.markPaidCash(order.id)
-      toast.success(`Cash payment confirmed for ${order.reference}.`)
+      await ordersApi.updateStatus(order.id, "COMPLETED_DELIVERY", "Rider confirmed cash collected and parcel handed to customer")
+      toast.success(`Cash collected and delivery completed for ${order.reference}.`)
+    } catch (err) {
+      toast.error("Delivery needs attention: " + apiErrorMessage(err), { duration: 8000 })
+    } finally {
       await load()
       onRefresh()
-    } catch (err) {
-      toast.error(apiErrorMessage(err))
-    } finally {
       setBusyId(null)
     }
   }
@@ -269,11 +275,25 @@ export function DispatchSection({ refreshKey, onRefresh }: SectionProps) {
                 onStart={() => setRiderStatus(order, "OUT_FOR_DELIVERY")}
                 onComplete={() => setRiderStatus(order, "COMPLETED_DELIVERY")}
                 onPromptMpesa={() => void promptMpesaOnDelivery(order)}
-                onConfirmCash={() => void confirmCashOnDelivery(order)}
+                onConfirmCash={() => setCashDeliveryConfirm(order)}
               />
             ))}
           </div>
         )}
+        <AlertDialog open={!!cashDeliveryConfirm} onOpenChange={(open) => { if (!open) setCashDeliveryConfirm(null) }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm cash received and parcel delivered?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {cashDeliveryConfirm ? `Only continue after physically collecting ${formatKES(cashDeliveryConfirm.total)} in cash and handing ${cashDeliveryConfirm.reference} to the customer. This records both payment and delivery.` : ""}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Not yet</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { if (cashDeliveryConfirm) void confirmCashOnDelivery(cashDeliveryConfirm) }}>Cash received · Complete delivery</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     )
   }
@@ -412,7 +432,8 @@ function RiderDeliveryCard({
 }) {
   const wa = waHref(order.customerPhone, `Hello ${order.customerName ?? "there"}, this is Sphere Pharmacy — I'm on my way with your order ${order.reference}.`)
   const tel = telHref(order.customerPhone)
-  const payable = payMethodLabel(order)
+  const payable = order.paymentMethod === "CASH_ON_DELIVERY" ? "Cash on delivery" : payMethodLabel(order)
+  const collectCash = order.paymentMethod === "CASH_ON_DELIVERY"
   const canStart = order.status === "READY_FOR_PICKUP"
   const isUnpaid = order.status === "OUT_FOR_DELIVERY" && !order.payments.some((payment) => payment.status === "SUCCESS")
   const canComplete = order.status === "OUT_FOR_DELIVERY" && !isUnpaid
@@ -432,13 +453,21 @@ function RiderDeliveryCard({
           <p className="flex items-start gap-1.5">
             <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <span className="min-w-0">
-              <span className="font-medium">{order.deliveryArea ?? "Delivery"}</span>
-              <span className="block text-muted-foreground">{order.deliveryAddress ?? "Address on file"}</span>
+              <span className="font-medium">{order.deliveryArea ?? "Delivery zone not specified"}</span>
+              <span className="block text-muted-foreground">{order.deliveryAddress ?? "Exact address missing — call customer"}</span>
+              <span className="block text-xs text-muted-foreground">Zone fee: {formatKES(order.deliveryFee)}</span>
             </span>
           </p>
           {order.deliveryNotes ? (
             <p className="pl-5 text-xs text-muted-foreground">Notes: {order.deliveryNotes}</p>
           ) : null}
+          <Button asChild size="sm" variant="outline" className="w-full">
+            <a href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(
+              order.deliveryLatitude != null && order.deliveryLongitude != null
+                ? `${order.deliveryLatitude},${order.deliveryLongitude}`
+                : [order.deliveryAddress, order.deliveryArea, "Nairobi, Kenya"].filter(Boolean).join(", ")
+            )} target="_blank" rel="noopener noreferrer"><Navigation className="mr-2 h-4 w-4" />Open exact drop-off map</a>
+          </Button>
           <p className="flex items-center gap-1.5">
             <Package className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             {order.items.length} item{order.items.length === 1 ? "" : "s"}
@@ -479,14 +508,14 @@ function RiderDeliveryCard({
           <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-800/60 dark:bg-amber-950/20">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
-                Collect on Delivery
+                {collectCash ? "Collect cash before completing delivery" : "Payment outstanding — request M-Pesa"}
               </span>
               <span className="font-mono text-sm font-bold text-amber-900 dark:text-amber-200">
                 {formatKES(order.total)}
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {onPromptMpesa ? (
+              {onPromptMpesa && !collectCash ? (
                 <Button
                   size="sm"
                   className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -497,7 +526,7 @@ function RiderDeliveryCard({
                   Prompt M-Pesa STK
                 </Button>
               ) : null}
-              {onConfirmCash ? (
+              {onConfirmCash && collectCash ? (
                 <Button
                   size="sm"
                   variant="outline"
@@ -505,7 +534,7 @@ function RiderDeliveryCard({
                   onClick={onConfirmCash}
                   disabled={busy}
                 >
-                  <Banknote className="h-3.5 w-3.5" /> Cash Received
+                  <Banknote className="h-3.5 w-3.5" /> Cash received & Delivered
                 </Button>
               ) : null}
             </div>
@@ -586,8 +615,9 @@ function DispatchCard({
           <p className="flex items-start gap-1.5">
             <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <span className="min-w-0">
-              <span className="font-medium">{order.deliveryArea ?? "Delivery"}</span>
-              <span className="block text-muted-foreground">{order.deliveryAddress ?? "Address on file"}</span>
+              <span className="font-medium">{order.deliveryArea ?? "Delivery zone not specified"}</span>
+              <span className="block text-muted-foreground">{order.deliveryAddress ?? "Exact address missing — call customer"}</span>
+              <span className="block text-xs text-muted-foreground">Zone fee: {formatKES(order.deliveryFee)}</span>
             </span>
           </p>
           <p className="flex items-center gap-1.5">
