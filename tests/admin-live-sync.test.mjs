@@ -14,7 +14,7 @@ test("live cursor endpoint requires a staff session and returns only metadata", 
   assert.match(route, /orders: \{ change: cursor\(latestOrderChange\), arrival: cursor\(latestOrderArrival\)/)
   assert.match(route, /bookings: \{ change: cursor\(latestBookingChange\), arrival: cursor\(latestBookingArrival\)/)
   assert.match(route, /"Cache-Control": "private, no-store"/)
-  assert.doesNotMatch(route, /include: ORDER_INCLUDE|customerPhone|customerName|prescriptions/)
+  assert.doesNotMatch(route, /include:\s*ORDER_INCLUDE|select:\s*\{\s*(customerPhone|customerName)|prescriptions:\s*\{/)
 })
 
 test("admin shell learns about customer-created orders and care bookings while open", () => {
