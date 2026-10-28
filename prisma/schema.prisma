@@ -207,6 +207,8 @@ model Order {
   @@index([userId, createdAt])
   @@index([riderId, status, createdAt])
   @@index([guestPhone, createdAt])
+  @@index([updatedAt, id])
+  @@index([createdAt, id])
 }
 
 model OrderItem {
@@ -506,6 +508,8 @@ model ServiceBooking {
   @@index([scheduledStart, id])
   @@index([status, scheduledStart, id])
   @@index([assignedStaffId, scheduledStart])
+  @@index([updatedAt, id])
+  @@index([createdAt, id])
 }
 
 model ServiceBookingStatusHistory {
