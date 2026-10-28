@@ -322,7 +322,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
       }
       // Silent updates must never blank a working queue during a network error.
     } finally {
-      if (request === ordersRequest.current && !background) setLoading(false)
+      if (request === ordersRequest.current) setLoading(false)
     }
   }, [])
 
