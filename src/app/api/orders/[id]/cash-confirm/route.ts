@@ -22,7 +22,7 @@ export async function POST(request: Request, { params }: Params) {
     const { id } = await params
     const order = await db.order.findUnique({ where: { id }, include: ORDER_INCLUDE })
     if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 })
-    if (session.staffRole === "RIDER" && (order.fulfillment !== "DELIVERY" || order.riderId !== session.staffId || order.status !== "OUT_FOR_DELIVERY")) {
+    if (session.staffRole === "RIDER" && (order.fulfillment !== "DELIVERY" || order.paymentMethod !== "CASH_ON_DELIVERY" || order.riderId !== session.staffId || order.status !== "OUT_FOR_DELIVERY")) {
       return NextResponse.json({ error: "Riders may only confirm cash for their assigned delivery while it is out for delivery." }, { status: 403 })
     }
     if (!CASH_ALLOWED.includes(order.status)) return NextResponse.json({ error: "Cash cannot be confirmed at this stage." }, { status: 409 })
