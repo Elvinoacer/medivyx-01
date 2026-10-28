@@ -5,7 +5,7 @@
 // status workflow (NEXT_STATUS suggestions, cash confirm, rider assignment, cancel w/ reason),
 // customer contact actions and prescription links.
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -290,24 +290,50 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
   const [batchConfirm, setBatchConfirm] = useState(false)
   const [batchBusy, setBatchBusy] = useState(false)
 
-  const load = useCallback(async (searchTerm: string) => {
-    setLoading(true)
-    setError(null)
+  const ordersRequest = useRef(0)
+  const lastRefreshKey = useRef(refreshKey)
+
+  const load = useCallback(async (searchTerm: string, background = false) => {
+    const request = ++ordersRequest.current
+    if (!background) {
+      setLoading(true)
+      setError(null)
+    }
     try {
       const list = await ordersApi.allOrders(searchTerm ? { search: searchTerm } : {})
-      setRaw(list)
+      if (request !== ordersRequest.current) return
+      setRaw((previous) => {
+        if (!background || previous.length <= 100) return list
+        // Preserve older pages that staff have deliberately loaded, while
+        // inserting recent arrivals and replacing changed records in the
+        // newest page. Never make them re-scroll/load old pages after a tick.
+        const latestIds = new Set(list.map((order) => order.id))
+        return [...list, ...previous.filter((order) => !latestIds.has(order.id))]
+      })
+      setSelected((current) => current ? (list.find((order) => order.id === current.id) ?? current) : current)
       setHasMore(list.length === 100)
+      setError(null)
     } catch (err) {
-      setError(apiErrorMessage(err))
-      setRaw([])
-      setHasMore(false)
+      if (request !== ordersRequest.current) return
+      if (!background) {
+        setError(apiErrorMessage(err))
+        setRaw([])
+        setHasMore(false)
+      }
+      // Silent updates must never blank a working queue during a network error.
     } finally {
-      setLoading(false)
+      if (request === ordersRequest.current && !background) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     void load(search)
+  }, [load, search])
+
+  useEffect(() => {
+    if (lastRefreshKey.current === refreshKey) return
+    lastRefreshKey.current = refreshKey
+    void load(search, true)
   }, [load, search, refreshKey])
 
   async function loadOlder() {
@@ -379,9 +405,12 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
     setActionBusy(true)
     try {
       const updated = await fn()
+      // Show the confirmed mutation immediately without waiting for the
+      // background list re-fetch. It is later reconciled with the server.
+      setRaw((previous) => previous.map((order) => order.id === updated.id ? updated : order))
+      setSelected((current) => current?.id === updated.id ? updated : current)
       toast.success(successMsg)
-      setSelected(updated)
-      await load(search)
+      await load(search, true)
       onRefresh()
       return updated
     } catch (err) {
