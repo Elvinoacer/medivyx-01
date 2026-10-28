@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -35,11 +36,45 @@ import { toast } from "sonner"
 import { AdminSectionHeader, KpiCard, apiErrorMessage, telHref, useDebounced, waHref, type SectionProps } from "../admin-shared"
 import {
   Search, Package, Loader2, Truck, Store, Phone, MessageCircle, ChevronRight, Ban, Bike,
-  Banknote, Smartphone, CreditCard, ClipboardList, Wallet, Clock, CheckCircle2, User, X,
+  Banknote, Smartphone, CreditCard, ClipboardList, Wallet, Clock, CheckCircle2, User, X, MapPin, Navigation,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // ---------- helpers ----------
+
+// Never treat a payment choice as money received. The server verifies it again.
+function isCashOnDelivery(order: OrderDTO): boolean {
+  return order.fulfillment === "DELIVERY" && order.paymentMethod === "CASH_ON_DELIVERY"
+}
+function isPaid(order: OrderDTO): boolean {
+  return order.payments.some((p) => p.status === "SUCCESS")
+}
+function readyToPack(order: OrderDTO): boolean {
+  const rxReady = (order.items.every((item) => !item.requiresPrescription) || order.prescriptions.length > 0) &&
+    order.prescriptions.every((rx) => ["APPROVED", "PARTIALLY_APPROVED"].includes(rx.status))
+  const statusReady = (order.status === "PAID" && isPaid(order)) ||
+    (isCashOnDelivery(order) && ["RECEIVED", "PRESCRIPTION_VERIFIED", "AVAILABILITY_CONFIRMED", "AWAITING_PAYMENT"].includes(order.status))
+  return rxReady && statusReady
+}
+function quickAction(order: OrderDTO): "prepare" | "ready" | "dispatch" | null {
+  if (readyToPack(order)) return "prepare"
+  if (order.status === "PREPARING") return "ready"
+  if (order.fulfillment === "DELIVERY" && order.status === "READY_FOR_PICKUP" && !!order.riderId) return "dispatch"
+  return null
+}
+function deliveryMapUrl(order: OrderDTO): string {
+  const target = order.deliveryLatitude != null && order.deliveryLongitude != null
+    ? `${order.deliveryLatitude},${order.deliveryLongitude}`
+    : [order.deliveryAddress, order.deliveryArea, "Nairobi, Kenya"].filter(Boolean).join(", ")
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(target)
+}
+function paymentSummary(order: OrderDTO): string {
+  if (isPaid(order)) return "Paid"
+  if (isCashOnDelivery(order)) return `Collect ${formatKES(order.total)} on delivery`
+  return order.paymentMethod === "CASH_ON_PICKUP" ? "Pay on collection"
+    : order.paymentMethod === "MPESA" ? "M-Pesa pending" : order.paymentMethod === "CARD" ? "Card pending" : "Payment not confirmed"
+}
+
 
 const typeBadgeClass: Record<OrderType, string> = {
   OTC: "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800",
@@ -107,6 +142,7 @@ function OrderFulfillmentStatus({ order }: { order: OrderDTO }) {
 }
 
 function nextOrderActionLabel(order: OrderDTO): string {
+  if (readyToPack(order)) return "Accept & start packing"
   if (order.fulfillment === "DELIVERY") {
     if (order.status === "PAID") return "Start preparing"
     if (order.status === "PREPARING") return "Mark ready for dispatch"
@@ -127,7 +163,7 @@ function deliveryGuidance(order: OrderDTO): string {
       : "Package is ready. Assign an active rider below to unlock Dispatch rider."
     case "OUT_FOR_DELIVERY": return "Order has left the pharmacy. Track the rider and confirm delivery when it reaches the customer."
     case "COMPLETED_DELIVERY": return "The delivery is complete."
-    default: return "Complete prescription review, payment and order confirmation first. Preparation and rider assignment become available when the order reaches Paid."
+    default: return isCashOnDelivery(order) ? "Cash is collected on delivery, not before dispatch. Accept the reviewed order to start packing." : "Complete prescription review and confirm payment before packing. Never mark an unpaid online order as paid."
   }
 }
 
@@ -172,6 +208,10 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
   const [transition, setTransition] = useState<{ order: OrderDTO; target: OrderStatus; viaCash?: boolean } | null>(null)
   const [cancelFor, setCancelFor] = useState<OrderDTO | null>(null)
   const [actionBusy, setActionBusy] = useState(false)
+  const [batchIds, setBatchIds] = useState<string[]>([])
+  const [batchType, setBatchType] = useState<"prepare" | "ready">("prepare")
+  const [batchConfirm, setBatchConfirm] = useState(false)
+  const [batchBusy, setBatchBusy] = useState(false)
 
   const load = useCallback(async (searchTerm: string) => {
     setLoading(true)
@@ -238,6 +278,43 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
       return null
     } finally {
       setActionBusy(false)
+    }
+  }
+
+  async function runQuickAction(order: OrderDTO, operation: "prepare" | "ready" | "dispatch") {
+    const label = operation === "prepare" ? "Packing started" : operation === "ready" ? "Packed and ready" : "Rider dispatched"
+    await runAction(
+      () => operation === "prepare" ? ordersApi.startPreparing(order.id)
+        : ordersApi.updateStatus(order.id, operation === "ready" ? "READY_FOR_PICKUP" : "OUT_FOR_DELIVERY"),
+      `${shortRef(order.reference)}: ${label}.`,
+    )
+  }
+
+  async function executeBatch() {
+    setBatchConfirm(false)
+    const candidates = raw.filter((o) => batchIds.includes(o.id) && quickAction(o) === batchType).slice(0, 25)
+    if (!candidates.length) { toast.error("No selected orders qualify for this action. Refresh the queue."); return }
+    setBatchBusy(true)
+    const errors: string[] = []
+    let done = 0
+    try {
+      // Sequential writes preserve per-order authorization, audit and notification.
+      for (const order of candidates) {
+        try {
+          if (batchType === "prepare") await ordersApi.startPreparing(order.id)
+          else await ordersApi.updateStatus(order.id, "READY_FOR_PICKUP", "Staff confirmed each selected parcel has been checked and packed.")
+          done++
+        } catch (err) {
+          errors.push(`${shortRef(order.reference)}: ${apiErrorMessage(err)}`)
+        }
+      }
+      if (done) toast.success(`${done} order${done === 1 ? "" : "s"} updated.`)
+      if (errors.length) toast.error(`${errors.length} orders need attention. ${errors.slice(0, 2).join("; ")}`, { duration: 9000 })
+      setBatchIds(errors.length ? candidates.filter((o) => errors.some((m) => m.startsWith(shortRef(o.reference) + ":"))).map((o) => o.id) : [])
+      await load(search)
+      onRefresh()
+    } finally {
+      setBatchBusy(false)
     }
   }
 
