@@ -682,3 +682,52 @@
   border-color: #78a48a !important;
   color: #e0f8e7 !important;
 }
+
+/* Checkout details have a light storefront canvas even when .dark is present
+   higher in the DOM. Keep safety-critical Rx guidance and totals legible. */
+.sphere-public .app-page-checkout .sphere-checkout-rx-upload-panel {
+  background: #fff7e3 !important;
+  border-color: #bd8d47 !important;
+  color: #56350b !important;
+}
+.sphere-public .app-page-checkout .sphere-checkout-rx-upload-title {
+  color: #56350b !important;
+  font-weight: 700;
+}
+.sphere-public .app-page-checkout .sphere-checkout-rx-upload-description {
+  color: #654218 !important;
+  opacity: 1;
+  line-height: 1.6;
+}
+.sphere-public .app-page-checkout .sphere-checkout-rx-upload-icon {
+  color: #885706 !important;
+}
+.sphere-public .app-page-checkout .sphere-checkout-rx-upload-empty {
+  background: #fffdfa !important;
+  border-color: #c9ab7b !important;
+  color: #56452d !important;
+  opacity: 1;
+}
+.sphere-public .app-page-checkout .sphere-checkout-rx-upload-panel p.text-muted-foreground,
+.sphere-public .app-page-checkout .sphere-checkout-rx-upload-help {
+  color: #56452d !important;
+  opacity: 1;
+}
+.sphere-public .app-page-checkout .sphere-checkout-rx-upload-error {
+  color: #922b28 !important;
+}
+.sphere-public .app-page-checkout .sphere-checkout-customer-card {
+  background: #eaf3eb !important;
+  border-color: #9abca4 !important;
+  color: #153d32 !important;
+}
+.sphere-public .app-page-checkout .sphere-checkout-customer-details {
+  color: #385647 !important;
+  opacity: 1;
+}
+.sphere-public .app-page-checkout .sphere-checkout-customer-icon {
+  color: #316b4b !important;
+}
+.sphere-public .app-page-checkout .sphere-checkout-discount {
+  color: #155e41 !important;
+}
