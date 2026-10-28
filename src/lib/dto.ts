@@ -121,6 +121,7 @@ export function toPrescriptionDTO(rx: DbPrescription, includeCustomer = false): 
 /** Full order with relations → DTO. */
 export function toOrderDTO(order: {
   id: string; reference: string; type: string; status: string; fulfillment: string;
+  paymentMethod?: string | null; deliveryLatitude?: number | null; deliveryLongitude?: number | null;
   deliveryAddress: string | null; deliveryArea: string | null; deliveryNotes: string | null;
   deliveryFee: DbMoney; subtotal: DbMoney; total: DbMoney; notes: string | null; pickupCode: string | null;
   riderId?: string | null; riderName: string | null; createdAt: Date; updatedAt: Date;
@@ -139,6 +140,9 @@ export function toOrderDTO(order: {
     type: order.type as OrderType,
     status: order.status as OrderStatus,
     fulfillment: order.fulfillment as Fulfillment,
+    paymentMethod: order.paymentMethod ?? null,
+    deliveryLatitude: order.deliveryLatitude ?? null,
+    deliveryLongitude: order.deliveryLongitude ?? null,
     deliveryAddress: order.deliveryAddress,
     deliveryArea: order.deliveryArea,
     deliveryNotes: order.deliveryNotes,
