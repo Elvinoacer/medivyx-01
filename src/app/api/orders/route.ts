@@ -101,7 +101,8 @@ export async function POST(request: NextRequest) {
       if (!rxIds.length || owned.length !== rxIds.length) return NextResponse.json({ error: "Upload an unused prescription from your account." }, { status: 400 })
     }
 
-    const fulfillment = body.fulfillment === "DELIVERY" ? "DELIVERY" : "PICKUP"
+    if (body.fulfillment !== "DELIVERY" && body.fulfillment !== "PICKUP") return NextResponse.json({ error: "Choose pickup or delivery before submitting your order." }, { status: 400 })
+    const fulfillment = body.fulfillment
     const paymentMethod = ["MPESA", "CARD", "CASH", "LATER"].includes(body.paymentMethod) ? body.paymentMethod : "CASH"
     const settings = await getSettings()
     let deliveryAddress: string | null = null, deliveryArea: string | null = null, deliveryNotes: string | null = null

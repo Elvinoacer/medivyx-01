@@ -101,7 +101,7 @@ export function CheckoutView() {
 
   // ---------- step / fulfillment ----------
   const [step, setStep] = useState<Step>(1)
-  const [fulfillment, setFulfillment] = useState<"PICKUP" | "DELIVERY">("PICKUP")
+  const [fulfillment, setFulfillment] = useState<"PICKUP" | "DELIVERY" | null>(null)
   const [zone, setZone] = useState<string>("")
   const [deliveryCoordinates, setDeliveryCoordinates] = useState<{ latitude: number; longitude: number } | null>(null)
 
@@ -153,7 +153,7 @@ export function CheckoutView() {
   const fallbackFee = zone ? (zones.find((z) => z.name.toLowerCase() === zone.toLowerCase())?.fee ?? DELIVERY_DEFAULTS.flatFee) : null
   const freeEligible = freeOver != null && subtotal >= freeOver
   const deliveryFee: number | null =
-    fulfillment === "PICKUP" ? 0 : !zone ? null : freeEligible ? 0 : (feeInfo?.fee ?? fallbackFee ?? 0)
+    fulfillment === "PICKUP" ? 0 : fulfillment !== "DELIVERY" || !zone ? null : freeEligible ? 0 : (feeInfo?.fee ?? fallbackFee ?? 0)
 
   // ---------- promo code ----------
   const [promoInput, setPromoInput] = useState("")
@@ -504,6 +504,7 @@ export function CheckoutView() {
   }
 
   function buildPayload(paymentMethod: PayMethod, addressId?: string): CreateOrderPayload {
+    if (!fulfillment) throw new Error("Choose pickup or delivery before placing your order.")
     return {
       items: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
       fulfillment,
@@ -530,6 +531,11 @@ export function CheckoutView() {
   }
 
   async function placeOrder(paymentMethod: PayMethod): Promise<OrderDTO | null> {
+    if (!fulfillment) {
+      setInlineError("Choose pickup at the shop or delivery to your address first.")
+      setStep(1)
+      return null
+    }
     // Do not silently place an undiscounted order while a saved offer is
     // still being checked. The customer can retry or explicitly remove it.
     if (promoBusy || (savedCartPromo && !activePromo)) {
@@ -707,6 +713,7 @@ export function CheckoutView() {
 
   function continueFrom2() {
     setInlineError(null)
+    if (!fulfillment) { setStep(1); setInlineError("Choose a collection or delivery option."); return }
     if (!user) {
       if (guestName.trim().length < 2) {
         setInlineError("Please enter your full name.")
@@ -723,8 +730,7 @@ export function CheckoutView() {
     }
     if (fulfillment === "DELIVERY") {
       if (!zone) {
-        setInlineError("Choose your delivery zone first (step 1).")
-        setStep(1)
+        setInlineError("Choose a delivery zone for this address before payment.")
         return
       }
       if (user && addressMode === "saved" && !selectedAddressId) {
@@ -824,7 +830,7 @@ export function CheckoutView() {
 
             {step === 1 ? (
               <Card>
-                <CardContent className="p-5 sm:p-6">
+                <CardContent className="p-5 sm:p-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2 motion-safe:duration-300">
                   <h2 className="text-lg font-bold">How would you like to get your order?</h2>
                   <p className="mt-1 text-sm text-muted-foreground">You can change this later before paying.</p>
 
@@ -851,63 +857,22 @@ export function CheckoutView() {
                     />
                   </div>
 
-                  {fulfillment === "DELIVERY" ? (
-                    <div className="mt-5 space-y-4 rounded-xl border bg-muted/30 p-4">
-                      <div>
-                        <Label htmlFor="zone" className="text-sm font-semibold">
-                          Delivery zone
-                        </Label>
-                        <p className="mb-2 text-xs text-muted-foreground">Fees are set per zone — we&apos;ll confirm the exact fee before payment.</p>
-                        <Select value={zone || undefined} onValueChange={(v) => setZone(v)}>
-                          <SelectTrigger id="zone" className="w-full" aria-label="Delivery zone">
-                            <SelectValue placeholder="Choose your area…" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {zones.map((z) => (
-                              <SelectItem key={z.name} value={z.name}>
-                                {z.name} — {formatKES(z.fee)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {zone ? (
-                        <div className="flex flex-wrap items-center gap-2 text-sm">
-                          <Badge variant="outline" className="bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300">
-                            <Truck className="mr-1 h-3 w-3" aria-hidden />
-                            {zone}
-                          </Badge>
-                          {freeEligible ? (
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                              <Check className="mr-1 h-3 w-3" aria-hidden /> Free delivery unlocked
-                            </Badge>
-                          ) : (
-                            <>
-                              <span className="text-muted-foreground">Delivery fee:</span>
-                              <span className="font-bold">{feeInfo || fallbackFee != null ? formatKES(deliveryFee ?? 0) : "…"}</span>
-                              {freeOver != null ? (
-                                <span className="text-xs text-muted-foreground">
-                                  · add {formatKES(Math.max(0, freeOver - subtotal))} more for free delivery
-                                </span>
-                              ) : null}
-                            </>
-                          )}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : (
+                  {fulfillment === "PICKUP" ? (
                     <div className="mt-5 flex items-start gap-3 rounded-xl border bg-muted/30 p-4 text-sm">
                       <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
-                      <p>
-                        Collect at <strong>{PHARMACY.name}</strong>, {PHARMACY.address}. {PHARMACY.hoursLabel} — you&apos;ll
-                        receive a <strong>pickup code</strong> once your order is ready (usually within 2 hours).
-                      </p>
+                      <p>Collect at <strong>{PHARMACY.name}</strong>, {PHARMACY.address}. {PHARMACY.hoursLabel}. We will share a pickup code when your order is ready.</p>
                     </div>
+                  ) : fulfillment === "DELIVERY" ? (
+                    <div className="mt-5 rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">
+                      Next, choose a saved delivery address or enter a new one. Your delivery fee will be calculated from that address — no duplicate zone selection.
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-sm font-medium text-muted-foreground" role="status">Select one option above to continue.</p>
                   )}
 
                   <div className="mt-6 flex justify-end">
-                    <Button size="lg" className="h-12 gap-2 rounded-full px-8" onClick={() => { setInlineError(null); setStep(2) }}>
+                    <Button size="lg" className="h-12 gap-2 rounded-full px-8" onClick={() => { if (!fulfillment) { setInlineError("Select pickup or delivery first."); return } setInlineError(null); setStep(2) }}
+                      disabled={!fulfillment}>
                       Continue <ChevronLeft className="h-4 w-4 rotate-180" />
                     </Button>
                   </div>
@@ -917,7 +882,7 @@ export function CheckoutView() {
 
             {step === 2 ? (
               <Card>
-                <CardContent className="space-y-6 p-5 sm:p-6">
+                <CardContent className="space-y-6 p-5 sm:p-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2 motion-safe:duration-300">
                   <div>
                     <h2 className="text-lg font-bold">Your details</h2>
                     <p className="mt-1 text-sm text-muted-foreground">We use these to confirm your order and reach you if anything needs clarifying.</p>
@@ -1006,7 +971,11 @@ export function CheckoutView() {
                             {addresses.length > 0 ? (
                               <RadioGroup
                                 value={addressMode === "saved" ? (selectedAddressId ?? "") : "new"}
-                                onValueChange={(v) => (v === "new" ? setAddressMode("new") : setAddressMode("saved"))}
+                                onValueChange={(v) => {
+                                  if (v === "new") { setAddressMode("new"); setZone(""); setDeliveryCoordinates(null); return }
+                                  const address = addresses.find((a) => a.id === v)
+                                  if (address) { setAddressMode("saved"); selectSavedAddress(address) }
+                                }}
                                 className="gap-3"
                               >
                                 {addresses.map((a) => (
@@ -1018,7 +987,7 @@ export function CheckoutView() {
                                     )}
                                   >
                                     <RadioGroupItem value={a.id} id={`addr-${a.id}`} className="mt-1" />
-                                    <span className="min-w-0 flex-1" onClickCapture={() => { setAddressMode("saved"); selectSavedAddress(a) }}>
+                                    <span className="min-w-0 flex-1">
                                       <span className="flex items-center gap-2">
                                         <span className="text-sm font-semibold">{a.label}</span>
                                         {a.isDefault ? <Badge variant="outline" className="text-[10px]">Default</Badge> : null}
@@ -1104,12 +1073,24 @@ export function CheckoutView() {
                             placeholder="e.g. Apmt 4B, Sunrise Court, Lumumba Drive, Roysambu — near TRM"
                             rows={3}
                           />
-                          <p className="text-xs text-muted-foreground">
-                            Delivering to <strong>{zone || (settings?.pricingMode === "distance" && deliveryCoordinates ? "Distance calculated automatically" : "— choose zone in step 1 —")}</strong>
-                          </p>
+                          <div className="space-y-2">
+                            <Label htmlFor="guest-zone">Delivery zone *</Label>
+                            <Select value={zone || undefined} onValueChange={setZone}>
+                              <SelectTrigger id="guest-zone" aria-label="Delivery zone for guest address"><SelectValue placeholder="Choose your area and see the fee" /></SelectTrigger>
+                              <SelectContent>{zones.map((z) => <SelectItem key={z.name} value={z.name}>{z.name} — {formatKES(z.fee)}</SelectItem>)}</SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       )}
 
+                      {addressMode === "saved" && user ? (
+                        <div className="rounded-xl border bg-muted/25 p-3 text-sm">
+                          <span className="font-semibold">Delivery zone:</span> {zone || "Not recognised — choose a different address"}
+                          {zone && deliveryFee != null ? <span className="ml-2 font-semibold">· {formatKES(deliveryFee)} delivery</span> : null}
+                        </div>
+                      ) : zone && deliveryFee != null ? (
+                        <p className="rounded-xl border bg-muted/25 p-3 text-sm">Delivery to {zone} · <strong>{formatKES(deliveryFee)}</strong></p>
+                      ) : null}
                       <div className="space-y-2">
                         <Label htmlFor="delivery-notes">Notes for the rider (optional)</Label>
                         <Textarea
@@ -1278,7 +1259,7 @@ export function CheckoutView() {
 
             {step === 3 ? (
               <Card>
-                <CardContent className="space-y-6 p-5 sm:p-6">
+                <CardContent className="space-y-6 p-5 sm:p-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2 motion-safe:duration-300">
                   <div>
                     <h2 className="text-lg font-bold">Payment</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
