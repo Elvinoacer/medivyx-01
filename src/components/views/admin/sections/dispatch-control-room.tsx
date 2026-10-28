@@ -44,7 +44,9 @@ function attention(order: OrderDTO, now: number) {
   return now - new Date(onRoad(order) ? order.updatedAt : order.createdAt).getTime() > 2 * 60 * 60 * 1000
 }
 function mapsHref(order: OrderDTO) {
-  const location = [order.deliveryAddress, order.deliveryArea, "Nairobi, Kenya"].filter(Boolean).join(", ")
+  const location = order.deliveryLatitude != null && order.deliveryLongitude != null
+    ? `${order.deliveryLatitude},${order.deliveryLongitude}`
+    : [order.deliveryAddress, order.deliveryArea, "Nairobi, Kenya"].filter(Boolean).join(", ")
   return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(location)
 }
 function dateTime(value: string) {
@@ -242,7 +244,7 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
     : view === "handoff" ? "No rider-assigned orders are awaiting handoff. Check orders still needing a rider."
     : view === "on-road" ? "No deliveries are on the road. Check orders awaiting handoff."
     : view === "completed" ? "No delivered orders in the last 7 days."
-    : "No paid or preparing delivery orders yet. Check Orders for incoming and unpaid orders."
+    : "No delivery orders have entered preparation yet. Open Orders to accept eligible cash-on-delivery or prepaid requests."
 
   return (
     <div className="space-y-5">
@@ -444,8 +446,9 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
                       </div>
                       <div className="min-w-0 space-y-1">
                         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Drop-off</p>
-                        <p className="flex items-start gap-1.5 font-medium"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /><span className="break-words">{order.deliveryArea || "Area not specified"}</span></p>
+                        <p className="flex items-start gap-1.5 font-medium"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /><span className="break-words">{order.deliveryArea || "Delivery zone not confirmed"}</span></p>
                         <p className="break-words text-xs text-muted-foreground">{order.deliveryAddress || "Delivery address missing — contact customer"}</p>
+                         <p className="text-xs font-medium text-foreground">Zone fee: {formatKES(order.deliveryFee)} · {order.deliveryLatitude != null && order.deliveryLongitude != null ? "Precise map pin saved" : "Confirm exact drop-off with customer"}</p>
                       </div>
                     </div>
 
@@ -459,7 +462,7 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <span className="inline-flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5 text-muted-foreground" /><strong>{formatKES(order.total)}</strong> · {paid(order) ? <span className="font-medium text-emerald-700 dark:text-emerald-300">Payment received</span> : <span className="font-medium text-amber-700 dark:text-amber-300">Payment not confirmed</span>}</span>
+                      <span className="inline-flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5 text-muted-foreground" /><strong>{formatKES(order.total)}</strong> · {paid(order) ? <span className="font-medium text-emerald-700 dark:text-emerald-300">Payment received</span> : <span className="font-medium text-amber-800 dark:text-amber-300">{order.paymentMethod === "CASH_ON_DELIVERY" ? "Cash to collect at drop-off" : "Payment not confirmed"}</span>}</span>
                       <span className="text-muted-foreground">{order.items.reduce((sum, item) => sum + item.qty, 0)} units</span>
                     </div>
 
@@ -489,12 +492,12 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
                           {statusAction.label}
                         </Button>
                       ) : null}
-                      {onRoad(order) && !paid(order) && !!order.customerPhone ? (
+                      {onRoad(order) && !paid(order) && !!order.customerPhone && order.paymentMethod !== "CASH_ON_DELIVERY" ? (
                         <Button size="sm" variant="outline" className="gap-2" disabled={busy} onClick={() => void requestMpesa(order)}>
                           <CreditCard className="h-4 w-4" /> Request M-Pesa
                         </Button>
                       ) : null}
-                      {onRoad(order) && !paid(order) ? (
+                      {onRoad(order) && !paid(order) && order.paymentMethod === "CASH_ON_DELIVERY" ? (
                         <Button size="sm" variant="outline" className="gap-2" disabled={busy} onClick={() => setConfirmation({ order, action: "cash" })}>
                           <Wallet className="h-4 w-4" /> Confirm cash received
                         </Button>
