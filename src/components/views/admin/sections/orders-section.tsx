@@ -200,6 +200,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
   const [statusFilter, setStatusFilter] = useState<string>(() => { const value = useAppStore.getState().params.status; return value && [...ACTIVE_STATUSES, ...TERMINAL_STATUSES].includes(value as OrderStatus) ? value : "ALL" })
   const [typeFilter, setTypeFilter] = useState<string>("ALL")
   const [range, setRange] = useState<RangeKey>("all")
+  const [focus, setFocus] = useState<"all" | "review" | "pack" | "handoff" | "collect">("all")
   const [tab, setTab] = useState<"queue" | "all">(() => TERMINAL_STATUSES.includes(useAppStore.getState().params.status as OrderStatus) ? "all" : "queue")
 
   const [selected, setSelected] = useState<OrderDTO | null>(null)
@@ -238,8 +239,16 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
       .filter((o) => (statusFilter === "ALL" ? true : o.status === statusFilter))
       .filter((o) => (typeFilter === "ALL" ? true : o.type === typeFilter))
       .filter((o) => withinRange(o.createdAt, range))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  }, [raw, tab, statusFilter, typeFilter, range])
+      .filter((o) => focus === "all" ||
+        (focus === "review" && (o.status === "UNDER_REVIEW" || (o.status === "RECEIVED" && !readyToPack(o)))) ||
+        (focus === "pack" && (readyToPack(o) || o.status === "PREPARING")) ||
+        (focus === "handoff" && o.fulfillment === "DELIVERY" && o.status === "READY_FOR_PICKUP") ||
+        (focus === "collect" && o.fulfillment === "DELIVERY" && o.status === "OUT_FOR_DELIVERY" && !isPaid(o)))
+      .sort((a, b) => {
+        const priority = (o: OrderDTO) => readyToPack(o) ? 0 : o.status === "PREPARING" ? 1 : o.status === "READY_FOR_PICKUP" ? 2 : o.status === "UNDER_REVIEW" ? 3 : 4
+        return priority(a) - priority(b) || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      })
+  }, [raw, tab, statusFilter, typeFilter, range, focus])
 
   const activeOrders = useMemo(() => raw.filter((o) => ACTIVE_STATUSES.includes(o.status)), [raw])
   const queueCount = (fn: (o: OrderDTO) => boolean) => activeOrders.filter(fn).length
@@ -359,6 +368,24 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
         {queueKpis.map((kpi) => <KpiCard key={kpi.label} label={kpi.label} value={loading ? "—" : kpi.value} icon={kpi.icon} tone={kpi.tone} hint="In the active order queue" />)}
       </div>
+
+      {!isRider ? (
+        <div className="flex flex-wrap gap-2" aria-label="Work queues by required action">
+          {([
+            ["all", "All work"],
+            ["review", "Needs review"],
+            ["pack", "Pack"],
+            ["handoff", "Rider handoff"],
+            ["collect", "Payment at delivery"],
+          ] as const).map(([key, label]) => (
+            <Button key={key} size="sm" variant={focus === key ? "default" : "outline"}
+              aria-pressed={focus === key} onClick={() => { setFocus(key); setBatchIds([]); setTab("queue"); setStatusFilter("ALL") }}>
+              {label}
+              {key === "pack" ? ` · ${raw.filter((o) => readyToPack(o) || o.status === "PREPARING").length}` : ""}
+            </Button>
+          ))}
+        </div>
+      ) : null}
 
       {/* Action-first queue: selected rows can be worked without opening each drawer. */}
       {!isRider && canManage ? (
@@ -586,7 +613,10 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                               onClick={(event) => {
                                 event.stopPropagation()
                                 const operation = quickAction(order)!
-                                if (operation === "ready" || operation === "dispatch") { openDetail(order); return }
+                                if (operation === "ready" || operation === "dispatch") {
+                                  setTransition({ order, target: operation === "ready" ? "READY_FOR_PICKUP" : "OUT_FOR_DELIVERY" })
+                                  return
+                                }
                                 void runQuickAction(order, operation)
                               }}>
                               {nextOrderActionLabel(order)}
@@ -1131,7 +1161,7 @@ function OrderDetailSheet({
                     Accept & start packing
                   </Button>
                 ) : null}
-                {nexts.filter((target) => !(readyToPack(order) && target === "PREPARING")).map((target, idx) => (
+                {nexts.filter((target) => !(readyToPack(order) && target === "PREPARING")).slice(0, 1).map((target, idx) => (
                   <Button
                     key={target}
                     size="sm"
@@ -1144,6 +1174,18 @@ function OrderDetailSheet({
                   </Button>
                 ))}
               </div>
+              {nexts.filter((target) => !(readyToPack(order) && target === "PREPARING")).length > 1 ? (
+                <details className="rounded-lg border p-2 text-xs">
+                  <summary className="cursor-pointer font-medium text-muted-foreground">Other status actions</summary>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {nexts.filter((target) => !(readyToPack(order) && target === "PREPARING")).slice(1).map((target) =>
+                      <Button key={target} size="sm" variant="outline" disabled={actionBusy} onClick={() => onStartTransition(order, target)}>
+                        {workflowLabel(order, target)}
+                      </Button>
+                    )}
+                  </div>
+                </details>
+              ) : null}
               {order.fulfillment === "DELIVERY" && order.status === "READY_FOR_PICKUP" && !order.riderId ? (
                 <Button size="sm" variant="outline" className="w-full gap-1.5 sm:w-auto" onClick={() => onNavigateSection("dispatch", { search: order.reference })}>
                   <Bike className="h-4 w-4" /> Assign a rider in Dispatch
