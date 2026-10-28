@@ -205,7 +205,7 @@ export interface CreateOrderPayload {
 
 export const ordersApi = {
   myOrders: () => req<OrderDTO[]>("/api/orders"),
-  allOrders: (q: { status?: string; type?: string; search?: string } = {}) => {
+  allOrders: (q: { status?: string; type?: string; search?: string; cursor?: string } = {}) => {
     const params = new URLSearchParams()
     Object.entries(q).forEach(([k, v]) => v && params.set(k, v))
     return req<OrderDTO[]>(`/api/orders?scope=all&limit=100&${params.toString()}`)

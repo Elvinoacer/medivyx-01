@@ -28,7 +28,8 @@ export async function GET(request: Request) {
     const status = url.searchParams.get("status")?.trim()
     const type = url.searchParams.get("type")?.trim()
     const search = url.searchParams.get("search")?.trim().slice(0, 80)
-    const orders = await db.order.findMany({ where: { ...(status ? { status } : {}), ...(type ? { type } : {}), ...(search ? { OR: [{ reference: { contains: search.toUpperCase() } }, { guestName: { contains: search, mode: "insensitive" } }, { guestPhone: { contains: search } }, { deliveryArea: { contains: search, mode: "insensitive" } }, { deliveryAddress: { contains: search, mode: "insensitive" } }, { user: { is: { OR: [{ name: { contains: search, mode: "insensitive" } }, { phone: { contains: search } }] } } }] } : {}) }, include: ORDER_INCLUDE, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take })
+    const cursor = url.searchParams.get("cursor")?.trim()
+    const orders = await db.order.findMany({ where: { ...(status ? { status } : {}), ...(type ? { type } : {}), ...(search ? { OR: [{ reference: { contains: search.toUpperCase() } }, { guestName: { contains: search, mode: "insensitive" } }, { guestPhone: { contains: search } }, { deliveryArea: { contains: search, mode: "insensitive" } }, { deliveryAddress: { contains: search, mode: "insensitive" } }, { user: { is: { OR: [{ name: { contains: search, mode: "insensitive" } }, { phone: { contains: search } }] } } }] } : {}) }, include: ORDER_INCLUDE, orderBy: [{ createdAt: "desc" }, { id: "desc" }], ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}), take })
     return NextResponse.json(orders.map(toOrderDTO), { headers: { "Cache-Control": "private, no-store" } })
   }
   if (scope === "dispatch") {

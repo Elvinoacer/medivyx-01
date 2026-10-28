@@ -196,6 +196,8 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
   const canAssignRider = role === "ADMIN" || role === "STAFF" || role === "PHARMACIST"
 
   const [raw, setRaw] = useState<OrderDTO[]>([])
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -227,9 +229,11 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
     try {
       const list = await ordersApi.allOrders(searchTerm ? { search: searchTerm } : {})
       setRaw(list)
+      setHasMore(list.length === 100)
     } catch (err) {
       setError(apiErrorMessage(err))
       setRaw([])
+      setHasMore(false)
     } finally {
       setLoading(false)
     }
@@ -238,6 +242,24 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
   useEffect(() => {
     void load(search)
   }, [load, search, refreshKey])
+
+  async function loadOlder() {
+    const cursor = raw[raw.length - 1]?.id
+    if (!cursor || !hasMore || loadingMore || loading) return
+    setLoadingMore(true)
+    try {
+      const page = await ordersApi.allOrders({ ...(search ? { search } : {}), cursor })
+      setRaw((previous) => {
+        const ids = new Set(previous.map((order) => order.id))
+        return [...previous, ...page.filter((order) => !ids.has(order.id))]
+      })
+      setHasMore(page.length === 100)
+    } catch (error) {
+      toast.error("Could not load older orders: " + apiErrorMessage(error))
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   // ---- client-side filters ----
   const visible = useMemo(() => {
@@ -706,6 +728,15 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
           </div>
         </>
       )}
+
+      {!loading && raw.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-muted/20 p-3 text-xs text-muted-foreground">
+          <span>{raw.length} most recent orders loaded{hasMore ? " · older orders are available" : ""}. Sorting, date filters and bulk actions apply to the loaded orders.</span>
+          {hasMore ? <Button size="sm" variant="outline" disabled={loadingMore} onClick={() => void loadOlder()}>
+            {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Load older orders
+          </Button> : null}
+        </div>
+      ) : null}
 
       <Dialog open={batchConfirm} onOpenChange={setBatchConfirm}>
         <DialogContent>
