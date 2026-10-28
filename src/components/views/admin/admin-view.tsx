@@ -320,7 +320,7 @@ export function AdminView() {
 
   return (
     <div className={cn("app-page app-page-admin admin-workspace", sidebarCollapsed && "admin-sidebar-collapsed")}>
-      <aside className={cn("admin-sidebar sticky top-0", sidebarCollapsed && "is-collapsed")}>
+      <aside id="admin-desktop-navigation" className={cn("admin-sidebar sticky top-0", sidebarCollapsed && "is-collapsed")}>
         <SidebarNav items={visibleNav} section={section} onSelect={goTo} staffName={staff?.name ?? "Staff"} staffRole={role} onSignOut={handleSignOut} openNow={openNow} onStore={() => navigate("home")} collapsed={sidebarCollapsed} />
       </aside>
 
@@ -398,7 +398,7 @@ function SidebarNav({ items, section, onSelect, staffName, staffRole, onSignOut,
   collapsed?: boolean
 }) {
   return (
-    <div id={collapsed ? "admin-desktop-navigation" : undefined} className="admin-sidebar-inner">
+    <div className="admin-sidebar-inner">
       <button onClick={onStore} className="admin-brand" aria-label="Sphere Pharmacy storefront" title="Sphere Pharmacy storefront"><span className="admin-brand-mark"><Plus strokeWidth={2.5} /></span><span>sphere<span className="admin-brand-caption">PHARMACY WORKSPACE</span></span><ArrowUpRight className="admin-brand-arrow h-4 w-4" aria-hidden /></button>
       <div className="admin-location"><span className="admin-location-icon"><Store className="h-4 w-4" /></span><span><strong>Roysambu, Nairobi</strong><span className="admin-location-status"><i className={openNow ? "is-open" : ""} />{openNow ? "Pharmacy is open" : "Pharmacy is closed"}</span></span></div>
       <nav aria-label="Admin sections" className="admin-nav">
