@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
         badge: promo.badge,
         code: promo.code,
         discountPct: promo.discountPct,
+        minimumSpend: promo.minimumSpend == null ? null : Number(promo.minimumSpend),
         color: promo.color,
         active: promo.active,
         startsAt: promo.startsAt?.toISOString() ?? null,
