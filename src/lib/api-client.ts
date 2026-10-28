@@ -208,7 +208,7 @@ export const ordersApi = {
   allOrders: (q: { status?: string; type?: string; search?: string } = {}) => {
     const params = new URLSearchParams()
     Object.entries(q).forEach(([k, v]) => v && params.set(k, v))
-    return req<OrderDTO[]>(`/api/orders?scope=all&${params.toString()}`)
+    return req<OrderDTO[]>(`/api/orders?scope=all&limit=100&${params.toString()}`)
   },
   // Dispatch board — delivery orders for staff (assign + track riders)
   dispatchBoard: () => req<OrderDTO[]>("/api/orders?scope=dispatch&limit=100"),
