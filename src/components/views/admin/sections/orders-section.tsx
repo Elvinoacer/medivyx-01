@@ -689,6 +689,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
         onStartTransition={(order, target, viaCash) => setTransition({ order, target, viaCash })}
         onCancel={(order) => setCancelFor(order)}
         onPromptMpesa={(order) => void handlePromptMpesa(order)}
+        onStartPreparing={(order) => void runAction(() => ordersApi.startPreparing(order.id), `${shortRef(order.reference)} is now being packed.`)}
         onNavigateSection={onNavigateSection}
         onAssignRider={async (order, staffId, riderName) => {
           await runAction(
@@ -748,6 +749,7 @@ function OrderDetailSheet({
   onStartTransition,
   onCancel,
   onPromptMpesa,
+  onStartPreparing,
   onNavigateSection,
   onAssignRider,
 }: {
@@ -761,6 +763,7 @@ function OrderDetailSheet({
   onStartTransition: (order: OrderDTO, target: OrderStatus, viaCash?: boolean) => void
   onCancel: (order: OrderDTO) => void
   onPromptMpesa: (order: OrderDTO) => void
+  onStartPreparing: (order: OrderDTO) => void
   onNavigateSection: SectionProps["onNavigateSection"]
   onAssignRider: (order: OrderDTO, staffId: string, riderName?: string) => Promise<void>
 }) {
@@ -891,6 +894,12 @@ function OrderDetailSheet({
             {/* payment */}
             <section aria-labelledby="od-payment">
               <h3 id="od-payment" className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment</h3>
+              <div className={cn("mb-3 rounded-xl border p-3 text-sm", isCashOnDelivery(order) && !isPaid(order)
+                ? "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"
+                : "bg-muted/30")}>
+                <p className="font-bold">{paymentSummary(order)}</p>
+                {isCashOnDelivery(order) && !isPaid(order) ? <p className="mt-1 text-xs leading-relaxed">Cash-on-delivery order. Packing and rider dispatch are allowed after pharmacist and stock checks. The rider confirms actual cash collection before completing delivery.</p> : null}
+              </div>
               {order.payments.length === 0 ? (
                 <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
                   No payment attempts yet.
@@ -955,6 +964,15 @@ function OrderDetailSheet({
                     <Truck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                     <span className="min-w-0 break-words">{order.deliveryAddress ?? "No address recorded"}</span>
                   </p>
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Priced delivery zone</p>
+                    <p className="mt-1 flex items-center gap-1.5 font-bold"><MapPin className="h-4 w-4" />{order.deliveryArea || "Zone missing — confirm with customer"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Delivery charge: {formatKES(order.deliveryFee)}</p>
+                  </div>
+                  {order.deliveryLatitude != null && order.deliveryLongitude != null ? (
+                    <p className="text-xs text-muted-foreground">Customer map pin: {order.deliveryLatitude.toFixed(5)}, {order.deliveryLongitude.toFixed(5)}</p>
+                  ) : <p className="text-xs font-medium text-amber-800 dark:text-amber-300">No precise map pin saved — verify the location before sending a rider.</p>}
+                  <Button asChild size="sm" variant="outline"><a target="_blank" rel="noopener noreferrer" href={deliveryMapUrl(order)}><Navigation className="mr-2 h-4 w-4"/> Open delivery map</a></Button>
                   {order.deliveryNotes ? (
                     <p className="text-xs text-muted-foreground">Notes: {order.deliveryNotes}</p>
                   ) : null}
@@ -988,7 +1006,7 @@ function OrderDetailSheet({
                     ) : null}
                   </div>
                   <p className="text-sm leading-relaxed text-foreground">{deliveryGuidance(order)}</p>
-                  <p className="text-xs text-muted-foreground">Preparation, readiness and rider assignment are distinct steps. Marking an order ready does not send it out for delivery.</p>
+                  <p className="text-xs text-muted-foreground">Order checks are grouped into one acceptance action. Physical packing, rider handoff and cash receipt remain separate confirmations.</p>
                   <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onNavigateSection("dispatch", { search: order.reference })}>
                     <Truck className="h-3.5 w-3.5" /> View in Dispatch <ChevronRight className="h-3.5 w-3.5" />
                   </Button>
@@ -1107,7 +1125,13 @@ function OrderDetailSheet({
                 <p className="text-xs font-semibold text-foreground">{order.status === "READY_FOR_PICKUP" && !order.riderId ? "Next: assign a rider before dispatching" : "Next order action"}</p>
               ) : null}
               <div className="grid gap-2 sm:flex sm:flex-wrap">
-                {nexts.map((target, idx) => (
+                {canManage && readyToPack(order) ? (
+                  <Button disabled={actionBusy} onClick={() => onStartPreparing(order)} className="gap-2">
+                    {actionBusy ? <Loader2 className="h-4 w-4 animate-spin"/> : <Package className="h-4 w-4"/>}
+                    Accept & start packing
+                  </Button>
+                ) : null}
+                {nexts.filter((target) => !(readyToPack(order) && target === "PREPARING")).map((target, idx) => (
                   <Button
                     key={target}
                     size="sm"
