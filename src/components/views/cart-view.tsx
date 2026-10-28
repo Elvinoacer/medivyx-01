@@ -26,6 +26,8 @@ export function CartView() {
   const openAuth = useAppStore((s) => s.openAuth)
   const lines = useCartStore((s) => s.lines)
   const setQty = useCartStore((s) => s.setQty)
+  const savedPromo = useCartStore((s) => s.appliedPromo)
+  const clearSavedPromo = useCartStore((s) => s.clearAppliedPromo)
   const remove = useCartStore((s) => s.remove)
   const session = useAuthStore((s) => s.session)
 
@@ -54,9 +56,24 @@ export function CartView() {
     navigate("checkout")
   }
 
+  function updateQty(productId: string, qty: number) {
+    const previousOffer = useCartStore.getState().appliedPromo
+    setQty(productId, qty)
+    const updatedCart = useCartStore.getState()
+    if (previousOffer && !updatedCart.appliedPromo && updatedCart.lines.length > 0) {
+      toast.info("Promotion removed", { description: "Your cart no longer meets this offer's minimum spend." })
+    }
+  }
+
   function handleRemove(name: string, productId: string) {
+    const previousOffer = useCartStore.getState().appliedPromo
     remove(productId)
-    toast.success(`${name} removed from cart`)
+    const updatedCart = useCartStore.getState()
+    toast.success(`${name} removed from cart`, {
+      description: previousOffer && !updatedCart.appliedPromo && updatedCart.lines.length > 0
+        ? "Your cart no longer meets the promotion's minimum spend, so the code was removed."
+        : undefined,
+    })
   }
 
   // ---------- empty ----------
@@ -134,7 +151,7 @@ export function CartView() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 rounded-full"
-                            onClick={() => setQty(l.productId, l.qty - 1)}
+                            onClick={() => updateQty(l.productId, l.qty - 1)}
                             aria-label={`Decrease ${l.name} quantity`}
                           >
                             <Minus className="h-3.5 w-3.5" />
@@ -144,7 +161,7 @@ export function CartView() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 rounded-full"
-                            onClick={() => setQty(l.productId, l.qty + 1)}
+                            onClick={() => updateQty(l.productId, l.qty + 1)}
                             aria-label={`Increase ${l.name} quantity`}
                           >
                             <Plus className="h-3.5 w-3.5" />
@@ -198,6 +215,16 @@ export function CartView() {
                   </div>
                 ) : null}
 
+                {savedPromo ? (
+                  <div className="sphere-cart-offer flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+                    <div className="min-w-0">
+                      <p className="sphere-offer-title text-xs font-bold">Saved code · <span className="font-mono">{savedPromo.code}</span></p>
+                      <p className="sphere-offer-detail mt-1 text-xs">Your discount will be verified again at checkout.</p>
+                    </div>
+                    <Button type="button" size="sm" variant="outline" className="sphere-offer-action h-8 shrink-0" onClick={clearSavedPromo}>Remove</Button>
+                  </div>
+                ) : null}
+
                 {offers.length > 0 ? (
                   <div className="space-y-2" aria-label="Available checkout offers">
                     <p className="flex items-center gap-2 text-xs font-bold text-foreground"><Gift className="h-4 w-4 text-primary"/> Available offers</p>
@@ -207,11 +234,11 @@ export function CartView() {
                           <p className="sphere-offer-title truncate text-xs font-semibold text-emerald-950 dark:text-emerald-100">{offer.discountPct}% off · <span className="font-mono">{offer.code}</span></p>
                           <p className="sphere-offer-detail mt-0.5 text-xs text-emerald-800 dark:text-emerald-300">{offer.minimumSpend && subtotal < offer.minimumSpend ? `Add ${formatKES(offer.minimumSpend-subtotal)} to qualify` : offer.minimumSpend ? `Min. ${formatKES(offer.minimumSpend)}` : "No minimum spend"}</p>
                         </div>
-                        <Button type="button" variant="outline" size="sm" className="sphere-offer-action h-8 shrink-0 rounded-lg" disabled={!!offer.minimumSpend && subtotal < offer.minimumSpend} onClick={()=>{
+                        <Button type="button" variant="outline" size="sm" className="sphere-offer-action h-8 shrink-0 rounded-lg" disabled={(!!offer.minimumSpend && subtotal < offer.minimumSpend) || savedPromo?.code === offer.code} onClick={()=>{
                           if(!loggedIn&&offer.perUserLimit!=null){
                             openAuth("login","checkout","Sign in to redeem this promotion.",{promo:offer.code!})
                           }else navigate("checkout",{promo:offer.code!})
-                        }}>Use</Button>
+                        }}>{savedPromo?.code === offer.code ? "Selected" : "Use"}</Button>
                       </div>
                     ))}
                   </div>
