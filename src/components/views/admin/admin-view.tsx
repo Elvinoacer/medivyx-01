@@ -140,6 +140,10 @@ const NAV_GROUPS = [
   { label: "Management", keys: ["staff", "compliance", "settings"] },
 ]
 
+type AdminLiveCursor = { change: string | null; arrival: string | null; arrivedAt: string | null }
+type AdminLiveSnapshot = { orders: AdminLiveCursor; bookings: AdminLiveCursor }
+const ADMIN_SYNC_INTERVAL_MS = 15_000
+
 export function AdminView() {
   const session = useAuthStore((s) => s.session)
   const authLoading = useAuthStore((s) => s.loading)
@@ -192,6 +196,79 @@ export function AdminView() {
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [role])
+
+  // Customer orders and care bookings are created in other sessions. A small
+  // authenticated cursor poll detects them without fetching full lists or
+  // flashing a loading state on every tick. PUSH_NOTIFICATION/visibility
+  // events trigger an immediate check instead of waiting for the next tick.
+  useEffect(() => {
+    if (!role || !["ADMIN", "PHARMACIST", "STAFF"].includes(role)) return
+
+    let active = true
+    let inFlight = false
+    let previous: AdminLiveSnapshot | null = null
+    const check = async () => {
+      if (!active || inFlight || document.visibilityState === "hidden" || !navigator.onLine) return
+      inFlight = true
+      try {
+        const response = await fetch("/api/admin/live-changes", {
+          cache: "no-store", credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        })
+        if (!response.ok) return
+        const snapshot = await response.json() as AdminLiveSnapshot
+        if (!active) return
+        if (previous) {
+          const ordersChanged = snapshot.orders.change !== previous.orders.change ||
+            snapshot.orders.arrival !== previous.orders.arrival
+          const bookingsChanged = snapshot.bookings.change !== previous.bookings.change ||
+            snapshot.bookings.arrival !== previous.bookings.arrival
+          if (ordersChanged || bookingsChanged) {
+            setRefreshKey((key) => key + 1)
+          }
+          if (snapshot.orders.arrival && snapshot.orders.arrival !== previous.orders.arrival &&
+              snapshot.orders.arrivedAt && (!previous.orders.arrivedAt ||
+                Date.parse(snapshot.orders.arrivedAt) > Date.parse(previous.orders.arrivedAt))) {
+            toast.info("New order received", {
+              description: "An incoming customer order is ready for your review.",
+              action: { label: "Open orders", onClick: () => navigate("admin", { section: "orders" }) },
+            })
+          }
+          if (snapshot.bookings.arrival && snapshot.bookings.arrival !== previous.bookings.arrival &&
+              snapshot.bookings.arrivedAt && (!previous.bookings.arrivedAt ||
+                Date.parse(snapshot.bookings.arrivedAt) > Date.parse(previous.bookings.arrivedAt))) {
+            toast.info("New care appointment", {
+              description: "A customer has booked a service.",
+              action: { label: "View bookings", onClick: () => navigate("admin", { section: "service-bookings" }) },
+            })
+          }
+        }
+        previous = snapshot
+      } catch {
+        // A failed poll must not interrupt staff work or discard the last cursor.
+      } finally {
+        inFlight = false
+      }
+    }
+
+    const onWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type === "PUSH_NOTIFICATION") void check()
+    }
+    void check()
+    const timer = window.setInterval(() => { void check() }, ADMIN_SYNC_INTERVAL_MS)
+    document.addEventListener("visibilitychange", check)
+    window.addEventListener("focus", check)
+    window.addEventListener("online", check)
+    navigator.serviceWorker?.addEventListener("message", onWorkerMessage)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+      document.removeEventListener("visibilitychange", check)
+      window.removeEventListener("focus", check)
+      window.removeEventListener("online", check)
+      navigator.serviceWorker?.removeEventListener("message", onWorkerMessage)
+    }
+  }, [role, navigate])
 
   async function handleTogglePush() {
     setPushLoading(true)
