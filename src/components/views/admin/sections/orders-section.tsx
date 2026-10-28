@@ -53,8 +53,10 @@ function readyToPack(order: OrderDTO): boolean {
   const rxReady = (order.items.every((item) => !item.requiresPrescription) || order.prescriptions.length > 0) &&
     order.prescriptions.every((rx) => ["APPROVED", "PARTIALLY_APPROVED"].includes(rx.status))
   const statusReady = (order.status === "PAID" && isPaid(order)) ||
-    (((isCashOnDelivery(order) || (order.fulfillment === "PICKUP" && order.paymentMethod === "CASH_ON_PICKUP")) && ["RECEIVED", "PRESCRIPTION_VERIFIED", "AVAILABILITY_CONFIRMED", "AWAITING_PAYMENT"].includes(order.status)))
-  return rxReady && statusReady
+    ((isCashOnDelivery(order) || (order.fulfillment === "PICKUP" && order.paymentMethod === "CASH_ON_PICKUP")) &&
+      ["RECEIVED", "PRESCRIPTION_VERIFIED", "AVAILABILITY_CONFIRMED", "AWAITING_PAYMENT"].includes(order.status))
+  const paymentInFlight = !isPaid(order) && order.payments.some((p) => ["PENDING", "PROCESSING", "REFUND_PENDING"].includes(p.status))
+  return rxReady && statusReady && !paymentInFlight
 }
 function quickAction(order: OrderDTO): "prepare" | "ready" | "dispatch" | null {
   if (readyToPack(order)) return "prepare"
