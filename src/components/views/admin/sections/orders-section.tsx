@@ -360,6 +360,40 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
         {queueKpis.map((kpi) => <KpiCard key={kpi.label} label={kpi.label} value={loading ? "—" : kpi.value} icon={kpi.icon} tone={kpi.tone} hint="In the active order queue" />)}
       </div>
 
+      {/* Action-first queue: selected rows can be worked without opening each drawer. */}
+      {!isRider && canManage ? (
+        <Card className="border-primary/20 bg-primary/[0.03]">
+          <CardContent className="flex flex-col gap-3 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-bold">One-click order processing</p>
+                <p className="text-xs text-muted-foreground">Select compatible orders and act together. Each order is checked individually; prescription review and payment controls remain mandatory.</p>
+              </div>
+              <Badge variant="secondary">{batchIds.length} selected</Badge>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={batchType} onValueChange={(v) => { setBatchType(v as "prepare" | "ready"); setBatchIds([]) }}>
+                <SelectTrigger className="w-full sm:w-52" aria-label="Bulk order action"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="prepare">Accept & start packing</SelectItem>
+                  <SelectItem value="ready">Confirm packed & ready</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button size="sm" variant="outline" onClick={() => {
+                const eligible = visible.filter((order) => quickAction(order) === batchType).slice(0, 25).map((order) => order.id)
+                setBatchIds(eligible)
+              }} disabled={batchBusy || loading}>Select eligible ({visible.filter((order) => quickAction(order) === batchType).length})</Button>
+              <Button size="sm" disabled={batchBusy || batchIds.length === 0} onClick={() => setBatchConfirm(true)}>
+                {batchBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {batchType === "prepare" ? "Start packing" : "Mark ready"} · {batchIds.length}
+              </Button>
+              {batchIds.length ? <Button size="sm" variant="ghost" disabled={batchBusy} onClick={() => setBatchIds([])}>Clear selection</Button> : null}
+            </div>
+            {batchType === "ready" ? <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Only mark parcels ready after staff have checked all medicines and physically packed each selected order.</p> : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* filter bar */}
       <Card>
         <CardContent className="flex flex-col gap-3 p-3 sm:p-4">
@@ -478,6 +512,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {canManage ? <TableHead className="w-10"><span className="sr-only">Select</span></TableHead> : null}
                     <TableHead>Reference</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>Items</TableHead>
@@ -500,6 +535,12 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                         className="cursor-pointer"
                         onClick={() => openDetail(order)}
                       >
+                        {canManage ? <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox aria-label={`Select order ${order.reference}`}
+                            checked={batchIds.includes(order.id)}
+                            disabled={batchBusy || quickAction(order) !== batchType}
+                            onCheckedChange={(checked) => setBatchIds((previous) => checked ? [...previous.filter((id) => id !== order.id), order.id] : previous.filter((id) => id !== order.id))} />
+                        </TableCell> : null}
                         <TableCell className="font-bold">{shortRef(order.reference)}</TableCell>
                         <TableCell>
                           <p className="max-w-40 truncate text-sm font-medium">{order.customerName ?? "Guest"}</p>
@@ -521,7 +562,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                             </Badge>
                             <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                               {order.fulfillment === "DELIVERY" ? <Truck className="h-3 w-3" aria-hidden /> : <Store className="h-3 w-3" aria-hidden />}
-                              {order.fulfillment === "DELIVERY" ? "Delivery" : "Pickup"}
+                              {order.fulfillment === "DELIVERY" ? (order.deliveryArea || "Delivery · zone missing") : "Pickup"}
                             </span>
                           </div>
                         </TableCell>
@@ -532,16 +573,29 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                               <PaymentStatusBadge status={pay.status} />
                             </span>
                           ) : (
-                            <span className="text-xs text-muted-foreground">Not initiated</span>
+                            <span className={cn("text-xs font-medium", isCashOnDelivery(order) ? "text-amber-800 dark:text-amber-300" : "text-muted-foreground")}>{paymentSummary(order)}</span>
                           )}
                         </TableCell>
                         <TableCell><OrderFulfillmentStatus order={order} /></TableCell>
                         <TableCell className="text-right font-semibold tabular-nums">{formatKES(order.total)}</TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">{timeAgo(order.createdAt)}</TableCell>
                         <TableCell>
-                          <Button variant="outline" size="sm" className="gap-1.5" aria-label={`Open order ${shortRef(order.reference)}: ${nextOrderActionLabel(order)}`} onClick={(event) => { event.stopPropagation(); openDetail(order) }}>
-                            {nextOrderActionLabel(order)} <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-                          </Button>
+                          {canManage && quickAction(order) ? (
+                            <Button variant={quickAction(order) === "prepare" ? "default" : "outline"} size="sm"
+                              disabled={actionBusy || batchBusy}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                const operation = quickAction(order)!
+                                if (operation === "ready" || operation === "dispatch") { openDetail(order); return }
+                                void runQuickAction(order, operation)
+                              }}>
+                              {nextOrderActionLabel(order)}
+                            </Button>
+                          ) : (
+                            <Button variant="outline" size="sm" className="gap-1.5" aria-label={`Open order ${shortRef(order.reference)}: ${nextOrderActionLabel(order)}`} onClick={(event) => { event.stopPropagation(); openDetail(order) }}>
+                              {nextOrderActionLabel(order)} <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     )
@@ -559,6 +613,12 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                 <Card key={order.id} className="card-lift cursor-pointer" role="button" tabIndex={0} aria-label={`View order ${shortRef(order.reference)} for ${order.customerName ?? "Guest"}`} onClick={() => openDetail(order)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDetail(order) } }}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between gap-2">
+                      {canManage ? <span onClick={(e) => e.stopPropagation()}>
+                        <Checkbox aria-label={`Select order ${order.reference}`}
+                          checked={batchIds.includes(order.id)}
+                          disabled={batchBusy || quickAction(order) !== batchType}
+                          onCheckedChange={(checked) => setBatchIds((previous) => checked ? [...previous.filter((id) => id !== order.id), order.id] : previous.filter((id) => id !== order.id))}/>
+                      </span> : null}
                       <p className="font-bold">{shortRef(order.reference)}</p>
                       <OrderFulfillmentStatus order={order} />
                     </div>
@@ -584,6 +644,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                         </p>
                         <p className="text-xs text-muted-foreground">{timeAgo(order.createdAt)}</p>
                         <p className="mt-1 text-xs font-semibold text-primary">Next: {nextOrderActionLabel(order)}</p>
+                        {order.fulfillment === "DELIVERY" ? <p className="mt-1 text-xs"><MapPin className="mr-1 inline h-3 w-3" />{order.deliveryArea || "Zone missing"} · {paymentSummary(order)}</p> : null}
                       </div>
                       <p className="text-base font-bold tabular-nums">{formatKES(order.total)}</p>
                     </div>
@@ -594,6 +655,23 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
           </div>
         </>
       )}
+
+      <Dialog open={batchConfirm} onOpenChange={setBatchConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{batchType === "prepare" ? "Start packing selected orders?" : "Confirm all selected parcels are physically packed?"}</DialogTitle>
+            <DialogDescription>
+              {batchType === "prepare"
+                ? `Accept ${batchIds.length} eligible order(s) for packing. COD payments stay outstanding until money is actually collected; unreviewed prescriptions are excluded.`
+                : `Mark ${batchIds.length} packed parcel(s) as ready for collection or dispatch. This is not a payment or rider-dispatch confirmation.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchConfirm(false)}>Cancel</Button>
+            <Button onClick={() => void executeBatch()}>{batchType === "prepare" ? "Accept & start packing" : "Confirm parcels ready"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* detail sheet */}
       <OrderDetailSheet
