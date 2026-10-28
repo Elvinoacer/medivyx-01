@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -37,7 +38,7 @@ import { toast } from "sonner"
 import { AdminSectionHeader, KpiCard, apiErrorMessage, telHref, useDebounced, waHref, type SectionProps } from "../admin-shared"
 import {
   Search, Package, Loader2, Truck, Store, Phone, MessageCircle, ChevronRight, Ban, Bike,
-  Banknote, Smartphone, CreditCard, ClipboardList, Wallet, Clock, CheckCircle2, User, X, MapPin, Navigation,
+  Banknote, Smartphone, CreditCard, ClipboardList, Wallet, Clock, CheckCircle2, User, X, MapPin, Navigation, Info,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -65,6 +66,73 @@ function quickAction(order: OrderDTO): "prepare" | "ready" | "dispatch" | null {
   if (order.fulfillment === "DELIVERY" && order.status === "READY_FOR_PICKUP" && !!order.riderId) return "dispatch"
   return null
 }
+type BulkChoice = "prepare" | "ready"
+
+function batchBlocker(order: OrderDTO, choice: BulkChoice): string | null {
+  if (quickAction(order) === choice) return null
+  if (["COMPLETED_PICKUP", "COMPLETED_DELIVERY", "CANCELLED", "REJECTED", "REFUNDED"].includes(order.status)) {
+    return "Order already closed. No more packing actions are available."
+  }
+  if (order.status === "OUT_FOR_DELIVERY") return "Already dispatched. Manage this order in Dispatch."
+  if (order.status === "READY_FOR_PICKUP") return "Already packed. Use the pickup or rider-handoff workflow."
+  if (order.status === "PREPARING") return 'Already being packed. Choose "Confirm packed & ready" for this batch.'
+  if (order.items.some(item => item.requiresPrescription) && order.prescriptions.length === 0) {
+    return "Prescription missing. Obtain and review it before packing."
+  }
+  if (order.prescriptions.some(rx => !["APPROVED", "PARTIALLY_APPROVED"].includes(rx.status))) {
+    return "Prescription review is incomplete. A pharmacist must approve it before packing."
+  }
+  if (choice === "ready") {
+    return readyToPack(order)
+      ? 'Select "Accept & start packing" first. Confirm ready only after physical packing.'
+      : "Not in preparation yet. Review this order and resolve payment before packing."
+  }
+  if (!isPaid(order) && order.payments.some(p => ["PENDING", "PROCESSING", "REFUND_PENDING"].includes(p.status))) {
+    return "A payment attempt is still processing. Resolve it before starting packing."
+  }
+  if (!isPaid(order) && !isCashOnDelivery(order) &&
+      !(order.fulfillment === "PICKUP" && order.paymentMethod === "CASH_ON_PICKUP")) {
+    return "Payment is not confirmed. Only paid or explicitly cash-on-pickup/delivery orders can be packed."
+  }
+  return "The order is not yet in an eligible packing stage. Open its details for the next step."
+}
+
+function BatchSelection({
+  order, choice, busy, checked, onChange,
+}: {
+  order: OrderDTO
+  choice: BulkChoice
+  busy: boolean
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
+  const reason = batchBlocker(order, choice)
+  if (reason) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex h-8 w-8 cursor-help items-center justify-center rounded-lg border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
+            aria-label={`Why ${order.reference} is not selectable: ${reason}`}
+            onClick={(event) => { event.stopPropagation(); toast.info("Unavailable for this batch", { description: reason }) }}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            <Info className="h-4 w-4" aria-hidden />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" sideOffset={6} className="max-w-72 leading-relaxed">{reason}</TooltipContent>
+      </Tooltip>
+    )
+  }
+  return <Checkbox
+    aria-label={`Select order ${order.reference} for ${choice === "prepare" ? "packing" : "ready confirmation"}`}
+    checked={checked}
+    disabled={busy}
+    onCheckedChange={(value) => onChange(value === true)}
+  />
+}
+
 function deliveryMapUrl(order: OrderDTO): string {
   const target = order.deliveryLatitude != null && order.deliveryLongitude != null
     ? `${order.deliveryLatitude},${order.deliveryLongitude}`
@@ -433,6 +501,7 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
               </div>
               <Badge variant="secondary">{batchIds.length} selected</Badge>
             </div>
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700" aria-hidden /> Checkboxes are available for eligible orders. Select the info icon on another order to see why it cannot join this batch.</p>
             <div className="flex flex-wrap items-center gap-2">
               <Select value={batchType} onValueChange={(v) => { setBatchType(v as "prepare" | "ready"); setBatchIds([]) }}>
                 <SelectTrigger className="w-full sm:w-52" aria-label="Bulk order action"><SelectValue /></SelectTrigger>
@@ -606,10 +675,9 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                         onClick={() => openDetail(order)}
                       >
                         {canManage ? <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Checkbox aria-label={`Select order ${order.reference}`}
+                          <BatchSelection order={order} choice={batchType} busy={batchBusy}
                             checked={batchIds.includes(order.id)}
-                            disabled={batchBusy || quickAction(order) !== batchType}
-                            onCheckedChange={(checked) => setBatchIds((previous) => checked ? [...previous.filter((id) => id !== order.id), order.id] : previous.filter((id) => id !== order.id))} />
+                            onChange={(checked) => setBatchIds((previous) => checked ? [...previous.filter((id) => id !== order.id), order.id] : previous.filter((id) => id !== order.id))} />
                         </TableCell> : null}
                         <TableCell className="font-bold">{shortRef(order.reference)}</TableCell>
                         <TableCell>
@@ -686,11 +754,10 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                 <Card key={order.id} className="card-lift cursor-pointer" role="button" tabIndex={0} aria-label={`View order ${shortRef(order.reference)} for ${order.customerName ?? "Guest"}`} onClick={() => openDetail(order)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDetail(order) } }}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between gap-2">
-                      {canManage ? <span onClick={(e) => e.stopPropagation()}>
-                        <Checkbox aria-label={`Select order ${order.reference}`}
+                      {canManage ? <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                        <BatchSelection order={order} choice={batchType} busy={batchBusy}
                           checked={batchIds.includes(order.id)}
-                          disabled={batchBusy || quickAction(order) !== batchType}
-                          onCheckedChange={(checked) => setBatchIds((previous) => checked ? [...previous.filter((id) => id !== order.id), order.id] : previous.filter((id) => id !== order.id))}/>
+                          onChange={(checked) => setBatchIds((previous) => checked ? [...previous.filter((id) => id !== order.id), order.id] : previous.filter((id) => id !== order.id))} />
                       </span> : null}
                       <p className="font-bold">{shortRef(order.reference)}</p>
                       <OrderFulfillmentStatus order={order} />
