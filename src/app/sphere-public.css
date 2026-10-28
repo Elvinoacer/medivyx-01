@@ -525,6 +525,38 @@
 .sphere-public .premium-footer h4 { color:#153d32!important; opacity:1; }
 .sphere-public .premium-footer svg { color:currentColor; opacity:1; }
 
+/* Cart and checkout keep a light canvas even when the global .dark class is set.
+   Pin offer surfaces and controls to readable light colours in both states.
+   Contrast ratios: heading 10.7:1, detail 7.4:1, button 11.9:1. */
+.sphere-public .app-page :is(.sphere-cart-offer, .sphere-checkout-offers) {
+  background: #eaf4ec !important;
+  border-color: #86b29a !important;
+  color: #153d32 !important;
+}
+.sphere-public .app-page :is(.sphere-cart-offer, .sphere-checkout-offers) .sphere-offer-title {
+  color: #153d32 !important;
+}
+.sphere-public .app-page :is(.sphere-cart-offer, .sphere-checkout-offers) .sphere-offer-detail {
+  color: #305641 !important;
+}
+.sphere-public .app-page :is(.sphere-cart-offer, .sphere-checkout-offers) [data-slot="button"].sphere-offer-action {
+  background: #fffef8 !important;
+  border-color: #5a9473 !important;
+  color: #153d32 !important;
+  opacity: 1;
+  font-weight: 600;
+}
+.sphere-public .app-page :is(.sphere-cart-offer, .sphere-checkout-offers) [data-slot="button"].sphere-offer-action:hover:not(:disabled) {
+  background: #d5ecdd !important;
+  border-color: #356f50 !important;
+}
+.sphere-public .app-page :is(.sphere-cart-offer, .sphere-checkout-offers) [data-slot="button"].sphere-offer-action:disabled {
+  background: #e2e9e0 !important;
+  border-color: #a1baab !important;
+  color: #536e5e !important;
+  cursor: not-allowed;
+}
+
 /* High-contrast cart and checkout labels: scoped to the storefront to avoid
    changing medication labels elsewhere. The hex values are intentional:
    dark ink on lightly tinted backgrounds in the pharmacy's light experience. */
