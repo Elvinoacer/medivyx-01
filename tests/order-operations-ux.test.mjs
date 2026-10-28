@@ -22,6 +22,7 @@ test("unpaid COD can be prepared, but unreviewed Rx and unknown payment choices 
   const prepare = source("src/app/api/orders/[id]/prepare/route.ts")
   assert.match(prepare, /requireStaff\(\["ADMIN", "PHARMACIST", "STAFF"\]\)/)
   assert.match(prepare, /order\.paymentMethod === "CASH_ON_DELIVERY"/)
+  assert.match(prepare, /order.paymentMethod === "CASH_ON_PICKUP"/)
   assert.match(prepare, /order\.status === "PAID" && paid/)
   assert.match(prepare, /order\.inventoryReservedAt/)
   assert.match(prepare, /APPROVED", "PARTIALLY_APPROVED"/)
@@ -36,6 +37,7 @@ test("only a rider on an explicitly COD delivery can record cash", () => {
   const transition = source("src/app/api/orders/[id]/route.ts")
   assert.match(cash, /session\.staffRole === "RIDER" && .*order\.paymentMethod !== "CASH_ON_DELIVERY"/)
   assert.match(transition, /status === "COMPLETED_DELIVERY" && !order\.payments\.some/)
+  assert.match(transition, /status === "COMPLETED_PICKUP" && !order\.payments\.some/)
   assert.match(transition, /status === "OUT_FOR_DELIVERY" && \(order\.fulfillment !== "DELIVERY" \|\| !order\.riderId\)/)
 })
 
