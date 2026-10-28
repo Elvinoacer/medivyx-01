@@ -1574,14 +1574,14 @@ export function CheckoutView() {
                 )}
 
                 {!placedOrder && !activePromo && availableOffers.length > 0 ? (
-                  <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900 dark:bg-emerald-950/30">
-                    <p className="text-xs font-bold text-emerald-950 dark:text-emerald-100">Available offers · validated at checkout</p>
+                  <div className="sphere-checkout-offers space-y-2 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900 dark:bg-emerald-950/30">
+                    <p className="sphere-offer-title text-xs font-bold text-emerald-950 dark:text-emerald-100">Available offers · validated at checkout</p>
                     {availableOffers.slice(0,2).map(p=>(
                       <div key={p.id} className="flex items-center justify-between gap-2">
-                        <p className="min-w-0 truncate text-xs text-emerald-900 dark:text-emerald-200">
+                        <p className="sphere-offer-detail min-w-0 truncate text-xs font-medium text-emerald-900 dark:text-emerald-200">
                           <span className="font-mono font-bold">{p.code}</span> · {p.discountPct}% off{p.minimumSpend && subtotal < p.minimumSpend ? ` · Add ${formatKES(p.minimumSpend-subtotal)} more` : ""}
                         </p>
-                        <Button size="sm" variant="outline" disabled={promoBusy || (!!p.minimumSpend && subtotal < p.minimumSpend)} className="h-8 shrink-0" onClick={()=>{setOfferIntent(null);void applyPromo(p.code!)}}>Apply</Button>
+                        <Button size="sm" variant="outline" disabled={promoBusy || (!!p.minimumSpend && subtotal < p.minimumSpend)} className="sphere-offer-action h-8 shrink-0" onClick={()=>{setOfferIntent(null);void applyPromo(p.code!)}}>Apply</Button>
                       </div>
                     ))}
                   </div>
