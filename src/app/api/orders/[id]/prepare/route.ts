@@ -25,9 +25,10 @@ export async function POST(request: Request, { params }: Params) {
 
     const paid = order.payments.some((p) => p.status === "SUCCESS")
     const cashOnDelivery = order.fulfillment === "DELIVERY" && order.paymentMethod === "CASH_ON_DELIVERY"
-    const codCanPrepare = cashOnDelivery && ["RECEIVED", "PRESCRIPTION_VERIFIED", "AVAILABILITY_CONFIRMED", "AWAITING_PAYMENT"].includes(order.status)
-    if (!(order.status === "PAID" && paid) && !codCanPrepare) {
-      return NextResponse.json({ error: "This order must have confirmed payment, or explicitly be cash on delivery, before packing." }, { status: 409 })
+    const cashOnPickup = order.fulfillment === "PICKUP" && order.paymentMethod === "CASH_ON_PICKUP"
+    const cashCanPrepare = (cashOnDelivery || cashOnPickup) && ["RECEIVED", "PRESCRIPTION_VERIFIED", "AVAILABILITY_CONFIRMED", "AWAITING_PAYMENT"].includes(order.status)
+    if (!(order.status === "PAID" && paid) && !cashCanPrepare) {
+      return NextResponse.json({ error: "Payment must be confirmed, or the order must explicitly be payable in cash at pickup or delivery." }, { status: 409 })
     }
     if (!order.inventoryReservedAt || order.inventoryReleasedAt) {
       return NextResponse.json({ error: "Stock has not been reserved or has been released. Resolve stock before packing." }, { status: 409 })
@@ -42,8 +43,8 @@ export async function POST(request: Request, { params }: Params) {
       return NextResponse.json({ error: "Payment is still being processed. Resolve it before switching to cash collection." }, { status: 409 })
     }
     const actor = session.staffName ?? "Pharmacy staff"
-    const note = cashOnDelivery && !paid
-      ? "Accepted for packing — collect cash on delivery; payment not yet received"
+    const note = !paid && (cashOnDelivery || cashOnPickup)
+      ? `Accepted for packing — collect cash on ${cashOnDelivery ? "delivery" : "pickup"}; payment not yet received`
       : "Accepted for packing — payment confirmed"
     await db.$transaction(async (tx) => {
       const updated = await tx.order.updateMany({
