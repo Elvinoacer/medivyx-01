@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -19,7 +19,7 @@ import { useAppStore } from "@/store/use-app-store"
 import { useCartStore } from "@/store/use-cart-store"
 import { useAuthStore } from "@/store/use-auth-store"
 import {
-  ordersApi, paymentsApi, prescriptionsApi, settingsApi, addressesApi, promotionsApi, storageApi,
+  ordersApi, paymentsApi, prescriptionsApi, settingsApi, addressesApi, promotionsApi, storageApi, ApiError,
   type CreateOrderPayload,
 } from "@/lib/api-client"
 import type { AddressDTO, DeliverySettings, OrderDTO, PromotionDTO } from "@/lib/types"
@@ -76,12 +76,25 @@ function normalizePhone(raw: string): string | null {
 
 // ============================== VIEW ==============================
 
+function subscribeCartHydration(notify: () => void) {
+  return useCartStore.persist.onFinishHydration(notify)
+}
+
+function cartHydrationSnapshot() {
+  return useCartStore.persist.hasHydrated()
+}
+
 export function CheckoutView() {
   const navigate = useAppStore((s) => s.navigate)
   const linkedPromo = useAppStore((s) => s.params.promo)
+  const replaceView = useAppStore((s) => s.replace)
   const openAuth = useAppStore((s) => s.openAuth)
   const lines = useCartStore((s) => s.lines)
   const clearCart = useCartStore((s) => s.clear)
+  const savedCartPromo = useCartStore((s) => s.appliedPromo)
+  const saveCartPromo = useCartStore((s) => s.setAppliedPromo)
+  const clearCartPromo = useCartStore((s) => s.clearAppliedPromo)
+  const cartHydrated = useSyncExternalStore(subscribeCartHydration, cartHydrationSnapshot, () => false)
   const session = useAuthStore((s) => s.session)
   const refreshSession = useAuthStore((s) => s.refresh)
   const user = session?.user ?? null
@@ -152,27 +165,28 @@ export function CheckoutView() {
   const promoRequestId = useRef(0)
   const [offerIntent, setOfferIntent] = useState<string | null>(null)
 
-  // An offer selected before shopping remains available at checkout. Deep links
-  // also work after a page reload; validation is never inferred from URL data.
+  // Explicit links and pre-shopping selections take priority over the saved
+  // cart code. Wait until persisted cart hydration before reading either.
   useEffect(() => {
+    if (!cartHydrated) return
     const candidate = linkedPromo || new URLSearchParams(window.location.search).get("promo") || pendingOffer()
     const code = candidate?.trim().toUpperCase()
     if (code && /^[A-Z0-9_-]{3,32}$/.test(code)) {
       setPromoInput(code)
       setOfferIntent(code)
     }
-  }, [linkedPromo])
+  }, [linkedPromo, cartHydrated])
 
   // ---------- Sphere Points redemption state ----------
   const [redeemPoints, setRedeemPoints] = useState(false)
 
-  // Prices can change with cart quantities. Never send or display a discount
-  // calculated for a different subtotal.
-  const activePromo = promo?.validatedSubtotal === subtotal ? promo : null
-  const promoNeedsReview = !!promo && promo.validatedSubtotal !== subtotal
+  // Never display or submit a saved discount without a successful validation
+  // for the CURRENT subtotal and CURRENT persisted promotion code.
+  const activePromo = promo?.validatedSubtotal === subtotal && savedCartPromo?.code === promo.code ? promo : null
+  const promoNeedsReview = !!promo && savedCartPromo?.code === promo.code && promo.validatedSubtotal !== subtotal
   const discountAmount = activePromo?.discountAmount ?? 0
 
-  async function applyPromo(candidate?: string) {
+  async function applyPromo(candidate?: string, quiet = false) {
     const code = (candidate || promoInput).trim().toUpperCase()
     if (!code) { setPromoError("Enter a promo code."); return }
     if (!/^[A-Z0-9_-]{3,32}$/.test(code)) {
@@ -182,22 +196,49 @@ export function CheckoutView() {
     if (subtotal <= 0) { setPromoError("Add products to your bag before applying a code."); return }
 
     const requestId = ++promoRequestId.current
+    const checkedSubtotal = subtotal
+    processedOfferLink.current = `${code}:${checkedSubtotal}`
+
+    // Choosing a different code replaces the old offer, never stacks discounts.
+    if (savedCartPromo && savedCartPromo.code !== code) {
+      clearCartPromo()
+      setPromo(null)
+    }
     setPromoInput(code)
     setPromoBusy(true)
     setPromoError(null)
     try {
-      const res = await promotionsApi.validate(code, subtotal)
-      if (requestId !== promoRequestId.current) return
-      setPromo({ code: res.promotion.code ?? code, discountPct: res.promotion.discountPct ?? 0, discountAmount: res.discountAmount, validatedSubtotal: subtotal })
+      const res = await promotionsApi.validate(code, checkedSubtotal)
+      // An older response must not restore a code to a changed or emptied cart.
+      if (requestId !== promoRequestId.current || useCartStore.getState().subtotal() !== checkedSubtotal) return
+      const verifiedCode = res.promotion.code ?? code
+      saveCartPromo({ code: verifiedCode, minimumSpend: res.promotion.minimumSpend ?? null })
+      setPromo({
+        code: verifiedCode,
+        discountPct: res.promotion.discountPct ?? 0,
+        discountAmount: res.discountAmount,
+        validatedSubtotal: checkedSubtotal,
+      })
       forgetOffer()
-      toast.success("Promotion applied", { description: `${code} saved you ${formatKES(res.discountAmount)}.` })
+      setOfferIntent(null)
+      // A consumed ?promo link must not silently reapply after Remove / clear.
+      if (new URLSearchParams(window.location.search).has("promo")) replaceView("checkout")
+      if (!quiet) toast.success("Promotion applied", { description: `${code} saved you ${formatKES(res.discountAmount)}.` })
     } catch (err) {
-      if (requestId !== promoRequestId.current) return
+      if (requestId !== promoRequestId.current || useCartStore.getState().subtotal() !== checkedSubtotal) return
       const message = err instanceof Error ? err.message : "Could not validate this code. Try again."
+      // Temporary network/server failures retain the saved code for a later retry,
+      // but the discount is withheld. Invalid / exhausted offers are forgotten.
+      if (err instanceof ApiError && [400, 404, 409, 410].includes(err.status) &&
+          useCartStore.getState().appliedPromo?.code === code) {
+        clearCartPromo()
+      }
       setPromo(null)
       setPromoError(message)
+      setOfferIntent(null)
       forgetOffer()
-      toast.error("Offer could not be applied", { description: message })
+      if (new URLSearchParams(window.location.search).has("promo")) replaceView("checkout")
+      if (!quiet) toast.error("Offer could not be applied", { description: message })
     } finally {
       if (requestId === promoRequestId.current) setPromoBusy(false)
     }
@@ -212,22 +253,37 @@ export function CheckoutView() {
   }, [])
 
   useEffect(() => {
-    if (!offerIntent || subtotal <= 0) return
-    const key = `${offerIntent}:${subtotal}`
+    if (!cartHydrated || subtotal <= 0) return
+    const code = offerIntent || savedCartPromo?.code
+    if (!code) return
+    const key = `${code}:${subtotal}`
     if (processedOfferLink.current === key) return
     processedOfferLink.current = key
-    void applyPromo(offerIntent)
-    // Validate once for each incoming offer / cart amount.
-  }, [offerIntent, subtotal])
+    void applyPromo(code, true)
+    // Revalidate after hydration, on refresh and after EVERY cart amount change.
+  }, [cartHydrated, offerIntent, savedCartPromo?.code, subtotal])
+
+  useEffect(() => {
+    if (!cartHydrated || step === 4 || !promo || savedCartPromo?.code === promo.code) return
+    // Quantity or item removal may make a previously validated code ineligible.
+    promoRequestId.current += 1
+    setPromo(null)
+    setPromoInput("")
+    setOfferIntent(null)
+    setPromoBusy(false)
+    setPromoError("Your cart no longer qualifies for the previous promotion. The discount was removed.")
+  }, [cartHydrated, savedCartPromo?.code, promo, step])
 
   function removePromo() {
     promoRequestId.current += 1
+    clearCartPromo()
     setPromo(null)
     setPromoInput("")
     setPromoError(null)
     setPromoBusy(false)
     forgetOffer()
     setOfferIntent(null)
+    if (new URLSearchParams(window.location.search).has("promo")) replaceView("checkout")
   }
 
   // ---------- guest details ----------
