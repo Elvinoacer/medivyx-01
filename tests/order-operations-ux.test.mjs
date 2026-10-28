@@ -67,3 +67,15 @@ test("dispatch and rider surfaces show both zone and exact location; COD deliver
   assert.match(rider, /await ordersApi\.updateStatus\(order\.id, "COMPLETED_DELIVERY"/)
   assert.match(rider, /Only continue after physically collecting/)
 })
+
+test("orders explain unavailable batch selections instead of showing inert disabled checkboxes", () => {
+  const orders = source("src/components/views/admin/sections/orders-section.tsx")
+  assert.match(orders, /function batchBlocker\(/)
+  assert.match(orders, /function BatchSelection\(/)
+  assert.match(orders, /Why \$\{order\.reference\} is not selectable/)
+  assert.match(orders, /Select the info icon on another order/)
+  assert.match(orders, /Prescription review is incomplete/)
+  assert.match(orders, /payment attempt is still processing/)
+  assert.match(orders, /choice=\{batchType\}/)
+  assert.doesNotMatch(orders, /disabled=\{batchBusy \|\| quickAction\(order\) !== batchType\}/)
+})
