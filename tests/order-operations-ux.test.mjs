@@ -51,6 +51,9 @@ test("orders queue provides a bulk action lane and visible next steps", () => {
   assert.match(orders, /Other status actions/)
   assert.match(orders, /Priced delivery zone/)
   assert.match(orders, /deliveryMapUrl\(order\)/)
+  assert.match(orders, /Confirm cash received at counter/)
+  assert.match(orders, /isPaid\(order\) \? \["COMPLETED_PICKUP"\] : \[\]/)
+  assert.match(orders, /order\.status === "OUT_FOR_DELIVERY" && !isPaid\(order\)/)
 })
 
 test("dispatch and rider surfaces show both zone and exact location; COD delivery is explicitly confirmed", () => {
