@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -645,109 +644,123 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
         />
       ) : (
         <>
-          {/* desktop table */}
-          <Card className="hidden overflow-hidden md:block">
-            <ScrollArea className="scroll-slim">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {canManage ? <TableHead className="w-10"><span className="sr-only">Select</span></TableHead> : null}
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Items</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Time in queue</TableHead>
-                    <TableHead className="min-w-36 text-right">Next step</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {visible.map((order) => {
-                    const pay = latestPayment(order)
-                    const PayIcon = pay ? paymentIcon(pay.provider) : Banknote
-                    const firstItem = order.items[0]?.name ?? "—"
-                    return (
-                      <TableRow
-                        key={order.id}
-                        className="cursor-pointer"
-                        onClick={() => openDetail(order)}
-                      >
-                        {canManage ? <TableCell onClick={(e) => e.stopPropagation()}>
+          {/* Full-width desktop worklist. Related information shares one cell so the
+              price and next action remain visible without horizontal scrolling. */}
+          <Card className="admin-orders-table hidden overflow-hidden xl:block">
+            <Table className="table-fixed w-full">
+              <colgroup>
+                {canManage ? <col style={{ width: "5%" }} /> : null}
+                <col style={{ width: canManage ? "27%" : "29%" }} />
+                <col style={{ width: canManage ? "19%" : "21%" }} />
+                <col style={{ width: canManage ? "20%" : "22%" }} />
+                <col style={{ width: canManage ? "13%" : "13%" }} />
+                <col style={{ width: canManage ? "16%" : "15%" }} />
+              </colgroup>
+              <TableHeader>
+                <TableRow>
+                  {canManage ? <TableHead><span className="sr-only">Select order</span></TableHead> : null}
+                  <TableHead>Order, customer & items</TableHead>
+                  <TableHead>Fulfilment</TableHead>
+                  <TableHead>Progress & payment</TableHead>
+                  <TableHead className="text-right">Total & age</TableHead>
+                  <TableHead className="text-center">Next action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visible.map((order) => {
+                  const pay = latestPayment(order)
+                  const PayIcon = pay ? paymentIcon(pay.provider) : Banknote
+                  const firstItem = order.items[0]?.name ?? "—"
+                  return (
+                    <TableRow key={order.id} className="cursor-pointer" onClick={() => openDetail(order)}>
+                      {canManage ? (
+                        <TableCell onClick={(event) => event.stopPropagation()}>
                           <BatchSelection order={order} choice={batchType} busy={batchBusy}
                             checked={batchIds.includes(order.id)}
-                            onChange={(checked) => setBatchIds((previous) => checked ? [...previous.filter((id) => id !== order.id), order.id] : previous.filter((id) => id !== order.id))} />
-                        </TableCell> : null}
-                        <TableCell className="font-bold">{shortRef(order.reference)}</TableCell>
-                        <TableCell>
-                          <p className="max-w-40 truncate text-sm font-medium">{order.customerName ?? "Guest"}</p>
-                          <p className="text-xs text-muted-foreground">{order.customerPhone ?? "—"}</p>
+                            onChange={(checked) => setBatchIds((previous) => checked
+                              ? [...previous.filter((id) => id !== order.id), order.id]
+                              : previous.filter((id) => id !== order.id))} />
                         </TableCell>
-                        <TableCell>
-                          <p className="text-sm">
-                            {order.items.length} item{order.items.length === 1 ? "" : "s"}
-                            {order.items.some((i) => i.requiresPrescription) ? (
-                              <span className="ml-1.5 text-rose-600" aria-label="contains prescription items">℞</span>
-                            ) : null}
+                      ) : null}
+                      <TableCell>
+                        <div className="min-w-0 space-y-1">
+                          <p className="font-mono text-xs font-bold text-foreground">{shortRef(order.reference)}</p>
+                          <p className="text-xs font-semibold leading-snug">{order.customerName || "Guest customer"}</p>
+                          <p className="break-all text-[11px] text-muted-foreground">{order.customerPhone || "No contact number"}</p>
+                          <p className="text-[11px] leading-snug text-muted-foreground">
+                            <span className="font-semibold text-foreground">{order.items.reduce((sum, item) => sum + item.qty, 0)} units</span>
+                            {" · "}{firstItem}
+                            {order.items.length > 1 ? ` +${order.items.length - 1} more item${order.items.length === 2 ? "" : "s"}` : ""}
+                            {order.items.some((item) => item.requiresPrescription) ? <span className="ml-1 font-bold text-rose-700" aria-label="Contains prescription items">℞</span> : null}
                           </p>
-                          <p className="max-w-44 truncate text-xs text-muted-foreground">{firstItem}</p>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col items-start gap-1">
-                            <Badge variant="outline" className={cn("px-1.5 py-0 text-[10px]", typeBadgeClass[order.type])}>
-                              {order.type === "RESERVATION" ? "Reservation" : order.type === "PRESCRIPTION" ? "Rx order" : order.type === "MIXED" ? "Mixed" : "OTC"}
-                            </Badge>
-                            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                              {order.fulfillment === "DELIVERY" ? <Truck className="h-3 w-3" aria-hidden /> : <Store className="h-3 w-3" aria-hidden />}
-                              {order.fulfillment === "DELIVERY" ? (order.deliveryArea || "Delivery · zone missing") : "Pickup"}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex min-w-0 flex-col items-start gap-1.5">
+                          <Badge variant="outline" className={cn("text-[10px]", typeBadgeClass[order.type])}>
+                            {ORDER_TYPE_LABELS[order.type]}
+                          </Badge>
+                          <p className="flex items-start gap-1.5 text-xs font-medium leading-snug">
+                            {order.fulfillment === "DELIVERY" ? <Truck className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /> : <Store className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />}
+                            <span>{order.fulfillment === "DELIVERY" ? (order.deliveryArea || "Delivery zone missing") : "Store pickup"}</span>
+                          </p>
+                          {order.fulfillment === "DELIVERY" ? (
+                            <p className="text-[11px] text-muted-foreground">Delivery fee: {formatKES(order.deliveryFee)}</p>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex min-w-0 flex-col items-start gap-1.5">
+                          <OrderFulfillmentStatus order={order} />
+                          <p className="text-[11px] font-medium leading-snug text-muted-foreground">{paymentSummary(order)}</p>
                           {pay ? (
-                            <span className="flex items-center gap-1.5">
+                            <span className="flex flex-wrap items-center gap-1">
                               <PayIcon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
                               <PaymentStatusBadge status={pay.status} />
                             </span>
-                          ) : (
-                            <span className={cn("text-xs font-medium", isCashOnDelivery(order) ? "text-amber-800 dark:text-amber-300" : "text-muted-foreground")}>{paymentSummary(order)}</span>
-                          )}
-                        </TableCell>
-                        <TableCell><OrderFulfillmentStatus order={order} /></TableCell>
-                        <TableCell className="text-right font-semibold tabular-nums">{formatKES(order.total)}</TableCell>
-                        <TableCell className="text-right text-xs" title={formatDateTime(order.createdAt)}><span className="font-semibold tabular-nums">{timeAgo(order.createdAt)}</span><span className="block text-muted-foreground">{formatDateTime(order.createdAt)}</span></TableCell>
-                        <TableCell>
-                          {canManage && quickAction(order) ? (
-                            <Button variant={quickAction(order) === "prepare" ? "default" : "outline"} size="sm"
-                              disabled={actionBusy || batchBusy}
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                const operation = quickAction(order)!
-                                if (operation === "ready" || operation === "dispatch") {
-                                  setTransition({ order, target: operation === "ready" ? "READY_FOR_PICKUP" : "OUT_FOR_DELIVERY" })
-                                  return
-                                }
-                                void runQuickAction(order, operation)
-                              }}>
-                              {nextOrderActionLabel(order)}
-                            </Button>
-                          ) : (
-                            <Button variant="outline" size="sm" className="gap-1.5" aria-label={`Open order ${shortRef(order.reference)}: ${nextOrderActionLabel(order)}`} onClick={(event) => { event.stopPropagation(); openDetail(order) }}>
-                              {nextOrderActionLabel(order)} <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <p className="whitespace-nowrap text-sm font-bold tabular-nums text-foreground">{formatKES(order.total)}</p>
+                        <p className="mt-1 text-[11px] font-medium tabular-nums text-muted-foreground">{timeAgo(order.createdAt)}</p>
+                        <p className="mt-0.5 text-[10px] text-muted-foreground" title={formatDateTime(order.createdAt)}>{formatDateTime(order.createdAt)}</p>
+                      </TableCell>
+                      <TableCell onClick={(event) => event.stopPropagation()}>
+                        {canManage && quickAction(order) ? (
+                          <Button
+                            variant={quickAction(order) === "prepare" ? "default" : "outline"}
+                            size="sm"
+                            className="admin-order-next-action"
+                            disabled={actionBusy || batchBusy}
+                            onClick={() => {
+                              const operation = quickAction(order)!
+                              if (operation === "ready" || operation === "dispatch") {
+                                setTransition({ order, target: operation === "ready" ? "READY_FOR_PICKUP" : "OUT_FOR_DELIVERY" })
+                                return
+                              }
+                              void runQuickAction(order, operation)
+                            }}
+                          >
+                            {nextOrderActionLabel(order)}
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" className="admin-order-next-action"
+                            aria-label={`Open order ${shortRef(order.reference)}: ${nextOrderActionLabel(order)}`}
+                            onClick={() => openDetail(order)}>
+                            {nextOrderActionLabel(order)} <ChevronRight className="ml-1 inline h-3.5 w-3.5 shrink-0" aria-hidden />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
           </Card>
 
-          {/* mobile cards */}
-          <div className="space-y-3 md:hidden">
+          {/* Compact cards for phones and smaller laptops — no sideways table scroll. */}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:hidden">
             {visible.map((order) => {
               const pay = latestPayment(order)
               return (
@@ -784,9 +797,10 @@ export function OrdersSection({ refreshKey, onRefresh, onNavigateSection }: Sect
                         </p>
                         <p className="text-xs text-muted-foreground" title={formatDateTime(order.createdAt)}>In queue {timeAgo(order.createdAt)} · {formatDateTime(order.createdAt)}</p>
                         <p className="mt-1 text-xs font-semibold text-primary">Next: {nextOrderActionLabel(order)}</p>
-                        {order.fulfillment === "DELIVERY" ? <p className="mt-1 text-xs"><MapPin className="mr-1 inline h-3 w-3" />{order.deliveryArea || "Zone missing"} · {paymentSummary(order)}</p> : null}
+                        <p className="mt-1 text-xs font-medium text-muted-foreground">{paymentSummary(order)}</p>
+                        {order.fulfillment === "DELIVERY" ? <p className="mt-1 text-xs"><MapPin className="mr-1 inline h-3 w-3" />{order.deliveryArea || "Zone missing"} · Fee {formatKES(order.deliveryFee)}</p> : null}
                       </div>
-                      <p className="text-base font-bold tabular-nums">{formatKES(order.total)}</p>
+                      <p className="shrink-0 whitespace-nowrap text-base font-bold tabular-nums">{formatKES(order.total)}</p>
                     </div>
                   </CardContent>
                 </Card>
