@@ -116,15 +116,16 @@ function nextStatusesFor(order: OrderDTO, role: Role | "CUSTOMER" | undefined): 
   if (role === "RIDER") {
     return order.fulfillment === "DELIVERY" && order.riderId && order.status === "READY_FOR_PICKUP"
       ? ["OUT_FOR_DELIVERY"]
-      : order.fulfillment === "DELIVERY" && order.status === "OUT_FOR_DELIVERY"
+      : order.fulfillment === "DELIVERY" && order.status === "OUT_FOR_DELIVERY" && isPaid(order)
         ? ["COMPLETED_DELIVERY"]
         : []
   }
   if (order.status === "READY_FOR_PICKUP") {
-    return order.fulfillment === "PICKUP" ? ["COMPLETED_PICKUP"]
+    return order.fulfillment === "PICKUP" ? (isPaid(order) ? ["COMPLETED_PICKUP"] : [])
       : order.riderId ? ["OUT_FOR_DELIVERY"] : []
   }
-  // Delivery must be checked and packed before it can leave the pharmacy.
+  // Completion always requires a recorded payment (including cash at handoff).
+  if (order.status === "OUT_FOR_DELIVERY" && !isPaid(order)) return []
   return (NEXT_STATUS[order.status] ?? []).filter((status) => {
     if (status === "PAID") return order.payments.some((payment) => payment.status === "SUCCESS")
     return status !== "COMPLETED_DELIVERY" || order.fulfillment === "DELIVERY"
@@ -149,9 +150,10 @@ function nextOrderActionLabel(order: OrderDTO): string {
     if (order.status === "PAID") return "Start preparing"
     if (order.status === "PREPARING") return "Mark ready for dispatch"
     if (order.status === "READY_FOR_PICKUP") return order.riderId ? "Dispatch rider" : "Assign rider"
-    if (order.status === "OUT_FOR_DELIVERY") return "Track delivery"
+    if (order.status === "OUT_FOR_DELIVERY") return isPaid(order) ? "Confirm delivered" : isCashOnDelivery(order) ? "Cash due at drop-off" : "Resolve payment"
   }
-  if (order.status === "AWAITING_PAYMENT") return "Confirm payment"
+  if (order.status === "READY_FOR_PICKUP" && order.fulfillment === "PICKUP") return isPaid(order) ? "Complete pickup" : "Collect cash at counter"
+  if (order.status === "AWAITING_PAYMENT") return isCashOnDelivery(order) ? "Accept & start packing" : "Confirm payment"
   if (order.status === "RECEIVED" || order.status === "UNDER_REVIEW") return "Review order"
   return "View details"
 }
@@ -963,9 +965,9 @@ function OrderDetailSheet({
                     })}
                 </ul>
               )}
-              {canManage && ["AVAILABILITY_CONFIRMED", "AWAITING_PAYMENT"].includes(order.status) && !order.payments.some((payment) => payment.status === "SUCCESS") ? (
+              {canManage && (["AVAILABILITY_CONFIRMED", "AWAITING_PAYMENT"].includes(order.status) || (order.status === "READY_FOR_PICKUP" && order.paymentMethod === "CASH_ON_PICKUP")) && !isPaid(order) ? (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Button
+                  {order.paymentMethod !== "CASH_ON_PICKUP" ? <Button
                     size="sm"
                     className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
                     disabled={actionBusy || !order.customerPhone}
@@ -973,7 +975,7 @@ function OrderDetailSheet({
                     onClick={() => onPromptMpesa(order)}
                   >
                     <Smartphone className="h-4 w-4" /> Send M-Pesa STK prompt
-                  </Button>
+                  </Button> : null}
                   <Button
                     size="sm"
                     variant="outline"
@@ -981,7 +983,7 @@ function OrderDetailSheet({
                     disabled={actionBusy}
                     onClick={() => onStartTransition(order, "PAID", true)}
                   >
-                    <Banknote className="h-4 w-4" /> Mark paid (cash received)
+                    <Banknote className="h-4 w-4" /> {order.paymentMethod === "CASH_ON_PICKUP" ? "Confirm cash received at counter" : "Mark paid (cash received)"}
                   </Button>
                 </div>
               ) : null}
@@ -1157,6 +1159,11 @@ function OrderDetailSheet({
                 <p className="text-xs font-semibold text-foreground">{order.status === "READY_FOR_PICKUP" && !order.riderId ? "Next: assign a rider before dispatching" : "Next order action"}</p>
               ) : null}
               <div className="grid gap-2 sm:flex sm:flex-wrap">
+                {canManage && order.fulfillment === "PICKUP" && order.status === "READY_FOR_PICKUP" && !isPaid(order) ? (
+                  <Button disabled={actionBusy} onClick={() => onStartTransition(order, "PAID", true)}>
+                    <Banknote className="mr-2 h-4 w-4"/> Confirm cash received at counter
+                  </Button>
+                ) : null}
                 {canManage && readyToPack(order) ? (
                   <Button disabled={actionBusy} onClick={() => onStartPreparing(order)} className="gap-2">
                     {actionBusy ? <Loader2 className="h-4 w-4 animate-spin"/> : <Package className="h-4 w-4"/>}
