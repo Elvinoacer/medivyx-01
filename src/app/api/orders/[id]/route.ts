@@ -71,6 +71,9 @@ export async function PATCH(request: Request, { params }: Params) {
     if (status === "COMPLETED_PICKUP" && order.fulfillment !== "PICKUP") {
       return NextResponse.json({ error: "Delivery orders must be dispatched to a rider, not completed as pickups." }, { status: 409 })
     }
+    if (status === "COMPLETED_PICKUP" && !order.payments.some((payment) => payment.status === "SUCCESS")) {
+      return NextResponse.json({ error: "Record cash received or confirm online payment before completing customer pickup." }, { status: 409 })
+    }
     if (status === "COMPLETED_DELIVERY" && order.fulfillment !== "DELIVERY") {
       return NextResponse.json({ error: "Pickup orders cannot be marked as delivered." }, { status: 409 })
     }
