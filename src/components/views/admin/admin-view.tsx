@@ -26,7 +26,7 @@ import {
   LayoutDashboard, Package, ClipboardList, Pill, Megaphone, Users, BarChart3,
   ShieldCheck, Settings, LogOut, Lock, Store, Menu, Loader2, RefreshCw, Bike, MessageSquareText,
   Bell, BellRing, BriefcaseMedical, CalendarDays, ArrowUpRight, ChevronRight, Search,
-  Plus, Moon, Sun,
+  Plus, Moon, Sun, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react"
 import { enablePushNotifications, getPushPermissionState } from "@/lib/firebase/client"
 import type { LucideIcon } from "lucide-react"
@@ -158,6 +158,21 @@ export function AdminView() {
   const [dateLabel, setDateLabel] = useState("")
   const [refreshKey, setRefreshKey] = useState(0)
   const [navOpen, setNavOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
+  useEffect(() => {
+    try { setSidebarCollapsed(window.localStorage.getItem("sphere-admin-sidebar-collapsed") === "true") }
+    catch { /* Keep the full sidebar when browser storage is unavailable. */ }
+  }, [])
+
+  function toggleSidebar() {
+    setSidebarCollapsed((current) => {
+      const next = !current
+      try { window.localStorage.setItem("sphere-admin-sidebar-collapsed", String(next)) }
+      catch { /* The toggle still works for this session. */ }
+      return next
+    })
+  }
 
   const [pushStatus, setPushStatus] = useState<NotificationPermission>("default")
   const [pushLoading, setPushLoading] = useState(false)
@@ -304,9 +319,9 @@ export function AdminView() {
   }
 
   return (
-    <div className="app-page app-page-admin admin-workspace">
-      <aside className="admin-sidebar sticky top-0">
-        <SidebarNav items={visibleNav} section={section} onSelect={goTo} staffName={staff?.name ?? "Staff"} staffRole={role} onSignOut={handleSignOut} openNow={openNow} onStore={() => navigate("home")} />
+    <div className={cn("app-page app-page-admin admin-workspace", sidebarCollapsed && "admin-sidebar-collapsed")}>
+      <aside className={cn("admin-sidebar sticky top-0", sidebarCollapsed && "is-collapsed")}>
+        <SidebarNav items={visibleNav} section={section} onSelect={goTo} staffName={staff?.name ?? "Staff"} staffRole={role} onSignOut={handleSignOut} openNow={openNow} onStore={() => navigate("home")} collapsed={sidebarCollapsed} />
       </aside>
 
       <div className="admin-main">
@@ -323,6 +338,15 @@ export function AdminView() {
               <SidebarNav items={visibleNav} section={section} onSelect={goTo} staffName={staff?.name ?? "Staff"} staffRole={role} onSignOut={handleSignOut} openNow={openNow} onStore={() => navigate("home")} />
             </SheetContent>
           </Sheet>
+          <Button type="button" variant="ghost" size="icon"
+            className="admin-sidebar-collapse-toggle"
+            aria-label={sidebarCollapsed ? "Expand admin sidebar" : "Collapse admin sidebar"}
+            aria-expanded={!sidebarCollapsed}
+            aria-controls="admin-desktop-navigation"
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={toggleSidebar}>
+            {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </Button>
           <div className="admin-breadcrumb"><span>Workspace</span><ChevronRight aria-hidden className="h-3.5 w-3.5" /><span>{active?.label ?? "Dashboard"}</span></div>
           <div className="admin-topbar-actions">
             <span className="admin-today"><CalendarDays className="h-3.5 w-3.5" aria-hidden />{dateLabel}</span>
@@ -362,7 +386,7 @@ export function AdminView() {
   )
 }
 
-function SidebarNav({ items, section, onSelect, staffName, staffRole, onSignOut, openNow, onStore }: {
+function SidebarNav({ items, section, onSelect, staffName, staffRole, onSignOut, openNow, onStore, collapsed = false }: {
   items: NavItem[]
   section: AdminSectionKey
   onSelect: (key: AdminSectionKey) => void
@@ -371,18 +395,19 @@ function SidebarNav({ items, section, onSelect, staffName, staffRole, onSignOut,
   onSignOut: () => void
   openNow: boolean
   onStore: () => void
+  collapsed?: boolean
 }) {
   return (
-    <div className="admin-sidebar-inner">
-      <button onClick={onStore} className="admin-brand" aria-label="Sphere Pharmacy storefront"><span className="admin-brand-mark"><Plus strokeWidth={2.5} /></span><span>sphere<span className="admin-brand-caption">PHARMACY WORKSPACE</span></span><ArrowUpRight className="admin-brand-arrow h-4 w-4" aria-hidden /></button>
+    <div id={collapsed ? "admin-desktop-navigation" : undefined} className="admin-sidebar-inner">
+      <button onClick={onStore} className="admin-brand" aria-label="Sphere Pharmacy storefront" title="Sphere Pharmacy storefront"><span className="admin-brand-mark"><Plus strokeWidth={2.5} /></span><span>sphere<span className="admin-brand-caption">PHARMACY WORKSPACE</span></span><ArrowUpRight className="admin-brand-arrow h-4 w-4" aria-hidden /></button>
       <div className="admin-location"><span className="admin-location-icon"><Store className="h-4 w-4" /></span><span><strong>Roysambu, Nairobi</strong><span className="admin-location-status"><i className={openNow ? "is-open" : ""} />{openNow ? "Pharmacy is open" : "Pharmacy is closed"}</span></span></div>
       <nav aria-label="Admin sections" className="admin-nav">
         {NAV_GROUPS.map((group) => {
           const groupItems = group.keys.flatMap((key) => items.filter((item) => item.key === key))
-          return groupItems.length ? <div className="admin-nav-group" key={group.label}><p className="admin-nav-label">{group.label}</p>{groupItems.map((item) => <button key={item.key} onClick={() => onSelect(item.key)} aria-current={section === item.key ? "page" : undefined} className={cn("admin-nav-item", section === item.key && "is-active")}><item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden /><span>{item.label}</span>{section === item.key ? <span className="admin-nav-active-dot" aria-hidden /> : null}</button>)}</div> : null
+          return groupItems.length ? <div className="admin-nav-group" key={group.label}><p className="admin-nav-label">{group.label}</p>{groupItems.map((item) => <button key={item.key} onClick={() => onSelect(item.key)} aria-current={section === item.key ? "page" : undefined} aria-label={collapsed ? item.label : undefined} title={collapsed ? item.label : undefined} className={cn("admin-nav-item", section === item.key && "is-active")}><item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden /><span>{item.label}</span>{section === item.key ? <span className="admin-nav-active-dot" aria-hidden /> : null}</button>)}</div> : null
         })}
       </nav>
-      <div className="admin-sidebar-bottom"><button className="admin-store-link" onClick={onStore}><Store className="h-4 w-4" /><span>View storefront</span><ArrowUpRight className="h-3.5 w-3.5" /></button><div className="admin-sidebar-profile"><Avatar className="h-9 w-9"><AvatarFallback>{initials(staffName)}</AvatarFallback></Avatar><span className="min-w-0 flex-1"><strong>{staffName}</strong><span>{ROLE_LABELS[staffRole]}</span></span><button onClick={onSignOut} aria-label="Sign out of staff dashboard" title="Sign out"><LogOut className="h-4 w-4" /></button></div></div>
+      <div className="admin-sidebar-bottom"><button className="admin-store-link" onClick={onStore} title="View storefront" aria-label={collapsed ? "View storefront" : undefined}><Store className="h-4 w-4" /><span>View storefront</span><ArrowUpRight className="h-3.5 w-3.5" /></button><div className="admin-sidebar-profile"><Avatar className="h-9 w-9"><AvatarFallback>{initials(staffName)}</AvatarFallback></Avatar><span className="min-w-0 flex-1"><strong>{staffName}</strong><span>{ROLE_LABELS[staffRole]}</span></span><button onClick={onSignOut} aria-label="Sign out of staff dashboard" title="Sign out"><LogOut className="h-4 w-4" /></button></div></div>
     </div>
   )
 }
