@@ -861,11 +861,11 @@ export function CheckoutView() {
                   </div>
 
                   {user ? (
-                    <div className="flex items-start gap-3 rounded-xl border bg-emerald-50/60 p-4 dark:bg-emerald-950/30">
-                      <User className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                    <div className="sphere-checkout-customer-card flex items-start gap-3 rounded-xl border bg-emerald-50/60 p-4 dark:bg-emerald-950/30">
+                      <User className="sphere-checkout-customer-icon mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
                       <div className="min-w-0">
                         <p className="text-sm font-bold">{user.name ?? "Signed-in customer"}</p>
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="sphere-checkout-customer-details truncate text-xs text-muted-foreground">
                           {user.phone ?? "—"} {user.email ? `· ${user.email}` : ""} · logged in
                         </p>
                       </div>
@@ -1080,14 +1080,14 @@ export function CheckoutView() {
                   </div>
 
                   {hasRx ? (
-                    <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-800 dark:bg-amber-950/20">
+                    <div className="sphere-checkout-rx-upload-panel space-y-4 rounded-xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-800 dark:bg-amber-950/20">
                       <div className="flex items-start gap-3">
-                        <FileWarning className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+                        <FileWarning className="sphere-checkout-rx-upload-icon mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
                         <div>
-                          <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                          <h3 className="sphere-checkout-rx-upload-title text-sm font-bold text-amber-900 dark:text-amber-200">
                             Prescription required ({rxCount} Rx item{rxCount === 1 ? "" : "s"})
                           </h3>
-                          <p className="mt-0.5 text-xs text-amber-800/90 dark:text-amber-300/90">
+                          <p className="sphere-checkout-rx-upload-description mt-0.5 text-xs text-amber-800/90 dark:text-amber-300/90">
                             Upload a photo or PDF of your prescription — our pharmacist verifies it before dispensing.
                             At least one file is required to unlock payment.
                           </p>
@@ -1116,7 +1116,7 @@ export function CheckoutView() {
                           ))}
                         </ul>
                       ) : (
-                        <p className="rounded-lg border border-dashed bg-card/60 p-3 text-center text-xs text-muted-foreground">
+                        <p className="sphere-checkout-rx-upload-empty rounded-lg border border-dashed bg-card/60 p-3 text-center text-xs text-muted-foreground">
                           No prescriptions uploaded yet — required before payment.
                         </p>
                       )}
@@ -1156,7 +1156,7 @@ export function CheckoutView() {
                         </ul>
                       ) : null}
 
-                      {rxError ? <p className="text-xs font-medium text-rose-600" role="alert">{rxError}</p> : null}
+                      {rxError ? <p className="sphere-checkout-rx-upload-error text-xs font-medium text-rose-600" role="alert">{rxError}</p> : null}
 
                       {uploading && rxUploadStage ? (
                         <div className="space-y-2 rounded-lg border bg-card p-3" role="status" aria-live="polite">
@@ -1197,7 +1197,7 @@ export function CheckoutView() {
                           </Button>
                         ) : null}
                       </div>
-                      <p className="text-[11px] text-muted-foreground">Photos or PDF · up to 10MB each · multiple prescriptions welcome.</p>
+                      <p className="sphere-checkout-rx-upload-help text-xs text-muted-foreground">Photos or PDF · up to 10MB each · multiple prescriptions welcome.</p>
                     </div>
                   ) : null}
 
@@ -1424,7 +1424,7 @@ export function CheckoutView() {
                         <span className="tnum">{formatKES(placedOrder.subtotal)}</span>
                       </div>
                       {placedOrder.discountAmount > 0 ? (
-                        <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
+                        <div className="sphere-checkout-discount flex justify-between text-emerald-700 dark:text-emerald-400">
                           <span>Promo {placedOrder.promotionCode}</span>
                           <span className="tnum font-semibold">−{formatKES(placedOrder.discountAmount)}</span>
                         </div>
@@ -1642,7 +1642,7 @@ export function CheckoutView() {
                     <span className="tnum font-semibold">{formatKES(placedOrder ? placedOrder.subtotal : subtotal)}</span>
                   </div>
                   {(placedOrder ? placedOrder.discountAmount > 0 : activePromo != null) ? (
-                    <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
+                    <div className="sphere-checkout-discount flex justify-between text-emerald-700 dark:text-emerald-400">
                       <span>Promo discount</span>
                       <span className="tnum font-semibold">−{formatKES(placedOrder ? placedOrder.discountAmount : discountAmount)}</span>
                     </div>
