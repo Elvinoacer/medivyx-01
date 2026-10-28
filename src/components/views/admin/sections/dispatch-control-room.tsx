@@ -459,6 +459,15 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
                       </Button>
                     </div>
 
+                    {compact && !expandedOrder ? (
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-muted/30 p-2 text-xs">
+                        <span className="font-semibold">{order.customerName ?? "Guest"} · {order.deliveryArea || "Zone missing"}</span>
+                        <span>Rider: {order.riderName || "Unassigned"}</span>
+                        <span className="font-semibold">{formatKES(order.total)} · {paid(order) ? "Paid" : order.paymentMethod === "CASH_ON_DELIVERY" ? "COD" : "Payment pending"}</span>
+                      </div>
+                    ) : null}
+
+                    {(!compact || expandedOrder) ? <>
                     <div className="grid gap-3 text-sm sm:grid-cols-2">
                       <div className="min-w-0 space-y-1">
                         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Customer</p>
@@ -536,10 +545,12 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
                       {order.deliveryAddress || order.deliveryArea ? <Button size="sm" variant="outline" className="gap-1.5" asChild><a href={mapsHref(order)} target="_blank" rel="noopener noreferrer"><Navigation className="h-3.5 w-3.5" /> Map</a></Button> : null}
                     </div>
 
+                    </> : null}
+
                     <button type="button" className="flex w-full items-center justify-between border-t pt-3 text-left text-xs font-semibold text-muted-foreground hover:text-foreground"
                       onClick={() => setExpanded((prev) => expandedOrder ? prev.filter((id) => id !== order.id) : [...prev, order.id])}
                       aria-expanded={expandedOrder}>
-                      <span>Items, notes & delivery history</span>
+                      <span>{compact ? (expandedOrder ? "Collapse delivery" : "Review, assign & take action") : "Items, notes & delivery history"}</span>
                       {expandedOrder ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </button>
                     {expandedOrder ? (
