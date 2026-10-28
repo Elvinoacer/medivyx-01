@@ -50,6 +50,8 @@ test("booking lists update quietly and staff actions apply optimistically with r
   assert.match(bookings, /const loadRows = useCallback\(async \(background = false\)/)
   assert.match(bookings, /void loadRows\(true\)/)
   assert.match(bookings, /void loadOverview\(\)/)
+  assert.match(bookings, /lastDetailSync\.current === refreshKey/)
+  assert.match(bookings, /if \(selectedId\) void loadDetail\(selectedId\)/)
   assert.match(bookings, /if \(request === rowsRequest\.current && !background\)/)
   assert.match(bookings, /const oldRow = data\?\.items\.find/)
   assert.match(bookings, /const oldDetail = detail\?\.id === id/)
