@@ -62,6 +62,11 @@ test("confirmed offers persist with the cart and cannot outlive an invalid baske
   assert.match(cart, /promo\.minimumSpend != null && subtotal < promo\.minimumSpend/)
   assert.match(cart, /clear: \(\) => \{[\s\S]*set\(\{ lines: \[\], appliedPromo: null \}\)/)
   assert.match(cart, /partialize: \(state\) => \(\{ lines: state\.lines, appliedPromo: state\.appliedPromo \}\)/)
+  const cartView = source("src/components/views/cart-view.tsx")
+  assert.match(cartView, /Saved code/)
+  assert.match(cartView, /Your discount will be verified again at checkout/)
+  assert.match(cartView, /previousOffer && !updatedCart\.appliedPromo && updatedCart\.lines\.length > 0/)
+
   assert.match(checkout, /offerIntent \|\| savedCartPromo\?\.code/)
   assert.match(checkout, /if \(requestId !== promoRequestId\.current \|\| useCartStore\.getState\(\)\.subtotal\(\) !== checkedSubtotal\) return/)
   assert.match(checkout, /clearCartPromo\(\)/)
