@@ -80,6 +80,7 @@ export function ServiceBookingsSection({ refreshKey }: SectionProps) {
   const rowsRequest = useRef(0)
   const detailRequest = useRef(0)
   const lastRefreshKey = useRef(refreshKey)
+  const lastDetailSync = useRef(refreshKey)
 
   const loadRows = useCallback(async (background = false) => {
     const request = ++rowsRequest.current
@@ -142,6 +143,12 @@ export function ServiceBookingsSection({ refreshKey }: SectionProps) {
       if (request === detailRequest.current) setDetailLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    if (lastDetailSync.current === refreshKey) return
+    lastDetailSync.current = refreshKey
+    if (selectedId) void loadDetail(selectedId)
+  }, [refreshKey, selectedId, loadDetail])
 
   function openDetail(id: string) {
     setDetail(null)
