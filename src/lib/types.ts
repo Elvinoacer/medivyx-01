@@ -152,9 +152,9 @@ export interface OrderDTO {
   type: OrderType
   status: OrderStatus
   fulfillment: Fulfillment
-  paymentMethod: string | null
-  deliveryLatitude: number | null
-  deliveryLongitude: number | null
+  paymentMethod?: string | null
+  deliveryLatitude?: number | null
+  deliveryLongitude?: number | null
   deliveryAddress: string | null
   deliveryArea: string | null
   deliveryNotes: string | null
