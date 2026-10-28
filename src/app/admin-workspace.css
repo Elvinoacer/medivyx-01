@@ -315,3 +315,109 @@ body:has(.admin-experience) .admin-mobile-sidebar { width: 280px; max-width: 85v
 .admin-signin-links { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 14px; margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--border); }
 .admin-signin-links button { display: flex; align-items: center; gap: 6px; color: var(--primary); font-size: 11px; }
 .admin-signin-links button:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+
+/* Desktop staff navigation: compact icon rail frees room for dense operational tables. */
+@media (min-width: 768px) {
+  .admin-workspace.app-page-admin.admin-sidebar-collapsed {
+    grid-template-columns: 70px minmax(0, 1fr);
+  }
+  .admin-workspace .admin-sidebar-collapse-toggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+    width: 35px;
+    height: 35px;
+    min-height: 35px;
+    color: var(--muted-foreground);
+  }
+  .admin-sidebar.is-collapsed .admin-brand {
+    justify-content: center;
+    padding: 18px 8px 15px;
+  }
+  .admin-sidebar.is-collapsed .admin-brand > span:nth-child(2),
+  .admin-sidebar.is-collapsed .admin-brand-arrow,
+  .admin-sidebar.is-collapsed .admin-location,
+  .admin-sidebar.is-collapsed .admin-nav-label,
+  .admin-sidebar.is-collapsed .admin-nav-item > span:not(.admin-nav-active-dot),
+  .admin-sidebar.is-collapsed .admin-nav-active-dot,
+  .admin-sidebar.is-collapsed .admin-store-link > span,
+  .admin-sidebar.is-collapsed .admin-store-link > svg:last-child,
+  .admin-sidebar.is-collapsed .admin-sidebar-profile > span {
+    display: none;
+  }
+  .admin-sidebar.is-collapsed .admin-nav {
+    padding: 0 9px 10px;
+  }
+  .admin-sidebar.is-collapsed .admin-nav-group + .admin-nav-group {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #aec8b51c;
+  }
+  .admin-sidebar.is-collapsed .admin-nav-item {
+    min-height: 38px;
+    justify-content: center;
+    padding: 8px;
+    gap: 0;
+    border-radius: 9px;
+  }
+  .admin-sidebar.is-collapsed .admin-nav-item > svg { width: 19px; height: 19px; }
+  .admin-sidebar.is-collapsed .admin-sidebar-bottom { padding: 10px 9px; }
+  .admin-sidebar.is-collapsed .admin-store-link {
+    justify-content: center;
+    padding: 7px 0 10px;
+  }
+  .admin-sidebar.is-collapsed .admin-sidebar-profile {
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    padding-top: 10px;
+  }
+  .admin-sidebar.is-collapsed .admin-sidebar-profile > button { min-height: 32px; }
+  .admin-workspace .admin-sidebar,
+  .admin-workspace.app-page-admin {
+    transition: width 180ms ease, grid-template-columns 180ms ease;
+  }
+}
+@media (max-width: 767px) {
+  .admin-workspace .admin-sidebar-collapse-toggle { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-workspace .admin-sidebar,
+  .admin-workspace.app-page-admin { transition: none; }
+}
+
+/* Orders: grouped, fixed-width columns must fit within the workspace.
+   Table cells wrap instead of triggering a nested horizontal scrollbar. */
+.admin-experience .admin-orders-table [data-slot="table-container"] {
+  overflow-x: clip;
+}
+.admin-experience .admin-orders-table [data-slot="table"] {
+  table-layout: fixed;
+  width: 100%;
+}
+.admin-experience .admin-orders-table [data-slot="table-head"] {
+  height: 40px;
+  padding: 10px 9px;
+  white-space: normal;
+  vertical-align: middle;
+}
+.admin-experience .admin-orders-table [data-slot="table-cell"] {
+  padding: 12px 9px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.admin-experience .admin-orders-table [data-slot="table-cell"] .admin-order-next-action {
+  width: 100%;
+  height: auto;
+  min-height: 36px;
+  padding: 7px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+}
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .admin-experience .admin-orders-table [data-slot="table-head"],
+  .admin-experience .admin-orders-table [data-slot="table-cell"] {
+    padding-inline: 7px;
+  }
+}
