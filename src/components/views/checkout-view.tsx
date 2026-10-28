@@ -157,7 +157,7 @@ export function CheckoutView() {
 
   // ---------- promo code ----------
   const [promoInput, setPromoInput] = useState("")
-  const [promo, setPromo] = useState<{ code: string; discountPct: number; discountAmount: number; validatedSubtotal: number } | null>(null)
+  const [promo, setPromo] = useState<{ code: string; discountPct: number; discountAmount: number; validatedSubtotal: number; validatedUserId: string | null } | null>(null)
   const [promoError, setPromoError] = useState<string | null>(null)
   const [promoBusy, setPromoBusy] = useState(false)
   const [availableOffers, setAvailableOffers] = useState<PromotionDTO[]>([])
@@ -182,8 +182,8 @@ export function CheckoutView() {
 
   // Never display or submit a saved discount without a successful validation
   // for the CURRENT subtotal and CURRENT persisted promotion code.
-  const activePromo = promo?.validatedSubtotal === subtotal && savedCartPromo?.code === promo.code ? promo : null
-  const promoNeedsReview = !!promo && savedCartPromo?.code === promo.code && promo.validatedSubtotal !== subtotal
+  const activePromo = promo?.validatedSubtotal === subtotal && promo.validatedUserId === (user?.id ?? null) && savedCartPromo?.code === promo.code ? promo : null
+  const promoNeedsReview = !!promo && savedCartPromo?.code === promo.code && (promo.validatedSubtotal !== subtotal || promo.validatedUserId !== (user?.id ?? null))
   const discountAmount = activePromo?.discountAmount ?? 0
 
   async function applyPromo(candidate?: string, quiet = false) {
@@ -197,7 +197,7 @@ export function CheckoutView() {
 
     const requestId = ++promoRequestId.current
     const checkedSubtotal = subtotal
-    processedOfferLink.current = `${code}:${checkedSubtotal}`
+    processedOfferLink.current = `${code}:${checkedSubtotal}:${user?.id ?? "guest"}`
 
     // Choosing a different code replaces the old offer, never stacks discounts.
     if (savedCartPromo && savedCartPromo.code !== code) {
@@ -218,6 +218,7 @@ export function CheckoutView() {
         discountPct: res.promotion.discountPct ?? 0,
         discountAmount: res.discountAmount,
         validatedSubtotal: checkedSubtotal,
+        validatedUserId: user?.id ?? null,
       })
       forgetOffer()
       setOfferIntent(null)
@@ -256,12 +257,12 @@ export function CheckoutView() {
     if (!cartHydrated || subtotal <= 0) return
     const code = offerIntent || savedCartPromo?.code
     if (!code) return
-    const key = `${code}:${subtotal}`
+    const key = `${code}:${subtotal}:${user?.id ?? "guest"}`
     if (processedOfferLink.current === key) return
     processedOfferLink.current = key
     void applyPromo(code, true)
     // Revalidate after hydration, on refresh and after EVERY cart amount change.
-  }, [cartHydrated, offerIntent, savedCartPromo?.code, subtotal])
+  }, [cartHydrated, offerIntent, savedCartPromo?.code, subtotal, user?.id])
 
   useEffect(() => {
     if (!cartHydrated || step === 4 || !promo || savedCartPromo?.code === promo.code) return
@@ -529,6 +530,12 @@ export function CheckoutView() {
   }
 
   async function placeOrder(paymentMethod: PayMethod): Promise<OrderDTO | null> {
+    // Do not silently place an undiscounted order while a saved offer is
+    // still being checked. The customer can retry or explicitly remove it.
+    if (promoBusy || (savedCartPromo && !activePromo)) {
+      setInlineError("Please verify your saved promotion or remove it before placing this order.")
+      return null
+    }
     setPlacing(true)
     setInlineError(null)
     try {
@@ -1622,8 +1629,13 @@ export function CheckoutView() {
                         {promoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
                       </Button>
                     </div>
+                    {savedCartPromo && !activePromo ? (
+                      <button type="button" onClick={removePromo} className="mt-2 text-xs font-semibold text-primary underline underline-offset-4">
+                        Remove saved code and continue without discount
+                      </button>
+                    ) : null}
                     {(promoError || promoNeedsReview) ? <div role="alert" aria-live="assertive" className="space-y-2 rounded-lg border-2 border-amber-500 bg-amber-50 p-3 text-sm font-medium leading-5 text-amber-950 dark:border-amber-600 dark:bg-amber-950/60 dark:text-amber-100">
-                      <p>{promoError || "Your bag total changed. Apply the code again to confirm your savings."}</p>
+                      <p>{promoError || "Your cart or account changed. The code must be checked again before payment."}</p>
                       {/sign in/i.test(promoError ?? "") ? <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => openAuth("login","checkout","Sign in to redeem your promotion.",{promo:promoInput.trim().toUpperCase()})}>Sign in to redeem</Button> : null}
                     </div> : null}
                   </div>
