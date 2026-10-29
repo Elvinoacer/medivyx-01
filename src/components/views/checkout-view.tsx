@@ -1650,12 +1650,12 @@ export function CheckoutView() {
                       </div>
                     </div>
                     {redeemQuote >= LOYALTY.minRedeem ? (
-                      <div className="mt-2.5 flex items-center justify-between gap-3 rounded-lg border bg-card p-2.5">
+                      <div className="sphere-checkout-points-redeem mt-2.5 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-[#fbfdf9] p-2.5 dark:border-emerald-700 dark:bg-[#fbfdf9]">
                         <div className="min-w-0">
-                          <Label htmlFor="redeem-points" className="cursor-pointer text-sm font-semibold">
+                          <Label htmlFor="redeem-points" className="cursor-pointer text-sm font-semibold text-emerald-950 dark:text-emerald-950">
                             Redeem {redeemQuote} pts (−{formatKES(redeemValue)})
                           </Label>
-                          <p className="text-[11px] text-muted-foreground">
+                          <p className="sphere-checkout-points-help mt-1 text-xs font-medium leading-relaxed text-emerald-800 dark:text-emerald-800">
                             Max {LOYALTY.maxRedeemPct}% of this order · applied at payment
                           </p>
                         </div>

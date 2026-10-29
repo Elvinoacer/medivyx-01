@@ -677,6 +677,25 @@
 .dark .sphere-public .app-page-checkout .sphere-checkout-points-notice :is(p,span) {
   color: #d3f5e6 !important;
 }
+
+/* The light redemption control sits inside a dark points notice. Do not let
+   the notice-wide text rule tint its labels pale green on a pale background. */
+.sphere-public .app-page-checkout .sphere-checkout-points-notice .sphere-checkout-points-redeem,
+.dark .sphere-public .app-page-checkout .sphere-checkout-points-notice .sphere-checkout-points-redeem {
+  background: #fbfdf9 !important;
+  border-color: #a4c7ba !important;
+  color: #143e31 !important;
+}
+.sphere-public .app-page-checkout .sphere-checkout-points-notice .sphere-checkout-points-redeem :is(label,p,span),
+.dark .sphere-public .app-page-checkout .sphere-checkout-points-notice .sphere-checkout-points-redeem :is(label,p,span) {
+  color: #143e31 !important;
+}
+.sphere-public .app-page-checkout .sphere-checkout-points-notice .sphere-checkout-points-redeem .sphere-checkout-points-help,
+.dark .sphere-public .app-page-checkout .sphere-checkout-points-notice .sphere-checkout-points-redeem .sphere-checkout-points-help {
+  color: #365c50 !important;
+  opacity: 1;
+  font-weight: 500;
+}
 .dark .sphere-public .app-page-checkout .sphere-checkout-fulfillment-badge {
   background: #234634 !important;
   border-color: #78a48a !important;
