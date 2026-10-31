@@ -1,12 +1,12 @@
 import { escapeHtml } from "@/lib/security/request"
-// Email templates for Sphere Pharmacy
+// Email templates for Medivyx
 // Compatible with all major email clients (Gmail, Apple Mail, Outlook, mobile)
 
 const BRAND = {
-  name: "Sphere Pharmacy",
+  name: "Medivyx",
   location: "Lumumba Drive, Roysambu, Nairobi",
-  phone: "+254 707 475 208",
-  whatsapp: "+254 707 475 208",
+  phone: "+254 712 222 524",
+  whatsapp: "+254 712 222 524",
   color: "#0f766e",
   accent: "#0d9488",
   bg: "#f8fafc",
@@ -74,7 +74,7 @@ function baseLayout(title: string, bodyContent: string, actionButton?: { text: s
                 Phone / WhatsApp: <a href="tel:${BRAND.phone}" style="color: ${BRAND.color}; text-decoration: none;">${BRAND.phone}</a>
               </p>
               <p style="margin: 0; font-size: 11px; color: #94a3b8;">
-                You received this notification regarding your activity on Sphere Pharmacy.
+                You received this notification regarding your activity on Medivyx.
               </p>
             </td>
           </tr>
@@ -186,7 +186,7 @@ export function orderConfirmationTemplate(opts: {
         pointsEarned && pointsEarned > 0
           ? `
         <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; color: #065f46; font-size: 13px;">
-          🎉 You will earn <strong>${pointsEarned} Sphere Points</strong> once payment is completed!
+          🎉 You will earn <strong>${pointsEarned} Medivyx Points</strong> once payment is completed!
         </div>
       `
           : ""
@@ -269,7 +269,7 @@ export function paymentReceiptTemplate(opts: {
         pointsEarned && pointsEarned > 0
           ? `
         <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; color: #065f46; font-size: 14px;">
-          ✨ <strong>${pointsEarned} Sphere Points</strong> have been added to your loyalty balance!
+          ✨ <strong>${pointsEarned} Medivyx Points</strong> have been added to your loyalty balance!
         </div>
       `
           : ""
@@ -353,7 +353,7 @@ export function backInStockTemplate(opts: {
     `
       <h2 style="margin: 0 0 12px; color: ${BRAND.color}; font-size: 20px; font-weight: 700;">Back in Stock!</h2>
       <p style="margin: 0 0 20px; font-size: 15px; color: ${BRAND.text};">
-        Great news! An item on your watchlist is back in stock at Sphere Pharmacy:
+        Great news! An item on your watchlist is back in stock at Medivyx:
       </p>
       <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 24px; text-align: center;">
         <h3 style="margin: 0 0 6px; font-size: 18px; font-weight: 700; color: ${BRAND.text};">${escapeHtml(String(productName))}</h3>
@@ -417,7 +417,7 @@ export function adminNotificationTemplate(opts: {
   )
 
   const text = `Staff Alert: ${title}\n\n${message}\n${actionUrl ? `Dashboard: ${actionUrl}` : ""}`
-  return { subject: `[Sphere Staff] ${title}`, html, text }
+  return { subject: `[Medivyx Staff] ${title}`, html, text }
 }
 
 

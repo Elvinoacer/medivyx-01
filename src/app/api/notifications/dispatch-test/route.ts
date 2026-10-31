@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   if (limited) return limited
   const body = await request.json().catch(() => ({}))
   const type = ["EMAIL", "PUSH", "BOTH"].includes(String(body.type).toUpperCase()) ? String(body.type).toUpperCase() : "BOTH"
-  const title = String(body.title || "Sphere Pharmacy test notification").trim().slice(0, 100)
+  const title = String(body.title || "Medivyx test notification").trim().slice(0, 100)
   const message = String(body.message || "Notification integration test.").trim().slice(0, 500)
   const admin = await db.staffUser.findUnique({ where: { id: session.staffId }, select: { email: true } })
   const results: Record<string, unknown> = {}
@@ -31,10 +31,10 @@ export async function POST(request: Request) {
         details: {
           "Service": "Resend Email Integration",
           "Recipient": admin.email,
-          "Sender": process.env.RESEND_FROM_EMAIL || "Sphere Pharmacy <support@gtss.software>",
+          "Sender": process.env.RESEND_FROM_EMAIL || "Medivyx <support@gtss.software>",
           "Timestamp": new Date().toLocaleString(),
         },
-        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/admin?section=settings`,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"}/admin?section=settings`,
         actionLabel: "Open Admin Dashboard",
       })
       results.email = await sendEmail({
@@ -86,7 +86,7 @@ export async function GET() {
   const totalDeviceCount = await db.pushToken.count()
 
   const hasResend = Boolean(process.env.RESEND_API_KEY?.trim())
-  const fromEmail = process.env.RESEND_FROM_EMAIL?.trim() || "Sphere Pharmacy <onboarding@resend.dev>"
+  const fromEmail = process.env.RESEND_FROM_EMAIL?.trim() || "Medivyx <onboarding@resend.dev>"
   const hasFirebase = Boolean(
     process.env.FIREBASE_SERVICE_ACCOUNT_KEY ||
       (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY)

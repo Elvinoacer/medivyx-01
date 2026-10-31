@@ -1,7 +1,7 @@
 .dark .reference-home-shell { background: #0b1713; }
 .dark .reference-header { background: rgb(11 23 19 / 92%); }
 .dark .reference-nav-wrap { border-bottom-color: rgb(255 255 255 / 8%); }
-.dark .reference-logo { filter: brightness(0) invert(1); opacity: .94; }
+.dark .reference-logo { opacity: .96; }
 .dark .reference-nav-button { color: #aebfb8; }
 .dark .reference-nav-button:hover { color: #fff; background: rgb(255 255 255 / 7%); }
 .dark .reference-nav-active { color: #d9f8e8; background: rgb(92 207 145 / 14%); }

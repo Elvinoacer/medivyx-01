@@ -132,7 +132,7 @@ export async function POST(request: Request) {
     if (orderId) {
       await addStatusEvent(orderId, "UNDER_REVIEW", "System", "Prescription uploaded — queued for pharmacist review")
     }
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"
     const customerUser = await db.user.findUnique({ where: { id: session.userId! }, select: { name: true, email: true } })
     const customerName = customerUser?.name || "Customer"
 
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
             email: customerUser?.email
               ? {
                   to: customerUser.email,
-                  subject: "Prescription Received — Sphere Pharmacy",
+                  subject: "Prescription Received — Medivyx",
                   html: `<p>Hello ${customerName},</p><p>We have safely received your uploaded prescription (<strong>${fileName}</strong>). Our licensed pharmacist will review it shortly (usually within 2 working hours).</p><p>You will receive another update once verification is complete.</p>`,
                   text: `Hello ${customerName},\nWe received your prescription (${fileName}). Our pharmacist will review it shortly.`,
                 }

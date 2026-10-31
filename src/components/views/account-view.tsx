@@ -289,7 +289,7 @@ export function AccountView() {
     }
   }
 
-  // ---------- Sphere Points loyalty ----------
+  // ---------- Medivyx Points loyalty ----------
   const [loyalty, setLoyalty] = useState<LoyaltySummaryDTO | null>(null)
 
   async function reloadLoyalty() {
@@ -487,7 +487,7 @@ export function AccountView() {
         <Card className="overflow-hidden">
           <div className="grid md:grid-cols-2">
             <div className="gradient-hero flex flex-col justify-center gap-4 p-6 sm:p-8">
-              <h1 className="text-2xl font-bold tracking-tight">Your Sphere Pharmacy account</h1>
+              <h1 className="text-2xl font-bold tracking-tight">Your Medivyx account</h1>
               <p className="text-sm text-muted-foreground">
                 One account for orders, prescriptions and deliveries — built for our Roysambu
                 community.
@@ -754,7 +754,7 @@ export function AccountView() {
           </CardContent>
         </Card>
 
-        {/* ---------- Sphere Points loyalty ---------- */}
+        {/* ---------- Medivyx Points loyalty ---------- */}
         <Card className="overflow-hidden md:col-span-2">
           <CardContent className="p-0">
             <div className="grid md:grid-cols-[minmax(0,300px)_1fr]">
@@ -762,7 +762,7 @@ export function AccountView() {
               <div className="relative flex flex-col gap-3 bg-gradient-to-br from-teal-600 via-teal-600 to-emerald-700 p-6 text-white">
                 <Sparkles className="absolute right-5 top-5 h-5 w-5 text-white/70" aria-hidden />
                 <p className="text-xs font-bold uppercase tracking-widest text-white/80">
-                  Sphere Points
+                  Medivyx Points
                 </p>
                 {loyalty === null ? (
                   <div className="space-y-2">
@@ -799,7 +799,7 @@ export function AccountView() {
               {/* rules + history */}
               <div className="space-y-4 p-5 sm:p-6">
                 <div>
-                  <h3 className="text-sm font-bold">How Sphere Points work</h3>
+                  <h3 className="text-sm font-bold">How Medivyx Points work</h3>
                   <ul className="mt-2 grid gap-1.5 text-sm text-muted-foreground sm:grid-cols-2">
                     <li className="flex items-start gap-1.5">
                       <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
@@ -838,7 +838,7 @@ export function AccountView() {
                   ) : (
                     <ul
                       className="scroll-slim mt-2 max-h-96 space-y-2 overflow-y-auto pr-1"
-                      aria-label="Sphere Points history"
+                      aria-label="Medivyx Points history"
                     >
                       {loyalty.history.map((h) => (
                         <li key={h.orderId} className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
@@ -997,7 +997,7 @@ export function AccountView() {
                 ))}
                 <div className="rounded-lg border p-3">
                   <p className="text-sm font-medium">Push alerts on this device</p>
-                  <p className="mb-3 text-xs text-muted-foreground">Enable this browser to receive private update alerts, even when Sphere is closed.</p>
+                  <p className="mb-3 text-xs text-muted-foreground">Enable this browser to receive private update alerts, even when Medivyx is closed.</p>
                   <Button variant="outline" disabled={prefsSaving} onClick={async () => {
                     setPrefsSaving(true)
                     try {

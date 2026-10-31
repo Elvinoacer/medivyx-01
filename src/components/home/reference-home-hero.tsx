@@ -84,8 +84,8 @@ export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
 
         <div className="reference-nav-wrap">
           <div className="reference-container reference-mainbar">
-            <button onClick={() => navigate("home")} className="reference-brand" aria-label="Sphere Pharmacy home">
-              <LogoFull className="reference-logo" />
+            <button onClick={() => navigate("home")} className="reference-brand" aria-label="Medivyx home">
+              <LogoFull className="reference-logo" dark={dark} />
             </button>
 
             <nav className="reference-nav" aria-label="Primary navigation">
@@ -163,7 +163,7 @@ export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
                 </div>
 
                 <div className="reference-contact-row">
-                  <a href={waLink("Hello Sphere Pharmacy! I'd like to place an order.")} target="_blank" rel="noreferrer"><MessageCircle aria-hidden />Order on WhatsApp</a>
+                  <a href={waLink("Hello Medivyx! I'd like to place an order.")} target="_blank" rel="noreferrer"><MessageCircle aria-hidden />Order on WhatsApp</a>
                   <span aria-hidden />
                   <a href={`tel:${PHARMACY.phone}`}><Phone aria-hidden />Speak to the pharmacy</a>
                 </div>
@@ -176,11 +176,11 @@ export function ReferenceHomeHero({ showHero = true }: { showHero?: boolean }) {
               </div>
 
               <div className="reference-hero-visual">
-                <div className="reference-visual-monogram" aria-hidden>SP</div>
+                <div className="reference-visual-monogram" aria-hidden>MV</div>
                 <figure className="reference-visual-frame">
                   <Image
                     src="/images/pharmacist-consult.png"
-                    alt="A Sphere Pharmacy pharmacist ready to help a customer"
+                    alt="A Medivyx pharmacist ready to help a customer"
                     fill
                     sizes="(max-width: 820px) calc(100vw - 28px), (max-width: 1200px) 47vw, 620px"
                     className="reference-visual-image"

@@ -230,7 +230,7 @@ function PromotionEditorDialog({mode,promo,onClose,onSaved}:{
   setServerError(null)
  }
  function generate(){
-  const prefix=form.title.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,5)||"SPHERE"
+  const prefix=form.title.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,5)||"MEDIVYX"
   const values=new Uint8Array(5)
   crypto.getRandomValues(values)
   const alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"

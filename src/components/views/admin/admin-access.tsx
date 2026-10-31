@@ -11,7 +11,7 @@ export function AdminAccessFrame({ children }: { children: ReactNode }) {
         <span>YOUR PHARMACY, CONNECTED</span>
         <h1>Good care starts<br />behind the scenes.</h1>
         <p>One thoughtful workspace for your team, your patients and everything in between.</p>
-        <div><ShieldCheck className="h-4 w-4" aria-hidden /> Sphere Pharmacy · Staff access</div>
+        <div><ShieldCheck className="h-4 w-4" aria-hidden /> Medivyx · Staff access</div>
       </div>
       <div className="admin-gate-panel">{children}</div>
     </div>

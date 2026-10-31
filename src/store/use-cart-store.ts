@@ -88,6 +88,6 @@ export const useCartStore = create<CartState>()(
       rxLines: () => get().lines.filter((l) => l.requiresPrescription),
       otcLines: () => get().lines.filter((l) => !l.requiresPrescription),
     }),
-    { name: "sphere-cart", partialize: (state) => ({ lines: state.lines, appliedPromo: state.appliedPromo }) }
+    { name: "medivyx-cart", partialize: (state) => ({ lines: state.lines, appliedPromo: state.appliedPromo }) }
   )
 )

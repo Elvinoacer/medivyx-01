@@ -454,7 +454,7 @@ export async function PATCH(request: Request) {
     RESCHEDULED: `Your ${service?.name || "service"} appointment has been rescheduled.`,
     ARRIVED: "You have been marked as arrived. Our pharmacy team will assist you shortly.",
     IN_PROGRESS: "Your care service is now in progress.",
-    COMPLETED: "Your care service has been completed. Thank you for choosing Sphere Pharmacy.",
+    COMPLETED: "Your care service has been completed. Thank you for choosing Medivyx.",
     CANCELLED: "Your appointment has been cancelled. Please contact the pharmacy if you need assistance.",
     NO_SHOW: "We marked this appointment as a no-show. Contact the pharmacy if you need to rebook.",
     REJECTED: "We could not confirm this appointment. Please contact the pharmacy to arrange another time.",
@@ -479,7 +479,7 @@ export async function PATCH(request: Request) {
       event: "SERVICE_BOOKING_STATUS",
       title: "Service booking updated",
       message: `${booking.reference} is now ${labels[status] || status}.`,
-      link: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/#admin`,
+      link: `${process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"}/#admin`,
       metadata: { bookingId: booking.id, status },
     })
   }

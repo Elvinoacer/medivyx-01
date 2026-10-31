@@ -30,7 +30,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   catch { return NextResponse.json({ error: "The payment is already in progress or this item is not ready for payment. Refresh its status before trying again." }, { status: 409 }) }
   if (!payment) return NextResponse.json({ error: "Could not reserve the payment request." }, { status: 503 })
   try {
-    const checkout = await createIntaSendCheckoutSession({ orderId: booking.id, reference: payment.id, amount: money(booking.price!), customer: { name: session.user?.name || "Customer", email: session.user?.email, phone: session.user?.phone || undefined }, redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/services?tab=bookings` })
+    const checkout = await createIntaSendCheckoutSession({ orderId: booking.id, reference: payment.id, amount: money(booking.price!), customer: { name: session.user?.name || "Customer", email: session.user?.email, phone: session.user?.phone || undefined }, redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"}/services?tab=bookings` })
     await db.servicePayment.updateMany({ where: { id: payment.id, status: "PROCESSING" }, data: { status: "PROCESSING", checkoutRequestId: checkout.id, providerReference: checkout.url } })
     return NextResponse.json({ paymentId: payment.id, checkoutUrl: checkout.url, sessionId: checkout.id, status: "PROCESSING" })
   } catch {

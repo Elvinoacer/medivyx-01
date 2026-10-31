@@ -16,7 +16,7 @@ export function Footer() {
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
           {/* brand */}
           <div className="space-y-3">
-            <div className="premium-footer-brand" aria-label="Sphere Pharmacy">
+            <div className="premium-footer-brand" aria-label="Medivyx">
               <LogoFull className="premium-footer-logo" />
             </div>
             <p className="text-sm leading-relaxed text-muted-foreground">
@@ -87,7 +87,7 @@ export function Footer() {
         <Separator className="my-6" />
 
         <div className="flex flex-col items-center justify-between gap-3 text-center text-xs leading-relaxed text-muted-foreground sm:flex-row sm:text-left">
-          <p>© {new Date().getFullYear()} Sphere Pharmacy · Lumumba Drive, Roysambu, Nairobi</p>
+          <p>© {new Date().getFullYear()} Medivyx · Lumumba Drive, Roysambu, Nairobi</p>
           <p className="max-w-md">
             Prescription-only medicines are dispensed only after pharmacist verification. Not medical advice — consult our pharmacy team.
           </p>

@@ -1,4 +1,4 @@
-// Service Worker for Sphere Pharmacy Push Notifications
+// Service Worker for Medivyx Push Notifications
 // Handles background push events from Firebase Cloud Messaging (FCM) and Web Push.
 
 self.addEventListener("install", (event) => {
@@ -21,7 +21,7 @@ self.addEventListener("push", (event) => {
   } catch {
     payload = {
       notification: {
-        title: "Sphere Pharmacy",
+        title: "Medivyx",
         body: event.data.text(),
       },
     }
@@ -31,8 +31,8 @@ self.addEventListener("push", (event) => {
   const notification = payload.notification || {}
   const data = payload.data || {}
 
-  const title = notification.title || data.title || "Sphere Pharmacy Update"
-  const body = notification.body || data.body || "You have a new notification from Sphere Pharmacy."
+  const title = notification.title || data.title || "Medivyx Update"
+  const body = notification.body || data.body || "You have a new notification from Medivyx."
   const icon = notification.icon || data.icon || "/logo.svg"
   const badge = notification.badge || data.badge || "/logo.svg"
   const candidate = new URL(data.url || notification.click_action || "/", self.location.origin)
@@ -47,7 +47,7 @@ self.addEventListener("push", (event) => {
       url: targetUrl,
     },
     vibrate: [100, 50, 100],
-    tag: data.notificationId || data.event || "sphere-notification",
+    tag: data.notificationId || data.event || "medivyx-notification",
     renotify: true,
   }
 

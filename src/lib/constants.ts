@@ -1,4 +1,4 @@
-// Sphere Pharmacy — shared domain constants & type definitions
+// Medivyx — shared domain constants & type definitions
 // (Database-agnostic domain constants; PostgreSQL is the production datasource.)
 
 // ---------- Staff roles ----------
@@ -125,7 +125,7 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
 export const NOTIFICATION_CHANNELS = ["IN_APP", "SMS", "WHATSAPP", "EMAIL"] as const
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number]
 
-// ---------- Sphere Points loyalty ----------
+// ---------- Medivyx Points loyalty ----------
 // Earn: 1 point per KSh 100 spent on successful payments. Redeem: 1 point = KSh 1
 // at checkout (minimum 100 pts, max 25% of the order subtotal). Balances also
 // cover legacy in-store activity for demo purposes.
@@ -163,18 +163,18 @@ export const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {
 
 // ---------- Pharmacy profile (defaults; editable in Admin → Settings) ----------
 export const PHARMACY = {
-  name: "Sphere Pharmacy",
-  legalName: "The Sphere Pharmacy — Lumumba Drive",
+  name: "Medivyx",
+  legalName: "Medivyx — Lumumba Drive",
   tagline: "Your community pharmacy on Lumumba Drive, Roysambu",
-  phone: "+254707475208",
-  phoneDisplay: "+254 707 475 208",
-  whatsapp: "254707475208",
+  phone: "+254712222524",
+  phoneDisplay: "+254 712 222 524",
+  whatsapp: "254712222524",
   address: "Lumumba Drive, Roysambu, Nairobi, Kenya",
   hoursLabel: "Open daily · 8:00 AM – 10:30 PM",
   hoursOpen: 8,
   hoursClose: 22.5,
-  mapsUrl: "https://www.google.com/maps/search/?api=1&query=Sphere+Pharmacy+Lumumba+Drive+Roysambu+Nairobi",
-  email: "orders@spherepharmacy.co.ke", // placeholder pending client confirmation
+  mapsUrl: "https://www.google.com/maps/search/?api=1&query=Medivyx+Lumumba+Drive+Roysambu+Nairobi",
+  email: "orders@medivyx.co.ke", // placeholder pending client confirmation
   disclaimer:
     "Opening hours & contact details are from the current public listing and pending final client confirmation. Licence details will be published once the current PPB licence is provided.",
 }

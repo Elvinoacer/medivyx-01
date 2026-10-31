@@ -1,6 +1,6 @@
 "use client"
 
-// Shared primitives for the Sphere Pharmacy admin dashboard sections.
+// Shared primitives for the Medivyx admin dashboard sections.
 // Kept inside views/admin so sections stay self-contained and typed.
 
 import { useEffect, useState, type ReactNode } from "react"
@@ -102,7 +102,7 @@ export function AdminSectionHeader({ title, subtitle, action, className }: {
 }) {
   return (
     <div className={cn("admin-section-header", className)}>
-      <div><p className="admin-eyebrow">SPHERE WORKSPACE</p><h1>{title}</h1>{subtitle ? <p className="admin-section-description">{subtitle}</p> : null}</div>
+      <div><p className="admin-eyebrow">MEDIVYX WORKSPACE</p><h1>{title}</h1>{subtitle ? <p className="admin-section-description">{subtitle}</p> : null}</div>
       {action ? <div className="admin-section-actions">{action}</div> : null}
     </div>
   )

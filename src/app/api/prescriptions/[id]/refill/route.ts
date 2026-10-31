@@ -63,7 +63,7 @@ export async function POST(request: Request, { params }: Params) {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 
     await audit("System", null, "RX_REFILL_REQUESTED", "Prescription", rx.id, `New order ${reference}`)
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"
     const customer = await db.user.findUnique({ where: { id: rx.userId! }, select: { name: true, email: true } })
     await notifyCustomer(rx.userId, "PRESCRIPTION", `Refill requested — order ${reference}`, "Your refill is queued for pharmacist re-verification.", "IN_APP", {
       link: `${appUrl}/orders/${order.id}`, metadata: { orderId: order.id, prescriptionId: rx.id, reference },

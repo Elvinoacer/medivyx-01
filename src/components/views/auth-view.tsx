@@ -121,7 +121,7 @@ export function AuthView() {
         ...(regEmail.trim() ? { email: regEmail.trim().toLowerCase() } : {}),
         password: regPassword,
       })
-      toast.success("Account created — karibu Sphere Pharmacy!")
+      toast.success("Account created — karibu Medivyx!")
       setSession(session)
       void refresh()
       replace(authNext ?? "account", authNextParams ?? undefined)
@@ -225,7 +225,7 @@ export function AuthView() {
           {error ? <Alert variant="destructive" className="mt-5" role="alert"><TriangleAlert className="h-4 w-4" /><AlertTitle>Couldn&apos;t sign you in</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
           <form onSubmit={handleStaffLogin} className="mt-7" noValidate>
             <fieldset disabled={loading} className="space-y-5">
-              <div className="space-y-2"><Label htmlFor="staff-email">Staff email address</Label><div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input id="staff-email" type="email" value={staffEmail} onChange={(event) => setStaffEmail(event.target.value)} placeholder="you@spherepharmacy.co.ke" autoComplete="username" className="pl-9" required /></div></div>
+              <div className="space-y-2"><Label htmlFor="staff-email">Staff email address</Label><div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input id="staff-email" type="email" value={staffEmail} onChange={(event) => setStaffEmail(event.target.value)} placeholder="you@medivyx.co.ke" autoComplete="username" className="pl-9" required /></div></div>
               {passwordInput({ id: "staff-password", value: staffPassword, onChange: setStaffPassword, label: "Password" })}
               <Button type="submit" className="h-11 w-full" disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}{loading ? "Opening your workspace…" : "Sign in to workspace"}<ArrowRight className="ml-auto h-4 w-4" aria-hidden /></Button>
             </fieldset>
@@ -247,7 +247,7 @@ export function AuthView() {
             <LogoMark size={30} className="text-primary-foreground" />
           </span>
           <h1 className="text-2xl font-extrabold tracking-tight">
-            Welcome to Sphere Pharmacy
+            Welcome to Medivyx
           </h1>
           <p className="text-sm text-muted-foreground">
             Order medicines, track prescriptions and keep your history in one place.
@@ -298,7 +298,7 @@ export function AuthView() {
                         id="login-identifier"
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
-                        placeholder="customer@spherepharmacy.co.ke"
+                        placeholder="customer@medivyx.co.ke"
                         className="pl-9"
                         autoComplete="username"
                       />

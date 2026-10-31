@@ -189,7 +189,7 @@ export interface UserDTO {
   loyaltyPoints: number
 }
 
-// Sphere Points loyalty summary for the account page
+// Medivyx Points loyalty summary for the account page
 export interface LoyaltySummaryDTO {
   balance: number
   lifetimeEarned: number

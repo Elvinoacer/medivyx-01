@@ -1032,7 +1032,7 @@ function CsvImportDialog({ onClose, onImported }: { onClose: () => void; onImpor
                 size="sm"
                 variant="outline"
                 className="mt-2.5 gap-1.5"
-                onClick={() => downloadCsv("sphere-products-template.csv", CSV_TEMPLATE_ROWS)}
+                onClick={() => downloadCsv("medivyx-products-template.csv", CSV_TEMPLATE_ROWS)}
               >
                 <Download className="h-3.5 w-3.5" aria-hidden /> Download template
               </Button>

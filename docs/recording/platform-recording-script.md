@@ -1,4 +1,4 @@
-# Sphere Pharmacy platform recording script
+# Medivyx platform recording script
 
 Prepared 22 October 2026. This guide covers the current customer, admin, pharmacist, counter-staff and rider interfaces. Use each scene as a separate take, with the click, purpose, expected result and caption beside the action.
 
@@ -28,7 +28,7 @@ The guide is based on the current interface source and server workflow checks. I
 
 For a shorter overview, use these core scenes: P01, P02, P03, C01, C03, O01, A01, A02, O06, P04, P05, A06, X02, A04, X03, S01, A11, S03, A03, R01. Expect roughly 15-20 minutes after editing. For the complete library, record every scene as separate modules; allow roughly 45-70 minutes of edited material, depending on pauses and payment waits. These are planning estimates, not subtitle timings.
 
-Suggested opening caption: "Sphere Pharmacy brings product discovery, prescription review, appointments and pharmacy operations into one platform."
+Suggested opening caption: "Medivyx brings product discovery, prescription review, appointments and pharmacy operations into one platform."
 
 Suggested closing caption: "Customers, pharmacy teams and riders follow each request through the same platform."
 
@@ -49,7 +49,7 @@ Suggested closing caption: "Customers, pharmacy teams and riders follow each req
 | C05 | Customer | Save and manage delivery addresses |
 | C06 | Customer or Staff | Updates and notification preferences |
 | C07 | Customer | Back in stock alerts |
-| C08 | Customer | Sphere Points and redemption |
+| C08 | Customer | Medivyx Points and redemption |
 | C09 | Customer | Write a product review |
 | O01 | Customer | Place a cash pickup order |
 | O02 | Customer | Place a delivery order |
@@ -97,9 +97,9 @@ Suggested closing caption: "Customers, pharmacy teams and riders follow each req
 
 | Step | Click or navigation | Purpose and expected screen | On-screen caption |
 | --- | --- | --- | --- |
-| P01.01 | Open the homepage and hold for 3 seconds. | Establish the brand and location before navigating. | Welcome to Sphere Pharmacy in Roysambu. |
+| P01.01 | Open the homepage and hold for 3 seconds. | Establish the brand and location before navigating. | Welcome to Medivyx in Roysambu. |
 | P01.02 | Click Find your feel-good. | Open the product catalogue. | Browse medicines and everyday health essentials. |
-| P01.03 | Click the Sphere Pharmacy logo. | Return home using the shared navigation. | Return home from any screen. |
+| P01.03 | Click the Medivyx logo. | Return home using the shared navigation. | Return home from any screen. |
 | P01.04 | Click Care services in the header; on mobile use Services. | Open the service catalogue. | Explore pharmacy care services. |
 | P01.05 | Open navigation, then choose My account; on desktop use the account icon. | Show the customer account entry point. | Keep orders, prescriptions and appointments together. |
 
@@ -194,7 +194,7 @@ Suggested closing caption: "Customers, pharmacy teams and riders follow each req
 | P06.01 | Scroll to the homepage questions and open a question. | Reveal the answer in the FAQ accordion. | Find quick answers before contacting the pharmacy. |
 | P06.02 | Click Let's talk in the header or the visible WhatsApp contact link. | Show the handoff to a prefilled WhatsApp conversation. | Speak directly with the pharmacy team. |
 | P06.03 | Return to the site and show the phone link in the catalogue footer. | Show the call handoff without placing a call during the take. | Call the pharmacy when you need personal help. |
-| P06.04 | Show the Roysambu location link or Get directions. | Open the map destination for the pharmacy. | Find Sphere Pharmacy on Lumumba Drive. |
+| P06.04 | Show the Roysambu location link or Get directions. | Open the map destination for the pharmacy. | Find Medivyx on Lumumba Drive. |
 
 **Recorder note:** Opening a WhatsApp link prepares a conversation; it does not mean the platform has sent a message. Capture only the handoff unless a demonstration conversation is arranged.
 
@@ -209,7 +209,7 @@ Suggested closing caption: "Customers, pharmacy teams and riders follow each req
 
 | Step | Click or navigation | Purpose and expected screen | On-screen caption |
 | --- | --- | --- | --- |
-| C01.01 | Open My account and click Create account, or choose Register on the auth screen. | Open the registration form. | Create your Sphere Pharmacy account. |
+| C01.01 | Open My account and click Create account, or choose Register on the auth screen. | Open the registration form. | Create your Medivyx account. |
 | C01.02 | Enter Full name, Phone number, optional Email and Choose a password. | Complete the registration fields with demo details. | Save your details for future visits. |
 | C01.03 | Click Create account and wait for the account view. | Capture successful account creation and the signed-in identity. | Your account is ready. |
 | C01.04 | For a separate returning-user take, sign out, choose Sign in, and enter Email or phone number and Password. | Demonstrate the normal sign-in form. | Sign in with your email address or phone number. |
@@ -231,7 +231,7 @@ Suggested closing caption: "Customers, pharmacy teams and riders follow each req
 | C02.01 | Open the auth screen and click Phone OTP. | Switch to the phone-code sign-in tab. | Sign in using a code sent to your phone. |
 | C02.02 | Enter Phone number and click Send code. | Request a six-digit verification code. | Request your verification code. |
 | C02.03 | Cut away while receiving the SMS, then enter the six-digit code. | Demonstrate verification without exposing the code. | Verify your phone number securely. |
-| C02.04 | If shown, enter Your name for a new customer; click Verify & continue. | Finish verification and enter the customer account. | Continue to your Sphere account. |
+| C02.04 | If shown, enter Your name for a new customer; click Verify & continue. | Finish verification and enter the customer account. | Continue to your Medivyx account. |
 
 **Recorder note:** Film this branch only when SMS delivery is configured. Do not use an old README claim that a production screen reveals demo OTP codes.
 
@@ -331,7 +331,7 @@ Suggested closing caption: "Customers, pharmacy teams and riders follow each req
 
 **Capture check:** Hold the final result for 3 seconds. Record the reference if this scene hands work to another role. Mark the take complete only when the expected screen is visible.
 
-## C08 Sphere Points and redemption
+## C08 Medivyx Points and redemption
 
 **Role:** Customer  
 **Navigation:** /account -> /checkout  
@@ -340,11 +340,11 @@ Suggested closing caption: "Customers, pharmacy teams and riders follow each req
 
 | Step | Click or navigation | Purpose and expected screen | On-screen caption |
 | --- | --- | --- | --- |
-| C08.01 | Open My account -> Sphere Points. | Show the balance, Earned and Redeemed values. | See your Sphere Points balance. |
+| C08.01 | Open My account -> Medivyx Points. | Show the balance, Earned and Redeemed values. | See your Medivyx Points balance. |
 | C08.02 | Open or scroll through Points history and click an order reference. | Connect the points entry to its source order. | Review where your points came from. |
-| C08.03 | Return to checkout and find the Sphere Points redemption switch in the order summary. | Show the available redemption quote when eligible. | Use eligible points toward your order. |
+| C08.03 | Return to checkout and find the Medivyx Points redemption switch in the order summary. | Show the available redemption quote when eligible. | Use eligible points toward your order. |
 | C08.04 | Enable redemption and hold on the changed total. | Capture the discount and payable amount. | Review your updated total before confirming. |
-| C08.05 | After a genuinely successful payment, return to Sphere Points and refresh. | Show only the balance and history the server recorded. | Your points history reflects completed account activity. |
+| C08.05 | After a genuinely successful payment, return to Medivyx Points and refresh. | Show only the balance and history the server recorded. | Your points history reflects completed account activity. |
 
 **Recorder note:** Current constants: 1 point per KSh100, KSh1 per point, at least 100 points to redeem, capped at 25% of the eligible subtotal. Do not promise points from an unpaid order.
 
@@ -436,12 +436,12 @@ Suggested closing caption: "Customers, pharmacy teams and riders follow each req
 | Step | Click or navigation | Purpose and expected screen | On-screen caption |
 | --- | --- | --- | --- |
 | O04.01 | Select Card on the payment screen. | Show the card-payment option and amount. | Choose card payment for your order. |
-| O04.02 | Click Continue to IntaSend. | Leave Sphere for the provider-hosted checkout. | Card details are entered on IntaSend secure checkout. |
+| O04.02 | Click Continue to IntaSend. | Leave Medivyx for the provider-hosted checkout. | Card details are entered on IntaSend secure checkout. |
 | O04.03 | Capture the hosted page with test data only; cut sensitive fields and authentication. | Explain the provider step without exposing payment details. | Complete the provider steps to authorise payment. |
 | O04.04 | Return using the provider flow and open the same order. | Check the server-recorded payment outcome. | Your order shows the confirmed payment result. |
 | O04.05 | If the result is pending, refresh or revisit the order instead of assuming success. | Show the difference between a redirect and verified payment. | Check the order status after payment. |
 
-**Recorder note:** Do not enter card numbers or CVV into Sphere itself. A redirect or return to the site does not establish payment success.
+**Recorder note:** Do not enter card numbers or CVV into Medivyx itself. A redirect or return to the site does not establish payment success.
 
 **Capture check:** Hold the final result for 3 seconds. Record the reference if this scene hands work to another role. Mark the take complete only when the expected screen is visible.
 
@@ -600,13 +600,13 @@ Suggested closing caption: "Customers, pharmacy teams and riders follow each req
 ## H01 Find products with the assistant
 
 **Role:** Guest or Customer  
-**Navigation:** Any customer screen -> Open Sphere Pharmacy AI assistant  
+**Navigation:** Any customer screen -> Open Medivyx AI assistant  
 **Purpose:** Demonstrate conversational navigation and product discovery.  
 **Before recording:** Use a configured assistant and a known active product. Keep the prompt practical rather than asking for a diagnosis.
 
 | Step | Click or navigation | Purpose and expected screen | On-screen caption |
 | --- | --- | --- | --- |
-| H01.01 | Click Open Sphere Pharmacy AI assistant. | Open the chat workspace. | Ask for help finding your way around Sphere. |
+| H01.01 | Click Open Medivyx AI assistant. | Open the chat workspace. | Ask for help finding your way around Medivyx. |
 | H01.02 | Type Find a product followed by the demo product name, then press Enter or Send. | Show a catalogue-based assistant response. | Find products using a simple conversation. |
 | H01.03 | If a product card is returned, click its product link or Add action. | Open the listing or add one available pack after its current price is checked. | Review a product or add it to your bag. |
 | H01.04 | Ask where to find prescriptions or appointments and use the returned navigation action. | Demonstrate a shortcut into the relevant screen. | Jump to the part of the platform you need. |

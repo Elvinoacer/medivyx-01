@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     await db.otpCode.create({
       data: { phone, codeHash: hashOtp(phone, code), expiresAt: new Date(Date.now() + 5 * 60 * 1000) },
     })
-    await sendSms(phone, `Your Sphere Pharmacy verification code is ${code}. It expires in 5 minutes. Do not share it.`)
+    await sendSms(phone, `Your Medivyx verification code is ${code}. It expires in 5 minutes. Do not share it.`)
     return NextResponse.json({ sent: true }, { headers: { "Cache-Control": "no-store" } })
   } catch {
     return NextResponse.json({ error: "Could not send the OTP. Please try again." }, { status: 500 })

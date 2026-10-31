@@ -29,7 +29,7 @@ import { PHARMACY, waLink } from "@/lib/constants";
 const GREETING: AssistantMessage = {
   role: "assistant",
   content:
-    "Karibu! 👋\n\nI’m Sphere, your AI care companion. Let’s make your day a little easier. I can **find exact products, help book a service, open checkout, or prepare a payment**. You’ll always review bookings and payments first.",
+    "Karibu! 👋\n\nI’m Medivyx, your AI care companion. Let’s make your day a little easier. I can **find exact products, help book a service, open checkout, or prepare a payment**. You’ll always review bookings and payments first.",
 };
 
 const QUICK_PROMPTS = [
@@ -146,7 +146,7 @@ export function AssistantWidget() {
           "assistant-launcher fixed bottom-24 right-4 z-[70] h-14 w-14 rounded-full bg-primary shadow-[0_12px_30px_-12px_hsl(var(--primary))] ring-4 ring-background/80 transition-transform hover:scale-105 md:bottom-6 md:right-6",
           open && "hidden",
         )}
-        aria-label="Open Sphere Pharmacy AI assistant"
+        aria-label="Open Medivyx AI assistant"
       >
         <MessageCircle className="h-6 w-6" />
         <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-background bg-emerald-400 text-[10px] font-bold text-emerald-950">
@@ -158,7 +158,7 @@ export function AssistantWidget() {
         <div
           data-active-action={Boolean(privateAction)}
           role="dialog"
-          aria-label="Sphere Pharmacy AI assistant"
+          aria-label="Medivyx AI assistant"
           className="sphere-assistant-panel fixed inset-x-3 bottom-24 z-[70] flex max-h-[78vh] flex-col overflow-hidden rounded-[26px] border border-border/80 bg-background/95 shadow-2xl backdrop-blur-xl md:bottom-6 md:right-6 md:left-auto md:w-[405px]"
         >
           <div className="sphere-ai-header relative overflow-hidden border-b border-white/10 bg-gradient-to-br from-primary via-primary to-emerald-800 px-4 pb-4 pt-4 text-primary-foreground">
@@ -170,7 +170,7 @@ export function AssistantWidget() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold">
-                    Sphere{" "}
+                    Medivyx{" "}
                     <span className="sphere-ai-name-tag">AI COMPANION</span>
                   </p>
                   <span className="inline-flex items-center gap-1 rounded-full bg-white/12 px-2 py-0.5 text-[10px] font-medium ring-1 ring-white/15">
@@ -202,7 +202,7 @@ export function AssistantWidget() {
           <div
             ref={scrollRef}
             role="log"
-            aria-label="Conversation with Sphere"
+            aria-label="Conversation with Medivyx"
             aria-live="polite"
             className="sphere-ai-conversation scroll-slim min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4"
           >
@@ -251,7 +251,7 @@ export function AssistantWidget() {
                       <div className="mt-2 flex gap-2">
                         <a
                           href={waLink(
-                            "Hi Sphere Pharmacy, I need help from the pharmacy team.",
+                            "Hi Medivyx, I need help from the pharmacy team.",
                           )}
                           target="_blank"
                           rel="noreferrer"
@@ -337,7 +337,7 @@ export function AssistantWidget() {
                   className="max-h-28 min-h-[42px] resize-none border-0 bg-transparent px-2 py-2 text-sm shadow-none focus-visible:ring-0"
                   maxLength={1800}
                   rows={1}
-                  aria-label="Message Sphere AI Assistant"
+                  aria-label="Message Medivyx AI Assistant"
                 />
                 <Button
                   size="icon"
@@ -358,7 +358,7 @@ export function AssistantWidget() {
               </span>
               <a
                 href={waLink(
-                  "Hi Sphere Pharmacy, I'd rather chat on WhatsApp.",
+                  "Hi Medivyx, I'd rather chat on WhatsApp.",
                 )}
                 target="_blank"
                 rel="noreferrer"

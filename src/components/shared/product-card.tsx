@@ -197,7 +197,7 @@ export function ProductCard({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                  {product.brand || "Sphere Pharmacy"}
+                  {product.brand || "Medivyx"}
                 </span>
                 {product.packSize ? (
                   <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
@@ -220,7 +220,7 @@ export function ProductCard({
               </h3>
 
               <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground sm:line-clamp-3">
-                {product.description || "Authentic healthcare and wellness formula dispensed directly from Sphere Pharmacy Roysambu."}
+                {product.description || "Authentic healthcare and wellness formula dispensed directly from Medivyx Roysambu."}
               </p>
 
               {(product.reviewCount ?? 0) > 0 && product.avgRating ? (
@@ -328,7 +328,7 @@ export function ProductCard({
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                {product.brand || "Sphere"}
+                {product.brand || "Medivyx"}
               </span>
               {product.packSize ? (
                 <span className="text-xs text-muted-foreground/80">· {product.packSize}</span>
@@ -497,7 +497,7 @@ export function ProductCard({
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
               <span className="font-semibold uppercase tracking-wider truncate">
-                {product.brand || "Sphere"}
+                {product.brand || "Medivyx"}
               </span>
               {product.packSize ? <span className="shrink-0">{product.packSize}</span> : null}
             </div>

@@ -1,6 +1,6 @@
 "use client"
 
-// Sphere Pharmacy — staff/admin dashboard shell.
+// Medivyx — staff/admin dashboard shell.
 // Role guard + sidebar navigation (desktop) / Sheet navigation (mobile) + section router.
 // Section data refreshes via a refreshKey counter so actions in one section can
 // trigger refetches in others (e.g. prescription review → orders + overview).
@@ -443,7 +443,7 @@ export function AdminView() {
         <div ref={contentRef} tabIndex={-1} className="admin-content" aria-label={active?.title ?? "Dashboard"}>
           <p className="sr-only" role="status">{active?.title ?? "Dashboard"} page</p>
           <div key={section} className="admin-section" data-admin-section={section}>{renderSection()}</div>
-          <footer className="admin-footer"><span>Sphere Pharmacy <span aria-hidden>·</span> Staff workspace</span><span><ShieldCheck className="h-3.5 w-3.5" aria-hidden /> {ROLE_LABELS[role]} access</span></footer>
+          <footer className="admin-footer"><span>Medivyx <span aria-hidden>·</span> Staff workspace</span><span><ShieldCheck className="h-3.5 w-3.5" aria-hidden /> {ROLE_LABELS[role]} access</span></footer>
         </div>
       </div>
 
@@ -476,7 +476,7 @@ function SidebarNav({ items, section, onSelect, staffName, staffRole, onSignOut,
 }) {
   return (
     <div className="admin-sidebar-inner">
-      <button onClick={onStore} className="admin-brand" aria-label="Sphere Pharmacy storefront" title="Sphere Pharmacy storefront"><span className="admin-brand-mark"><Plus strokeWidth={2.5} /></span><span>sphere<span className="admin-brand-caption">PHARMACY WORKSPACE</span></span><ArrowUpRight className="admin-brand-arrow h-4 w-4" aria-hidden /></button>
+      <button onClick={onStore} className="admin-brand" aria-label="Medivyx storefront" title="Medivyx storefront"><span className="admin-brand-mark"><Plus strokeWidth={2.5} /></span><span>medivyx<span className="admin-brand-caption">PHARMACY WORKSPACE</span></span><ArrowUpRight className="admin-brand-arrow h-4 w-4" aria-hidden /></button>
       <div className="admin-location"><span className="admin-location-icon"><Store className="h-4 w-4" /></span><span><strong>Roysambu, Nairobi</strong><span className="admin-location-status"><i className={openNow ? "is-open" : ""} />{openNow ? "Pharmacy is open" : "Pharmacy is closed"}</span></span></div>
       <nav aria-label="Admin sections" className="admin-nav">
         {NAV_GROUPS.map((group) => {
@@ -522,8 +522,8 @@ function StaffGate({
             <h2 className="text-2xl font-bold tracking-tight">Welcome to your workspace</h2>
             <p className="mt-1.5 text-sm text-muted-foreground">
               {isCustomer
-                ? "You're signed in with a customer account. The dashboard is for Sphere Pharmacy staff — admins, pharmacists, staff and riders."
-                : "Sign in with your Sphere Pharmacy staff account to manage orders, prescriptions and the catalogue."}
+                ? "You're signed in with a customer account. The dashboard is for Medivyx staff — admins, pharmacists, staff and riders."
+                : "Sign in with your Medivyx staff account to manage orders, prescriptions and the catalogue."}
             </p>
           </div>
           <div className="flex w-full flex-col gap-2">

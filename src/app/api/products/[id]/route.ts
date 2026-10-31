@@ -82,7 +82,7 @@ export async function PATCH(request: Request, { params }: Params) {
         where: { productId: id, notifiedAt: null },
         include: { user: { select: { id: true, email: true, name: true } } },
       })
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"
       const productUrl = `${appUrl}/products/${updated.id}`
       const { backInStockTemplate } = await import("@/lib/email/templates")
       const emailTemplate = backInStockTemplate({
@@ -96,7 +96,7 @@ export async function PATCH(request: Request, { params }: Params) {
           w.userId,
           "STOCK_ALERT",
           `${updated.name} is back in stock!`,
-          `${updated.name} is back in stock at Sphere Pharmacy (KSh ${Number(updated.price).toLocaleString()}) — order it while it lasts.`,
+          `${updated.name} is back in stock at Medivyx (KSh ${Number(updated.price).toLocaleString()}) — order it while it lasts.`,
           "IN_APP",
           {
             link: productUrl,
@@ -125,7 +125,7 @@ export async function PATCH(request: Request, { params }: Params) {
         event: "LOW_STOCK_ALERT",
         title: `Low Stock Alert: ${updated.name}`,
         message: `${updated.name} is running low on stock. Current quantity: ${updated.stockQty} units (threshold: ${updated.lowStockThreshold}).`,
-        link: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/admin?section=catalogue`,
+        link: `${process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"}/admin?section=catalogue`,
         details: {
           Product: updated.name,
           SKU: updated.sku,

@@ -113,7 +113,7 @@ export async function POST(request: Request, { params }: Params) {
 
       await audit(actor, isStaff ? session?.staffRole ?? null : null, "ORDER_CANCELLED", "Order", order.reference, reason)
       const { title, message } = statusNotification("CANCELLED", order.reference)
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"
       const orderUrl = `${appUrl}/orders/${order.id}`
       const customer = order.userId ? await db.user.findUnique({ where: { id: order.userId }, select: { email: true } }) : null
       const emailAddress = customer?.email || order.guestEmail

@@ -4,7 +4,7 @@ import { LOYALTY, pointsForAmount } from "@/lib/constants"
 import type { LoyaltySummaryDTO } from "@/lib/types"
 
 /**
- * Sphere Points loyalty engine.
+ * Medivyx Points loyalty engine.
  *
  * Earning: awarded once when an order's payment succeeds (pointsEarned acts as
  * the idempotency flag — a seeded order with pointsEarned > 0 has already been

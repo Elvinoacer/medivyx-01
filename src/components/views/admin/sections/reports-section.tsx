@@ -100,7 +100,7 @@ export function ReportsSection({ refreshKey }: SectionProps) {
           o.total,
         ]),
       ]
-      downloadCsv(`sphere-orders-${new Date().toISOString().slice(0, 10)}.csv`, rows)
+      downloadCsv(`medivyx-orders-${new Date().toISOString().slice(0, 10)}.csv`, rows)
       toast.success(`Exported ${orders.length} orders to CSV.`)
     } catch (err) {
       toast.error(apiErrorMessage(err))
@@ -115,7 +115,7 @@ export function ReportsSection({ refreshKey }: SectionProps) {
       ["Product", "Qty sold", "Revenue (KSh)"],
       ...stats.topProducts.map((p) => [p.name, p.qty, p.revenue]),
     ]
-    downloadCsv(`sphere-top-products-${new Date().toISOString().slice(0, 10)}.csv`, rows)
+    downloadCsv(`medivyx-top-products-${new Date().toISOString().slice(0, 10)}.csv`, rows)
     toast.success("Exported top products to CSV.")
   }
 

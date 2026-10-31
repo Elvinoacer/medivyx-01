@@ -101,7 +101,7 @@ export async function PATCH(request: Request, { params }: Params) {
     const { title, message } = status === "READY_FOR_PICKUP" && order.fulfillment === "DELIVERY"
       ? { title: `Order ${order.reference}: Ready for dispatch`, message: `Your order ${order.reference} is packed and ready for dispatch. We will notify you when a rider starts delivery.` }
       : statusNotification(status, order.reference)
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"
     const orderUrl = `${appUrl}/orders/${order.id}`
     const customer = order.userId
       ? await db.user.findUnique({ where: { id: order.userId }, select: { name: true, email: true } })

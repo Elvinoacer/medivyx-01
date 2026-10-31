@@ -1,4 +1,4 @@
-# Sphere Pharmacy recording checklist
+# Medivyx recording checklist
 
 Use this beside your recorder. The detailed script contains the clicks and captions for each scene. Tick a scene only after the final result has appeared on screen.
 
@@ -28,7 +28,7 @@ Core scenes are marked with an asterisk. Each take should show the entry point, 
 - [ ] C05 - Save and manage delivery addresses (Customer)
 - [ ] C06 - Updates and notification preferences (Customer or Staff)
 - [ ] C07 - Back in stock alerts (Customer)
-- [ ] C08 - Sphere Points and redemption (Customer)
+- [ ] C08 - Medivyx Points and redemption (Customer)
 - [ ] C09 - Write a product review (Customer)
 - [ ] O01 * - Place a cash pickup order (Customer)
 - [ ] O02 - Place a delivery order (Customer)

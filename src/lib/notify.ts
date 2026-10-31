@@ -16,7 +16,7 @@ export async function channelAllowed(userId: string, channel: NotificationChanne
 }
 
 export function notificationUrl(link?: string): string {
-  const base = new URL(process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke")
+  const base = new URL(process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke")
   const url = new URL(link || "/account", base)
   return url.origin === base.origin ? url.href : new URL("/account", base).href
 }
@@ -81,8 +81,8 @@ async function enqueue(tx: Prisma.TransactionClient, input: {
       channel: "PUSH",
       payload: {
         token: token.token,
-        title: "Sphere Pharmacy",
-        body: "You have a new update. Open Sphere to view it securely.",
+        title: "Medivyx",
+        body: "You have a new update. Open Medivyx to view it securely.",
         link,
         data: { event, notificationId: `notice:${key}` },
       },
@@ -172,8 +172,8 @@ export async function notifyStaff(opts: NotifyStaffOptions): Promise<void> {
           channel: "PUSH",
           payload: {
             token: token.token,
-            title: "Sphere Pharmacy",
-            body: "You have a new update. Open Sphere to view it securely.",
+            title: "Medivyx",
+            body: "You have a new update. Open Medivyx to view it securely.",
             link,
             data: { event: opts.event, notificationId: `notice:${key}` },
           },
@@ -253,7 +253,7 @@ export async function notifyServiceBooking(opts: {
   event?: string
   dedupeKey?: string
 }): Promise<void> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"
   const bookingUrl = `${appUrl}/services?tab=bookings`
   const template = serviceBookingTemplate({
     customerName: opts.customerName,

@@ -430,7 +430,7 @@ function RiderDeliveryCard({
   onPromptMpesa?: () => void
   onConfirmCash?: () => void
 }) {
-  const wa = waHref(order.customerPhone, `Hello ${order.customerName ?? "there"}, this is Sphere Pharmacy — I'm on my way with your order ${order.reference}.`)
+  const wa = waHref(order.customerPhone, `Hello ${order.customerName ?? "there"}, this is Medivyx — I'm on my way with your order ${order.reference}.`)
   const tel = telHref(order.customerPhone)
   const payable = order.paymentMethod === "CASH_ON_DELIVERY" ? "Cash on delivery" : payMethodLabel(order)
   const collectCash = order.paymentMethod === "CASH_ON_DELIVERY"
@@ -598,7 +598,7 @@ function DispatchCard({
   // allow reassignment; hide the currently assigned rider from the options
   const options = riders.filter((r) => r.id !== order.riderId)
   const assignedRider = riders.find((r) => r.id === order.riderId)
-  const wa = waHref(order.customerPhone, `Hello ${order.customerName ?? "there"}, this is Sphere Pharmacy regarding your delivery order ${order.reference}.`)
+  const wa = waHref(order.customerPhone, `Hello ${order.customerName ?? "there"}, this is Medivyx regarding your delivery order ${order.reference}.`)
 
   return (
     <Card className="card-lift">

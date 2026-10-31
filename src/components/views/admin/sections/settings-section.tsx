@@ -26,11 +26,11 @@ import { enablePushNotifications, getPushPermissionState } from "@/lib/firebase/
 import { Save, Loader2, Info, Building2, Truck, MoonStar, KeyRound, Trash2, Plus, Bell, Mail, Send, CheckCircle2, MapPinned, Search, ShieldCheck } from "lucide-react"
 
 const DEMO_ACCOUNTS = [
-  { role: "Admin", email: "admin@spherepharmacy.co.ke", password: "admin123" },
-  { role: "Pharmacist", email: "pharmacist@spherepharmacy.co.ke", password: "pharm123" },
-  { role: "Pharmacy staff", email: "staff@spherepharmacy.co.ke", password: "staff123" },
-  { role: "Rider", email: "rider@spherepharmacy.co.ke", password: "rider123" },
-  { role: "Customer (demo)", email: "customer@spherepharmacy.co.ke", password: "customer123" },
+  { role: "Admin", email: "admin@medivyx.co.ke", password: "admin123" },
+  { role: "Pharmacist", email: "pharmacist@medivyx.co.ke", password: "pharm123" },
+  { role: "Pharmacy staff", email: "staff@medivyx.co.ke", password: "staff123" },
+  { role: "Rider", email: "rider@medivyx.co.ke", password: "rider123" },
+  { role: "Customer (demo)", email: "customer@medivyx.co.ke", password: "customer123" },
 ]
 
 export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
@@ -392,7 +392,7 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
 
             <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
               <Input
-                placeholder="Search the pharmacy location, e.g. Sphere Pharmacy Lumumba Drive"
+                placeholder="Search the pharmacy location, e.g. Medivyx Lumumba Drive"
                 value={locationSearch}
                 onChange={(e) => setLocationSearch(e.target.value)}
                 onKeyDown={(e) => {
@@ -765,7 +765,7 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
                 </div>
                 <div className="flex items-center gap-1.5 text-foreground">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>Payment confirmations & Sphere Points balance</span>
+                  <span>Payment confirmations & Medivyx Points balance</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-foreground">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
@@ -775,8 +775,8 @@ export function SettingsSection({ refreshKey, onRefresh }: SectionProps) {
 
               <div className="flex items-center justify-between gap-2 rounded-md border border-teal-200/70 bg-teal-50/40 px-2.5 py-1.5 text-xs text-teal-900 dark:border-teal-800/40 dark:bg-teal-950/20 dark:text-teal-300">
                 <span className="font-mono text-[11px] truncate">{diagnostics?.email?.fromEmail || "support@gtss.software"}</span>
-                <span className="shrink-0 text-[11px] text-muted-foreground truncate max-w-[140px]" title={diagnostics?.email?.recipient || "admin@spherepharmacy.co.ke"}>
-                  To: {diagnostics?.email?.recipient || "admin@spherepharmacy.co.ke"}
+                <span className="shrink-0 text-[11px] text-muted-foreground truncate max-w-[140px]" title={diagnostics?.email?.recipient || "admin@medivyx.co.ke"}>
+                  To: {diagnostics?.email?.recipient || "admin@medivyx.co.ke"}
                 </span>
               </div>
 

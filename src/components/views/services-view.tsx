@@ -75,16 +75,16 @@ function downloadIcsCalendar(booking: ServiceBookingDTO) {
   try {
     const start = new Date(booking.scheduledStart).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z"
     const end = new Date(booking.scheduledEnd).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z"
-    const title = `Sphere Pharmacy: ${booking.serviceName}`
-    const description = `Appointment for ${booking.serviceName} at Sphere Pharmacy.\\nReference: ${booking.reference}\\nContact: ${PHARMACY.phone}`
+    const title = `Medivyx: ${booking.serviceName}`
+    const description = `Appointment for ${booking.serviceName} at Medivyx.\\nReference: ${booking.reference}\\nContact: ${PHARMACY.phone}`
     const location = PHARMACY.address
 
     const icsContent = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//Sphere Pharmacy//Care Bookings//EN",
+      "PRODID:-//Medivyx//Care Bookings//EN",
       "BEGIN:VEVENT",
-      `UID:${booking.id}@spherepharmacy.co.ke`,
+      `UID:${booking.id}@medivyx.co.ke`,
       `DTSTAMP:${start}`,
       `DTSTART:${start}`,
       `DTEND:${end}`,
@@ -100,7 +100,7 @@ function downloadIcsCalendar(booking: ServiceBookingDTO) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `SpherePharmacy-${booking.reference}.ics`
+    a.download = `Medivyx-${booking.reference}.ics`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -355,7 +355,7 @@ export function ServicesView() {
         <div className="absolute inset-0 z-0">
           <img
             src="/images/services-banner.jpg"
-            alt="Sphere Pharmacy Clinic & Care"
+            alt="Medivyx Clinic & Care"
             className="h-full w-full object-cover object-right md:object-center select-none"
           />
           {/* Multi-layered gradient overlay ensuring text legibility */}
@@ -368,7 +368,7 @@ export function ServicesView() {
         {/* Content Layer */}
         <div className="relative z-10 max-w-2xl px-6 py-10 sm:px-10 sm:py-14 text-white">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[.16em] backdrop-blur shadow-xs">
-            <Sparkles className="h-3.5 w-3.5 text-emerald-300" /> Sphere Clinical Care
+            <Sparkles className="h-3.5 w-3.5 text-emerald-300" /> Medivyx Clinical Care
           </span>
 
           <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
@@ -427,7 +427,7 @@ export function ServicesView() {
               className="rounded-full border-white/30 bg-black/20 px-5 text-white hover:bg-white/10 backdrop-blur"
             >
               <a
-                href={waLink("Hello Sphere Pharmacy! I would like to ask about your clinic and care services.")}
+                href={waLink("Hello Medivyx! I would like to ask about your clinic and care services.")}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -633,7 +633,7 @@ export function ServicesView() {
                       </div>
 
                       <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-2">
-                        {service.shortDescription || service.description || "Certified care service available from Sphere Pharmacy."}
+                        {service.shortDescription || service.description || "Certified care service available from Medivyx."}
                       </p>
 
                       {/* Clinical trust checklist */}
@@ -708,7 +708,7 @@ export function ServicesView() {
               </div>
               <Button asChild className="rounded-full shrink-0">
                 <a
-                  href={waLink("Hello Sphere Pharmacy! I would like guidance on choosing the right care service.")}
+                  href={waLink("Hello Medivyx! I would like guidance on choosing the right care service.")}
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -946,7 +946,7 @@ export function ServicesView() {
                         >
                           <a
                             href={waLink(
-                              `Hello Sphere Pharmacy! I have a question regarding my appointment #${booking.reference} (${booking.serviceName}).`
+                              `Hello Medivyx! I have a question regarding my appointment #${booking.reference} (${booking.serviceName}).`
                             )}
                             target="_blank"
                             rel="noreferrer"
@@ -1171,7 +1171,7 @@ function BookingTraceDialog({
                 <div>
                   <p className="font-bold">Your appointment is confirmed!</p>
                   <p className="mt-1">
-                    Please arrive at Sphere Pharmacy on Lumumba Drive 5 minutes prior to your scheduled time. Our pharmacist has been reserved for your visit.
+                    Please arrive at Medivyx on Lumumba Drive 5 minutes prior to your scheduled time. Our pharmacist has been reserved for your visit.
                   </p>
                 </div>
               </div>
@@ -1346,7 +1346,7 @@ function BookingTraceDialog({
               <Button asChild size="sm" className="rounded-full gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
                 <a
                   href={waLink(
-                    `Hello Sphere Pharmacy! I have a question concerning my appointment #${booking.reference} (${booking.serviceName}) scheduled for ${scheduledDate}.`
+                    `Hello Medivyx! I have a question concerning my appointment #${booking.reference} (${booking.serviceName}) scheduled for ${scheduledDate}.`
                   )}
                   target="_blank"
                   rel="noreferrer"
@@ -1430,7 +1430,7 @@ function ServiceDetailDialog({
 
         <div className="p-5 space-y-4 text-xs sm:text-sm text-muted-foreground">
           <p className="leading-relaxed">
-            {service.description || service.shortDescription || "Care service provided by the certified clinical team at Sphere Pharmacy."}
+            {service.description || service.shortDescription || "Care service provided by the certified clinical team at Medivyx."}
           </p>
 
           <div className="rounded-xl bg-muted/40 p-3.5 space-y-2 text-xs">
@@ -1791,7 +1791,7 @@ function ServiceReviewDialog({
         <DialogHeader>
           <DialogTitle className="text-lg font-bold">Review {booking.serviceName}</DialogTitle>
           <DialogDescription className="text-xs">
-            How was your consultation and care experience at Sphere Pharmacy?
+            How was your consultation and care experience at Medivyx?
           </DialogDescription>
         </DialogHeader>
 

@@ -43,17 +43,18 @@
 .sphere-original-logo {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 150px;
-  height: 100px;
-  overflow: hidden;
+  justify-content: flex-start;
+  width: 180px;
+  height: 60px;
+  overflow: visible;
   flex-shrink: 0;
 }
 .sphere-original-logo img {
-  width: 190px !important;
-  height: auto !important;
-  max-width: none !important;
-  max-height: none !important;
+  width: auto !important;
+  height: 48px !important;
+  max-width: 180px !important;
+  max-height: 48px !important;
+  object-fit: contain;
   flex-shrink: 0;
 }
 .sphere-desktop-links,
@@ -368,11 +369,12 @@
     padding: 0 4%;
   }
   .sphere-original-logo {
-    width: 115px;
-    height: 90px;
+    width: 140px;
+    height: 50px;
   }
   .sphere-original-logo img {
-    width: 160px !important;
+    height: 40px !important;
+    max-width: 140px !important;
   }
 }
 @media (max-width: 767px) {
@@ -444,7 +446,7 @@
     transition: none !important;
   }
 }
-.sphere-public .premium-footer img[alt="Sphere Pharmacy"] { max-height:110px; width:175px; object-fit:contain; }
+.sphere-public .premium-footer :is(img[alt="Medivyx"], img[alt="Sphere Pharmacy"]) { max-height:110px; width:175px; object-fit:contain; }
 .sphere-public .mobile-primary-nav { background:transparent; border:0; box-shadow:none; backdrop-filter:none; }
 .sphere-public .premium-empty { border:1px solid #153d3225; border-radius:24px; background:radial-gradient(circle at 50% 0%,#e0e8c7,transparent 65%),#f0f2e5; padding-block:60px; }
 .sphere-public .premium-empty>div:first-child { width:84px; height:84px; border-radius:50%; background:#d9ee83; margin-bottom:24px; }

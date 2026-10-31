@@ -113,7 +113,7 @@ export function PremiumPopularCard({ product, rank }: PremiumPopularCardProps) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-600/80 dark:text-violet-300/80">
-              {product.brand || "Sphere pick"}
+              {product.brand || "Medivyx pick"}
             </p>
             <button
               type="button"

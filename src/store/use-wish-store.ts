@@ -42,7 +42,7 @@ export const useWishStore = create<WishState>()(
       remove: (productId) => set({ items: get().items.filter((w) => w.productId !== productId) }),
       clear: () => set({ items: [] }),
     }),
-    { name: "sphere-wishlist" }
+    { name: "medivyx-wishlist" }
   )
 )
 
@@ -66,6 +66,6 @@ export const useRecentStore = create<RecentState>()(
       },
       clear: () => set({ ids: [] }),
     }),
-    { name: "sphere-recent" }
+    { name: "medivyx-recent" }
   )
 )

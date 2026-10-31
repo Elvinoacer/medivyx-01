@@ -30,7 +30,7 @@ export function SphereHeader() {
         <button
           className="sphere-original-logo"
           onClick={() => go("home")}
-          aria-label="Sphere Pharmacy home"
+          aria-label="Medivyx home"
         >
           <LogoFull />
         </button>

@@ -198,7 +198,7 @@ export interface CreateOrderPayload {
   notes?: string
   prescriptionIds?: string[]
   promotionCode?: string
-  redeemPoints?: boolean // redeem available Sphere Points at checkout
+  redeemPoints?: boolean // redeem available Medivyx Points at checkout
   deliveryLatitude?: number
   deliveryLongitude?: number
 }

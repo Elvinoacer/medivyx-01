@@ -133,9 +133,9 @@ export function fallbackIntent(text: string): AssistantIntent {
 
 export function fallbackReply(text: string): string {
   if (/\b(hours|opening|closing|open now)\b/i.test(text))
-    return "You’re welcome to visit us daily, 8:00 AM–10:30 PM, on Lumumba Drive, Roysambu. Holiday hours can vary—call +254 707 475 208 if you’d like to check before coming.";
+    return "You’re welcome to visit us daily, 8:00 AM–10:30 PM, on Lumumba Drive, Roysambu. Holiday hours can vary—call +254 712 222 524 if you’d like to check before coming.";
   if (/\b(where|location|address|directions)\b/i.test(text))
-    return "You’ll find Sphere Pharmacy on Lumumba Drive, Roysambu, Nairobi. Call +254 707 475 208 if you need a hand finding us.";
+    return "You’ll find Medivyx on Lumumba Drive, Roysambu, Nairobi. Call +254 712 222 524 if you need a hand finding us.";
   if (/\b(deliver|delivery|pickup)\b/i.test(text))
     return "You can choose delivery or pickup at checkout. Your delivery options and exact fee are shown after you enter your location. I can take you to checkout whenever you’re ready.";
   return "I’m here to help. Tell me the product you’re looking for, the service you’d like to book, or which part of your account you want to open.";

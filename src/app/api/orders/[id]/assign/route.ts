@@ -37,7 +37,7 @@ export async function POST(request: Request, { params }: Params) {
   if (updatedCount.count !== 1) return NextResponse.json({ error: "This delivery changed. Refresh and try assigning again." }, { status: 409 })
   await addStatusEvent(order.id, order.status, actor, order.riderName ? `Rider reassigned: ${order.riderName} → ${rider.name}` : `Rider assigned: ${rider.name}`)
   await audit(actor, session.staffRole, "RIDER_ASSIGNED", "Order", order.reference, `${rider.name} → ${order.reference}`)
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"
   const orderUrl = `${appUrl}/#order-${order.id}`
 
   const customerUser = order.userId
@@ -57,7 +57,7 @@ export async function POST(request: Request, { params }: Params) {
       email: customerEmail
         ? {
             to: customerEmail,
-            subject: `Rider Assigned: Order ${order.reference} — Sphere Pharmacy`,
+            subject: `Rider Assigned: Order ${order.reference} — Medivyx`,
             html: `<p>Hello ${customerUser?.name || order.guestName || "Customer"},</p><p>Great news! Rider <strong>${rider.name}</strong> has been assigned to deliver your order <strong>${order.reference}</strong>.</p><p>Delivery address: <strong>${order.deliveryAddress ?? "Your saved address"}</strong> (${order.deliveryArea ?? ""})</p><p><a href="${orderUrl}">Track your delivery</a></p>`,
             text: `Rider ${rider.name} has been assigned to deliver your order ${order.reference}.\nTrack order: ${orderUrl}`,
           }

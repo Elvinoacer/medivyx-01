@@ -120,7 +120,7 @@ export async function PATCH(request: Request, { params }: Params) {
     }
 
     if (rx.userId) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"
       const customerUser = await db.user.findUnique({ where: { id: rx.userId }, select: { name: true, email: true } })
       const { prescriptionStatusTemplate } = await import("@/lib/email/templates")
 

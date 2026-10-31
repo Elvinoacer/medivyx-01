@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "SpherePharmacy/1.0 (customer location lookup)",
+        "User-Agent": "Medivyx/1.0 (customer location lookup)",
         Accept: "application/json",
       },
       cache: "no-store",

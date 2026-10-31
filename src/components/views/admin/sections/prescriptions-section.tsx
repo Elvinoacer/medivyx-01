@@ -212,7 +212,7 @@ export function PrescriptionsSection({ refreshKey, onRefresh }: SectionProps) {
 // ---------- queue card ----------
 
 function QueueCard({ rx, onReview, canReview }: { rx: PrescriptionDTO; onReview: () => void; canReview: boolean }) {
-  const wa = waHref(rx.customerPhone, `Hello ${rx.customerName ?? "there"}, this is Sphere Pharmacy regarding your prescription upload (${rx.fileName}).`)
+  const wa = waHref(rx.customerPhone, `Hello ${rx.customerName ?? "there"}, this is Medivyx regarding your prescription upload (${rx.fileName}).`)
   const tel = telHref(rx.customerPhone)
   return (
     <Card className="card-lift">
@@ -420,7 +420,7 @@ export function ReviewDialog({
     }
   }
 
-  const wa = detail ? waHref(detail.customerPhone, `Hello ${detail.customerName ?? "there"}, this is Sphere Pharmacy regarding your prescription upload (${detail.fileName}).`) : null
+  const wa = detail ? waHref(detail.customerPhone, `Hello ${detail.customerName ?? "there"}, this is Medivyx regarding your prescription upload (${detail.fileName}).`) : null
   const tel = detail ? telHref(detail.customerPhone) : null
 
   const submitButtonClass = {

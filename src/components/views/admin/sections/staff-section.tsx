@@ -398,7 +398,7 @@ function StaffEditorDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="st-email">Email *</Label>
-            <Input id="st-email" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="name@spherepharmacy.co.ke" />
+            <Input id="st-email" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="name@medivyx.co.ke" />
           </div>
           <div className="grid gap-3.5 sm:grid-cols-2">
             <div className="space-y-1.5">

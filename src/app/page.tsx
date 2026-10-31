@@ -49,7 +49,7 @@ export default function Page() {
 
   const session = useAuthStore((s) => s.session)
   useEffect(() => {
-    if (session && getPushPermissionState() === "granted" && localStorage.getItem("sphere_device_token")) {
+    if (session && getPushPermissionState() === "granted" && (localStorage.getItem("medivyx_device_token") || localStorage.getItem("sphere_device_token"))) {
       void enablePushNotifications()
     }
   }, [session])

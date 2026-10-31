@@ -46,7 +46,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     ])
     if (["PRESCRIPTION_VERIFIED", "AVAILABILITY_CONFIRMED"].includes(order.status)) await db.order.updateMany({ where: { id, status: order.status }, data: { status: "AWAITING_PAYMENT", version: { increment: 1 } } })
     await audit(session.staffName || "Staff", session.staffRole, "PAYMENT_REQUESTED", "Order", order.reference, `M-Pesa request created by ${session.staffRole}`)
-    await notifyCustomer(order.userId, "PAYMENT", `Payment request — ${order.reference}`, `An M-Pesa prompt for KSh ${amount.toLocaleString()} was sent to your phone.`, "IN_APP", { link: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/orders/${id}`, metadata: { orderId: id, reference: order.reference, amount } })
+    await notifyCustomer(order.userId, "PAYMENT", `Payment request — ${order.reference}`, `An M-Pesa prompt for KSh ${amount.toLocaleString()} was sent to your phone.`, "IN_APP", { link: `${process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"}/orders/${id}`, metadata: { orderId: id, reference: order.reference, amount } })
     return NextResponse.json({ paymentId: payment.id, checkoutRequestId: result.checkoutRequestId, phone, amount, message: result.customerMessage })
   } catch {
     await db.payment.updateMany({ where: { id: payment.id, status: "PROCESSING" }, data: { status: "PROCESSING", failureReason: "Provider response uncertain; reconcile before another attempt" } })

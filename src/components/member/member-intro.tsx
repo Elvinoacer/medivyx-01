@@ -57,7 +57,7 @@ export function MemberIntro({ kind }: { kind: keyof typeof copy }) {
           </h1>
           <p className="sphere-member-description">{content.description}</p>
           <button onClick={() => useAppStore.getState().setAssistantOpen(true)}>
-            <Sparkles size={16} /> A little help from Sphere{" "}
+            <Sparkles size={16} /> A little help from Medivyx{" "}
             <ArrowUpRight size={16} />
           </button>
         </div>

@@ -79,7 +79,7 @@ export function OffersView() {
       </button>
       <header className="mb-9 max-w-3xl">
         <span className="mb-3 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-primary">
-          <TicketPercent className="h-4 w-4" aria-hidden="true" /> Sphere Pharmacy offers
+          <TicketPercent className="h-4 w-4" aria-hidden="true" /> Medivyx offers
         </span>
         <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">A little more care, for less.</h1>
         <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">

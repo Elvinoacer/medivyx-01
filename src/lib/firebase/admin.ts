@@ -1,4 +1,4 @@
-// Firebase Cloud Messaging (FCM) Push Notification Service for Sphere Pharmacy
+// Firebase Cloud Messaging (FCM) Push Notification Service for Medivyx
 // Adheres to the official Google Firebase Cloud Messaging HTTP v1 API.
 // Generates OAuth2 bearer tokens directly via Google Service Account (RS256 JWT)
 // without requiring heavy external dependencies.
@@ -165,7 +165,7 @@ export async function sendPushNotification(
 
   const endpoint = `https://fcm.googleapis.com/v1/projects/${creds.projectId}/messages:send`
   const defaultIcon = "/favicon.ico"
-  const origin = new URL(process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke")
+  const origin = new URL(process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke")
   const target = new URL(link || "/account", origin)
   const clickAction = target.origin === origin.origin ? target.href : origin.href
 

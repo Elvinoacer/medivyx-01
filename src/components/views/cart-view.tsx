@@ -88,7 +88,7 @@ export function CartView() {
         />
         <div className="mt-6 flex justify-center">
           <Button asChild variant="outline" className="gap-1.5 rounded-full">
-            <a href={waLink("Hello Sphere Pharmacy! I'd like help placing an order.")} target="_blank" rel="noopener noreferrer">
+            <a href={waLink("Hello Medivyx! I'd like help placing an order.")} target="_blank" rel="noopener noreferrer">
               <MessageCircle className="h-4 w-4 text-emerald-700" /> Need help? Order via WhatsApp
             </a>
           </Button>

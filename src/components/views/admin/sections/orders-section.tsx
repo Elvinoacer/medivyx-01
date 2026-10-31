@@ -1011,7 +1011,7 @@ function OrderDetailSheet({
   if (!order) return null
 
   const nexts = nextStatusesFor(order, role)
-  const wa = waHref(order.customerPhone, `Hello ${order.customerName ?? "there"}, this is Sphere Pharmacy regarding order ${order.reference}.`)
+  const wa = waHref(order.customerPhone, `Hello ${order.customerName ?? "there"}, this is Medivyx regarding order ${order.reference}.`)
   const tel = telHref(order.customerPhone)
   const pay = latestPayment(order)
 

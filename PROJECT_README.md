@@ -1,13 +1,13 @@
-# Sphere Pharmacy — Digital Platform
+# Medivyx — Digital Platform
 
-A full-stack retail pharmacy platform for **Sphere Pharmacy (The Sphere Pharmacy – Lumumba Drive, Roysambu, Nairobi, Kenya)**, built to the PRD in `upload/requirements.md`.
+A full-stack retail pharmacy platform for **Medivyx (Medivyx – Lumumba Drive, Roysambu, Nairobi, Kenya)**, built to the PRD in `upload/requirements.md`.
 
 ## What's inside
 
 - **Public storefront** (single-page app at `/`): hero + search, category browsing (16 categories), product catalogue with filters/sort, product detail pages, promotions, FAQ, pharmacy info (hours/phone/WhatsApp/Maps), AI assistant with medication-question escalation.
 - **Dark mode** — one-tap light/dark toggle in the header (teal/emerald palette in both themes).
 - **Real photography** — AI-generated brand imagery: hero pharmacy interior with floating glass stat cards, pharmacist consultation photo, and a same-day delivery banner.
-- **Sphere Points loyalty** — earn 1 pt per KSh 100 spent (awarded automatically on successful payment) and redeem at checkout: 1 pt = KSh 1, from 100 pts, capped at 25% of the order. Balance + lifetime stats + per-order history on My account; cancellation/refund claws points back server-side.
+- **Medivyx Points loyalty** — earn 1 pt per KSh 100 spent (awarded automatically on successful payment) and redeem at checkout: 1 pt = KSh 1, from 100 pts, capped at 25% of the order. Balance + lifetime stats + per-order history on My account; cancellation/refund claws points back server-side.
 - **Product ratings & reviews** — star ratings on cards and product pages, verified-customer reviews with a rating breakdown, and a "write a review" form for signed-in customers (one review per product per customer). **Review moderation**: staff can hide/restore reviews from Admin → Reviews (hidden reviews drop out of public averages).
 - **Rider dispatch (FR-8.5)** — Admin → Dispatch board: assign delivery orders to riders (workload chips, contact links); riders sign in and land straight on "My deliveries" where they can Start delivery / Mark delivered (server-enforced: only their own delivery orders, only delivery statuses).
 - **Notification preferences** — per-channel toggles (SMS / WhatsApp / Email) on My account, persisted server-side and respected when notifications are generated (in-app is always on).
@@ -50,17 +50,17 @@ The PostgreSQL database is managed externally. Apply the Prisma schema with `bun
 
 | Role | Email | Password |
 |---|---|---|
-| Admin | admin@spherepharmacy.co.ke | admin123 |
-| Pharmacist | pharmacist@spherepharmacy.co.ke | pharm123 |
-| Staff | staff@spherepharmacy.co.ke | staff123 |
-| Rider | rider@spherepharmacy.co.ke | rider123 |
-| Customer | customer@spherepharmacy.co.ke | customer123 |
+| Admin | admin@medivyx.co.ke | admin123 |
+| Pharmacist | pharmacist@medivyx.co.ke | pharm123 |
+| Staff | staff@medivyx.co.ke | staff123 |
+| Rider | rider@medivyx.co.ke | rider123 |
+| Customer | customer@medivyx.co.ke | customer123 |
 
 Staff sign-in: open the site → footer → "Staff dashboard" → Staff tab.
 M-Pesa demo rule: any 4-digit PIN approves; `1234`/`0000` simulates a wrong PIN.
 Card demo rule: any valid card approves; numbers ending `0000` or CVV `000` are declined.
 Promo codes: `SAVE10` (10% off) and `VITC15` (15% off) work at checkout — tap the code chip on the home page to copy it.
-Sphere Points demo: the demo customer starts with **620 pts** (≈ KSh 620 at checkout). Add items worth KSh 1,600 to see the 25% cap in action (400 pts = KSh 400 off). The rider account starts with a delivery assigned (check Admin → Dispatch, or sign in as the rider).
+Medivyx Points demo: the demo customer starts with **620 pts** (≈ KSh 620 at checkout). Add items worth KSh 1,600 to see the 25% cap in action (400 pts = KSh 400 off). The rider account starts with a delivery assigned (check Admin → Dispatch, or sign in as the rider).
 
 ## Production notes (per PRD §11 — pending client confirmation)
 
@@ -72,12 +72,12 @@ Sphere Points demo: the demo customer starts with **620 pts** (≈ KSh 620 at ch
 
 ## Database environment
 
-Sphere Pharmacy uses PostgreSQL through Prisma. Configure these server-side variables in the deployment environment (never expose them to the browser):
+Medivyx uses PostgreSQL through Prisma. Configure these server-side variables in the deployment environment (never expose them to the browser):
 
 ```
-sphere_pharmacy_PRISMA_DATABASE_URL=
-sphere_pharmacy_DATABASE_URL=
-sphere_pharmacy_POSTGRES_URL=
+medivyx_PRISMA_DATABASE_URL=
+medivyx_DATABASE_URL=
+medivyx_POSTGRES_URL=
 ```
 
 Use the Prisma URL for the application datasource, the Postgres/direct URL for Prisma direct connections, and keep the generic database URL available as the runtime fallback used by the Prisma client.

@@ -177,7 +177,7 @@ export function CheckoutView() {
     }
   }, [linkedPromo, cartHydrated])
 
-  // ---------- Sphere Points redemption state ----------
+  // ---------- Medivyx Points redemption state ----------
   const [redeemPoints, setRedeemPoints] = useState(false)
 
   // Never display or submit a saved discount without a successful validation
@@ -461,7 +461,7 @@ export function CheckoutView() {
     }
   }, [step, placedOrder, clearCart])
 
-  // ---------- derived: totals + Sphere Points quote ----------
+  // ---------- derived: totals + Medivyx Points quote ----------
   const loyaltyBalance = user?.loyaltyPoints ?? 0
   const postPromoSubtotal = Math.max(0, subtotal - discountAmount)
   // Server quote rule: min(balance, 25% cap), zero below the 100-pt minimum — mirror it
@@ -566,7 +566,7 @@ export function CheckoutView() {
         sessionStorage.setItem(`sphere_order_access_${order.id}`, order.guestAccessToken)
       }
       if (order.pointsRedeemed > 0) {
-        toast.success(`${order.pointsRedeemed} Sphere Points redeemed`)
+        toast.success(`${order.pointsRedeemed} Medivyx Points redeemed`)
       }
       // keep the session's point balance fresh (redemption already decremented server-side)
       void refreshSession()
@@ -1344,7 +1344,7 @@ export function CheckoutView() {
                     <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
                       <p className="flex items-start gap-2 text-sm text-muted-foreground">
                         <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                        You&apos;ll enter card details on IntaSend&apos;s secure hosted checkout. Sphere Pharmacy never receives your card number or CVV.
+                        You&apos;ll enter card details on IntaSend&apos;s secure hosted checkout. Medivyx never receives your card number or CVV.
                       </p>
                       <Button size="lg" className="h-12 w-full gap-2 rounded-full text-base" onClick={startCard} disabled={placing || paying}>
                         {placing || paying ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <CreditCard className="h-5 w-5" aria-hidden />}
@@ -1475,7 +1475,7 @@ export function CheckoutView() {
                       ) : null}
                       {placedOrder.pointsRedeemed > 0 ? (
                         <div className="flex justify-between text-teal-700 dark:text-teal-400">
-                          <span>Sphere Points ({placedOrder.pointsRedeemed} pts)</span>
+                          <span>Medivyx Points ({placedOrder.pointsRedeemed} pts)</span>
                           <span className="tnum font-semibold">−{formatKES(placedOrder.pointsRedeemed * LOYALTY.pointValue)}</span>
                         </div>
                       ) : null}
@@ -1493,7 +1493,7 @@ export function CheckoutView() {
                       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-teal-200 bg-teal-50/70 p-2.5 text-xs text-teal-800 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-300">
                         <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
                         {placedOrder.pointsRedeemed > 0 ? (
-                          <span className="font-semibold">{placedOrder.pointsRedeemed} Sphere Points redeemed (−{formatKES(placedOrder.pointsRedeemed * LOYALTY.pointValue)})</span>
+                          <span className="font-semibold">{placedOrder.pointsRedeemed} Medivyx Points redeemed (−{formatKES(placedOrder.pointsRedeemed * LOYALTY.pointValue)})</span>
                         ) : null}
                         {pointsForEarnEstimate > 0 ? (
                           <span>You&apos;ll earn ~{pointsForEarnEstimate} pts on this order — 1 pt per KSh {LOYALTY.earnPerKES} spent.</span>
@@ -1641,7 +1641,7 @@ export function CheckoutView() {
                     <div className="flex items-start gap-2.5">
                       <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-teal-800 dark:text-teal-200">Sphere Points</p>
+                        <p className="text-sm font-semibold text-teal-800 dark:text-teal-200">Medivyx Points</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           Balance{" "}
                           <span className="font-semibold tabular-nums text-teal-700 dark:text-teal-300">{loyaltyBalance} pts</span>
@@ -1663,7 +1663,7 @@ export function CheckoutView() {
                           id="redeem-points"
                           checked={redeemPoints}
                           onCheckedChange={setRedeemPoints}
-                          aria-label={`Redeem ${redeemQuote} Sphere Points for ${formatKES(redeemValue)} off this order`}
+                          aria-label={`Redeem ${redeemQuote} Medivyx Points for ${formatKES(redeemValue)} off this order`}
                         />
                       </div>
                     ) : (
@@ -1679,7 +1679,7 @@ export function CheckoutView() {
                   <p className="flex items-start gap-1.5 rounded-lg border border-dashed bg-muted/30 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
                     <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden />
                     <span>
-                      Sphere Points — earn 1 pt per KSh {LOYALTY.earnPerKES} spent, redeem from {LOYALTY.minRedeem} pts at
+                      Medivyx Points — earn 1 pt per KSh {LOYALTY.earnPerKES} spent, redeem from {LOYALTY.minRedeem} pts at
                       checkout. You have {loyaltyBalance} pt{loyaltyBalance === 1 ? "" : "s"} so far.
                     </span>
                   </p>
@@ -1699,13 +1699,13 @@ export function CheckoutView() {
                   {placedOrder ? (
                     placedOrder.pointsRedeemed > 0 ? (
                       <div className="flex justify-between text-teal-700 dark:text-teal-400">
-                        <span>Sphere Points (−{placedOrder.pointsRedeemed} pts)</span>
+                        <span>Medivyx Points (−{placedOrder.pointsRedeemed} pts)</span>
                         <span className="tnum font-semibold">−{formatKES(placedOrder.pointsRedeemed * LOYALTY.pointValue)}</span>
                       </div>
                     ) : null
                   ) : redeemPoints && pointsEligible ? (
                     <div className="flex justify-between text-teal-700 dark:text-teal-400">
-                      <span>Sphere Points (−{redeemQuote} pts)</span>
+                      <span>Medivyx Points (−{redeemQuote} pts)</span>
                       <span className="tnum font-semibold">−{formatKES(redeemValue)}</span>
                     </div>
                   ) : null}
@@ -1744,7 +1744,7 @@ export function CheckoutView() {
 
                 <Button asChild variant="outline" size="sm" className="flex w-full gap-1.5 rounded-full">
                   <a
-                  href={waLink("Hello! I need help with my checkout on the Sphere Pharmacy website.")}
+                  href={waLink("Hello! I need help with my checkout on the Medivyx website.")}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

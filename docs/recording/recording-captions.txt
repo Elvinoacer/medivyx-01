@@ -1,8 +1,8 @@
-SPHERE PHARMACY RECORDING CAPTIONS
+MEDIVYX RECORDING CAPTIONS
 Scene and step cues only. Set the actual timings after recording.
 
 P01  Homepage and navigation
-P01.01  Welcome to Sphere Pharmacy in Roysambu.
+P01.01  Welcome to Medivyx in Roysambu.
 P01.02  Browse medicines and everyday health essentials.
 P01.03  Return home from any screen.
 P01.04  Explore pharmacy care services.
@@ -41,10 +41,10 @@ P06  Questions and pharmacy contact
 P06.01  Find quick answers before contacting the pharmacy.
 P06.02  Speak directly with the pharmacy team.
 P06.03  Call the pharmacy when you need personal help.
-P06.04  Find Sphere Pharmacy on Lumumba Drive.
+P06.04  Find Medivyx on Lumumba Drive.
 
 C01  Create an account and sign in
-C01.01  Create your Sphere Pharmacy account.
+C01.01  Create your Medivyx account.
 C01.02  Save your details for future visits.
 C01.03  Your account is ready.
 C01.04  Sign in with your email address or phone number.
@@ -54,7 +54,7 @@ C02  Sign in with a phone code
 C02.01  Sign in using a code sent to your phone.
 C02.02  Request your verification code.
 C02.03  Verify your phone number securely.
-C02.04  Continue to your Sphere account.
+C02.04  Continue to your Medivyx account.
 
 C03  Cart review and sign-in return
 C03.01  Review your cart before checkout.
@@ -90,8 +90,8 @@ C07.02  Ask to be notified when this product returns.
 C07.03  Your stock alert is saved.
 C07.04  Check availability again when stock is updated.
 
-C08  Sphere Points and redemption
-C08.01  See your Sphere Points balance.
+C08  Medivyx Points and redemption
+C08.01  See your Medivyx Points balance.
 C08.02  Review where your points came from.
 C08.03  Use eligible points toward your order.
 C08.04  Review your updated total before confirming.
@@ -189,7 +189,7 @@ S03.04  Contact the pharmacy if you need to change the visit.
 S03.05  Tell us about your completed visit.
 
 H01  Find products with the assistant
-H01.01  Ask for help finding your way around Sphere.
+H01.01  Ask for help finding your way around Medivyx.
 H01.02  Find products using a simple conversation.
 H01.03  Review a product or add it to your bag.
 H01.04  Jump to the part of the platform you need.

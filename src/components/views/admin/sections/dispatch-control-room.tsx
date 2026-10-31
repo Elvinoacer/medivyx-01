@@ -426,7 +426,7 @@ export function DispatchControlRoom({ refreshKey, onRefresh, onNavigateSection }
               const rider = riders.find((r) => r.id === order.riderId)
               const telephone = telHref(order.customerPhone)
               const whatsapp = waHref(order.customerPhone,
-                "Hello " + (order.customerName ?? "there") + ", Sphere Pharmacy is following up on delivery " + order.reference + ".")
+                "Hello " + (order.customerName ?? "there") + ", Medivyx is following up on delivery " + order.reference + ".")
               const expandedOrder = expanded.includes(order.id)
               const currentRiderPick = picks[order.id] || ""
               const canAssign = !completed && riders.some((r) => r.id !== order.riderId)

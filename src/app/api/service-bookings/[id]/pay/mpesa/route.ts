@@ -37,7 +37,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   const callbackSecret = process.env.MPESA_CALLBACK_TOKEN || ""
   if (callbackSecret.length < 24) return NextResponse.json({ error: "M-Pesa is not configured." }, { status: 503 })
   try {
-    const stk = await initiateStkPush({ phone, amount, reference: booking.reference, description: `Service ${booking.reference}`, callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/api/payments/mpesa/service-callback?token=${encodeURIComponent(callbackSecret)}` })
+    const stk = await initiateStkPush({ phone, amount, reference: booking.reference, description: `Service ${booking.reference}`, callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"}/api/payments/mpesa/service-callback?token=${encodeURIComponent(callbackSecret)}` })
     await db.$transaction([
       db.servicePayment.updateMany({ where: { id: payment.id, status: "PROCESSING" }, data: { status: "PROCESSING", checkoutRequestId: stk.checkoutRequestId } }),
     ])

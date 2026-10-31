@@ -10,7 +10,7 @@
       [
         "Open the homepage and hold for 3 seconds.",
         "Establish the brand and location before navigating.",
-        "Welcome to Sphere Pharmacy in Roysambu."
+        "Welcome to Medivyx in Roysambu."
       ],
       [
         "Click Find your feel-good.",
@@ -18,7 +18,7 @@
         "Browse medicines and everyday health essentials."
       ],
       [
-        "Click the Sphere Pharmacy logo.",
+        "Click the Medivyx logo.",
         "Return home using the shared navigation.",
         "Return home from any screen."
       ],
@@ -210,7 +210,7 @@
       [
         "Show the Roysambu location link or Get directions.",
         "Open the map destination for the pharmacy.",
-        "Find Sphere Pharmacy on Lumumba Drive."
+        "Find Medivyx on Lumumba Drive."
       ]
     ],
     "note": "Opening a WhatsApp link prepares a conversation; it does not mean the platform has sent a message. Capture only the handoff unless a demonstration conversation is arranged."
@@ -226,7 +226,7 @@
       [
         "Open My account and click Create account, or choose Register on the auth screen.",
         "Open the registration form.",
-        "Create your Sphere Pharmacy account."
+        "Create your Medivyx account."
       ],
       [
         "Enter Full name, Phone number, optional Email and Choose a password.",
@@ -277,7 +277,7 @@
       [
         "If shown, enter Your name for a new customer; click Verify & continue.",
         "Finish verification and enter the customer account.",
-        "Continue to your Sphere account."
+        "Continue to your Medivyx account."
       ]
     ],
     "note": "Film this branch only when SMS delivery is configured. Do not use an old README claim that a production screen reveals demo OTP codes."
@@ -460,15 +460,15 @@
   {
     "id": "C08",
     "role": "Customer",
-    "title": "Sphere Points and redemption",
+    "title": "Medivyx Points and redemption",
     "route": "/account -> /checkout",
     "purpose": "Show the loyalty balance, history and eligible checkout redemption.",
     "ready": "Use a demo customer with enough points for redemption and a cart large enough to meet the minimum.",
     "rows": [
       [
-        "Open My account -> Sphere Points.",
+        "Open My account -> Medivyx Points.",
         "Show the balance, Earned and Redeemed values.",
-        "See your Sphere Points balance."
+        "See your Medivyx Points balance."
       ],
       [
         "Open or scroll through Points history and click an order reference.",
@@ -476,7 +476,7 @@
         "Review where your points came from."
       ],
       [
-        "Return to checkout and find the Sphere Points redemption switch in the order summary.",
+        "Return to checkout and find the Medivyx Points redemption switch in the order summary.",
         "Show the available redemption quote when eligible.",
         "Use eligible points toward your order."
       ],
@@ -486,7 +486,7 @@
         "Review your updated total before confirming."
       ],
       [
-        "After a genuinely successful payment, return to Sphere Points and refresh.",
+        "After a genuinely successful payment, return to Medivyx Points and refresh.",
         "Show only the balance and history the server recorded.",
         "Your points history reflects completed account activity."
       ]
@@ -652,7 +652,7 @@
       ],
       [
         "Click Continue to IntaSend.",
-        "Leave Sphere for the provider-hosted checkout.",
+        "Leave Medivyx for the provider-hosted checkout.",
         "Card details are entered on IntaSend secure checkout."
       ],
       [
@@ -671,7 +671,7 @@
         "Check the order status after payment."
       ]
     ],
-    "note": "Do not enter card numbers or CVV into Sphere itself. A redirect or return to the site does not establish payment success."
+    "note": "Do not enter card numbers or CVV into Medivyx itself. A redirect or return to the site does not establish payment success."
   },
   {
     "id": "O05",
@@ -965,14 +965,14 @@
     "id": "H01",
     "role": "Guest or Customer",
     "title": "Find products with the assistant",
-    "route": "Any customer screen -> Open Sphere Pharmacy AI assistant",
+    "route": "Any customer screen -> Open Medivyx AI assistant",
     "purpose": "Demonstrate conversational navigation and product discovery.",
     "ready": "Use a configured assistant and a known active product. Keep the prompt practical rather than asking for a diagnosis.",
     "rows": [
       [
-        "Click Open Sphere Pharmacy AI assistant.",
+        "Click Open Medivyx AI assistant.",
         "Open the chat workspace.",
-        "Ask for help finding your way around Sphere."
+        "Ask for help finding your way around Medivyx."
       ],
       [
         "Type Find a product followed by the demo product name, then press Enter or Send.",

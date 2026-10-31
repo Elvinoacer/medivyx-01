@@ -1,6 +1,6 @@
 "use client"
 
-// Client-side Push Notification and Firebase helper for Sphere Pharmacy.
+// Client-side Push Notification and Firebase helper for Medivyx.
 // Manages Service Worker registration, push permission requests, token registration,
 // and foreground notification reception.
 
@@ -106,6 +106,7 @@ export async function enablePushNotifications(): Promise<{
       return { success: false, error: body.error || "Failed to save this device for push alerts." }
     }
 
+    localStorage.setItem("medivyx_device_token", token)
     localStorage.setItem("sphere_device_token", token)
     return { success: true, token }
   } catch (error) {
@@ -128,7 +129,7 @@ export async function disablePushNotifications(): Promise<boolean> {
   try {
     if (!isPushNotificationSupported()) return false
 
-    const deviceToken = localStorage.getItem("sphere_device_token")
+    const deviceToken = localStorage.getItem("medivyx_device_token") || localStorage.getItem("sphere_device_token")
 
     const messaging = await getFirebaseMessaging()
     if (messaging) {
@@ -150,6 +151,7 @@ export async function disablePushNotifications(): Promise<boolean> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: deviceToken }),
       }).catch(() => {})
+      localStorage.removeItem("medivyx_device_token")
       localStorage.removeItem("sphere_device_token")
     }
 
@@ -169,7 +171,7 @@ export function setupForegroundNotificationListener(onNotification?: (data: unkn
   const handler = (event: MessageEvent) => {
     if (event.data && event.data.type === "PUSH_NOTIFICATION") {
       const { title, body, url } = event.data.payload || {}
-      toast(title || "Sphere Pharmacy", {
+      toast(title || "Medivyx", {
         description: body,
         action: url
           ? {

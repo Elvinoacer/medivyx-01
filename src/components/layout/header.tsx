@@ -123,7 +123,7 @@ export function Header() {
         </Sheet>
 
         {/* logo (wordmark hidden <sm via .logo-compact so icon cluster never overflows phones) */}
-        <button onClick={() => navigate("home")} className="shrink-0" aria-label="Sphere Pharmacy home">
+        <button onClick={() => navigate("home")} className="shrink-0" aria-label="Medivyx home">
           <LogoFull className="logo-compact" />
         </button>
 
@@ -142,7 +142,7 @@ export function Header() {
             </a>
           </Button>
           <Button asChild size="sm" className="hidden gap-1.5 bg-emerald-700 hover:bg-emerald-800 lg:inline-flex">
-            <a href={`https://wa.me/${PHARMACY.whatsapp}?text=${encodeURIComponent("Hello Sphere Pharmacy! I'd like to place an order.")}`} target="_blank" rel="noopener noreferrer">
+            <a href={`https://wa.me/${PHARMACY.whatsapp}?text=${encodeURIComponent("Hello Medivyx! I'd like to place an order.")}`} target="_blank" rel="noopener noreferrer">
               WhatsApp
             </a>
           </Button>
@@ -363,7 +363,7 @@ export function WishSheet() {
                   <ProductImage src={w.image} alt={w.name} className="h-14 w-14 shrink-0 rounded-lg bg-muted object-cover" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{w.name}</p>
-                    <p className="text-xs text-muted-foreground">{w.brand ?? "Sphere Pharmacy"}</p>
+                    <p className="text-xs text-muted-foreground">{w.brand ?? "Medivyx"}</p>
                     <p className="mt-0.5 text-sm font-bold text-primary">{formatKES(w.price)}</p>
                   </div>
                   <div className="flex shrink-0 flex-col gap-1">
@@ -423,7 +423,7 @@ function CartSheet() {
                   <ProductImage src={line.image} alt={line.name} className="h-14 w-14 shrink-0 rounded-lg bg-muted object-cover" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{line.name}</p>
-                    <p className="text-xs text-muted-foreground">{line.packSize ?? "Sphere Pharmacy"}</p>
+                    <p className="text-xs text-muted-foreground">{line.packSize ?? "Medivyx"}</p>
                     <p className="mt-0.5 text-sm font-bold text-primary">{formatKES(line.price * line.qty)}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">

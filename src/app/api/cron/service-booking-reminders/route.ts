@@ -11,8 +11,8 @@ export async function GET(request: Request) {
 
   const now = new Date()
   const windows = [
-    { event: "SERVICE_BOOKING_REMINDER_24H", minHours: 23.5, maxHours: 24.5, text: "Reminder: your Sphere Pharmacy appointment is tomorrow." },
-    { event: "SERVICE_BOOKING_REMINDER_2H", minHours: 1.5, maxHours: 2.5, text: "Reminder: your Sphere Pharmacy appointment starts in about 2 hours." },
+    { event: "SERVICE_BOOKING_REMINDER_24H", minHours: 23.5, maxHours: 24.5, text: "Reminder: your Medivyx appointment is tomorrow." },
+    { event: "SERVICE_BOOKING_REMINDER_2H", minHours: 1.5, maxHours: 2.5, text: "Reminder: your Medivyx appointment starts in about 2 hours." },
   ]
 
   let sent = 0

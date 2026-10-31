@@ -678,7 +678,7 @@ export function OrderDetailView() {
                   <div className="space-y-3">
                     <p className="flex items-start gap-2 text-sm text-muted-foreground">
                       <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                      Card details are entered only on IntaSend&apos;s secure hosted checkout. Sphere Pharmacy never receives your card number or CVV.
+                      Card details are entered only on IntaSend&apos;s secure hosted checkout. Medivyx never receives your card number or CVV.
                     </p>
                     {cardError ? (
                       <p className="text-sm text-destructive" role="alert">
@@ -870,7 +870,7 @@ export function OrderDetailView() {
             <div className="flex items-center justify-between text-sm text-teal-700 dark:text-teal-400">
               <span className="flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                Sphere Points redeemed
+                Medivyx Points redeemed
               </span>
               <span className="font-medium tabular-nums">
                 −{order.pointsRedeemed} pts (−{formatKES(order.pointsRedeemed * LOYALTY.pointValue)})
@@ -881,7 +881,7 @@ export function OrderDetailView() {
             <div className="flex items-center justify-between text-sm text-emerald-700 dark:text-emerald-400">
               <span className="flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                Sphere Points earned
+                Medivyx Points earned
               </span>
               <span className="font-medium tabular-nums">+{order.pointsEarned} pts</span>
             </div>

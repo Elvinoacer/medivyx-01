@@ -1,4 +1,4 @@
-// Resend Email Integration for Sphere Pharmacy
+// Resend Email Integration for Medivyx
 // Uses Resend REST API v1 directly with native fetch for maximum speed, resilience, and portability.
 
 export interface SendEmailOptions {
@@ -23,7 +23,7 @@ const RESEND_ENDPOINT = "https://api.resend.com/emails"
 export async function sendEmail(opts: SendEmailOptions): Promise<EmailResult> {
   const apiKey = process.env.RESEND_API_KEY?.trim()
   const defaultFrom =
-    process.env.RESEND_FROM_EMAIL?.trim() || "Sphere Pharmacy <onboarding@resend.dev>"
+    process.env.RESEND_FROM_EMAIL?.trim() || "Medivyx <onboarding@resend.dev>"
 
   const toList = Array.isArray(opts.to) ? opts.to : [opts.to]
   // Filter empty or invalid emails

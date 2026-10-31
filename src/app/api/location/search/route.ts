@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   url.searchParams.set("countrycodes","ke")
   url.searchParams.set("addressdetails","1")
   url.searchParams.set("accept-language","en")
-  const response = await fetch(url,{headers:{ "User-Agent":"SpherePharmacy/1.0 (admin delivery location lookup)", Accept:"application/json" },cache:"no-store"})
+  const response = await fetch(url,{headers:{ "User-Agent":"Medivyx/1.0 (admin delivery location lookup)", Accept:"application/json" },cache:"no-store"})
   if(!response.ok)return NextResponse.json({error:"Location search is unavailable right now."},{status:502})
   const rows=await response.json()
   return NextResponse.json({results:rows.map((r:any)=>({displayName:r.display_name,latitude:Number(r.lat),longitude:Number(r.lon)}))})

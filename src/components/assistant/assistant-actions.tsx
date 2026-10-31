@@ -657,7 +657,7 @@ function PaymentForm({ onNavigate }: { onNavigate: () => void }) {
           </label>
           {item && (
             <p className="sphere-ai-review">
-              Pay Sphere Pharmacy {formatKES(item.amount)} for {item.reference}.
+              Pay Medivyx {formatKES(item.amount)} for {item.reference}.
               An M-Pesa approval prompt will be sent to{" "}
               {phone || "the number you enter"}.
             </p>

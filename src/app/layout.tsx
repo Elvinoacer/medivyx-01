@@ -4,22 +4,22 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "next-themes";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"),
   alternates: { canonical: "/" },
-  title: "Sphere Pharmacy — Your community pharmacy on Lumumba Drive, Roysambu",
+  title: "Medivyx — Your community pharmacy on Lumumba Drive, Roysambu",
   description:
-    "Browse medicines, health products and devices at Sphere Pharmacy. Order online with M-Pesa or card, upload prescriptions for pharmacist review, and choose delivery or pickup in Roysambu, Nairobi.",
+    "Browse medicines, health products and devices at Medivyx. Order online with M-Pesa or card, upload prescriptions for pharmacist review, and choose delivery or pickup in Roysambu, Nairobi.",
   keywords: [
-    "Sphere Pharmacy", "Lumumba Drive pharmacy", "Roysambu pharmacy", "Nairobi pharmacy",
+    "Medivyx", "Lumumba Drive pharmacy", "Roysambu pharmacy", "Nairobi pharmacy",
     "online pharmacy Kenya", "prescription delivery Nairobi", "M-Pesa pharmacy",
   ],
-  authors: [{ name: "Sphere Pharmacy" }],
+  authors: [{ name: "Medivyx" }],
   openGraph: {
-    title: "Sphere Pharmacy",
+    title: "Medivyx",
     description: "Your community pharmacy on Lumumba Drive, Roysambu — browse, order, upload prescriptions, choose delivery or pickup.",
-    siteName: "Sphere Pharmacy",
+    siteName: "Medivyx",
     type: "website",
-    images: [{ url: "/images/sphere_pharmacy_banner_url.webp", width: 1200, height: 630, alt: "Sphere Pharmacy" }],
+    images: [{ url: "/images/medivyx_logo.svg", width: 1200, height: 630, alt: "Medivyx" }],
   },
   robots: { index: true, follow: true },
 };

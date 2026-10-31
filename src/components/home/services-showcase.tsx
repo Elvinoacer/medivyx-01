@@ -35,7 +35,7 @@ export function ServicesShowcase() {
       <div className="reference-container reference-services-inner">
         <div className="reference-services-visual">
           <div className="reference-services-image">
-            <Image src={leadImage} alt="Sphere Pharmacy care service" fill sizes="(max-width: 740px) 80vw, (max-width: 980px) 36vw, 420px" />
+            <Image src={leadImage} alt="Medivyx care service" fill sizes="(max-width: 740px) 80vw, (max-width: 980px) 36vw, 420px" />
             <div className="reference-services-image-overlay" />
             <div className="reference-services-caption">
               <span className="reference-services-caption-icon"><ShieldCheck className="h-4 w-4" /></span>
@@ -73,7 +73,7 @@ export function ServicesShowcase() {
           </div>
           <div className="reference-services-actions">
             <Button className="reference-services-primary" onClick={() => navigate("services")}><Sparkles className="h-4 w-4" /> Explore all services</Button>
-            <a href={waLink("Hello Sphere Pharmacy! I would like to ask about your available health services.")} target="_blank" rel="noreferrer" className="reference-services-secondary"><MessageCircle className="h-4 w-4" /> Ask on WhatsApp</a>
+            <a href={waLink("Hello Medivyx! I would like to ask about your available health services.")} target="_blank" rel="noreferrer" className="reference-services-secondary"><MessageCircle className="h-4 w-4" /> Ask on WhatsApp</a>
           </div>
         </div>
       </div>

@@ -28,9 +28,9 @@ export function CustomerHubNav() {
       <div className="customer-hub-inner">
         <div className="customer-hub-identity">
           <span className="customer-hub-avatar" aria-hidden><UserRound className="h-5 w-5" /></span>
-          <span><small>My Sphere</small><strong>Hi, {firstName}</strong></span>
+          <span><small>My Medivyx</small><strong>Hi, {firstName}</strong></span>
         </div>
-        <nav className="customer-hub-links" aria-label="My Sphere">
+        <nav className="customer-hub-links" aria-label="My Medivyx">
           {destinations.map((item) => {
             const active = item.matches.includes(view) || (item.view === "services" && view === "services" && params.tab === "bookings")
             return (

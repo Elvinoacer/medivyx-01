@@ -210,7 +210,7 @@ export function ProductView() {
   const discount = product.compareAtPrice ? product.compareAtPrice - product.price : null
 
   const waText =
-    `Hello Sphere Pharmacy! I'd like to order:\n\n${product.name}` +
+    `Hello Medivyx! I'd like to order:\n\n${product.name}` +
     (product.packSize ? ` (${product.packSize})` : "") +
     ` — ${formatKES(product.price)}${qty > 1 ? ` × ${qty}` : ""}` +
     `\n\nIs it available?`
@@ -343,7 +343,7 @@ export function ProductView() {
               </Button>
             </div>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              {product.brand ? <span className="font-semibold text-foreground/80">{product.brand}</span> : "Sphere Pharmacy"}
+              {product.brand ? <span className="font-semibold text-foreground/80">{product.brand}</span> : "Medivyx"}
               {product.packSize ? ` · ${product.packSize}` : ""}
               {product.categoryName ? ` · ${product.categoryName}` : ""}
             </p>
@@ -502,7 +502,7 @@ export function ProductView() {
         <section id="reviews-section" className="mt-14 scroll-mt-24" aria-labelledby="reviews-heading">
           <SectionHeader
             title="Customer reviews"
-            subtitle="Real feedback from verified Sphere Pharmacy customers"
+            subtitle="Real feedback from verified Medivyx customers"
           />
           <h2 id="reviews-heading" className="sr-only">Customer reviews</h2>
 

@@ -264,7 +264,7 @@ export function HomeView() {
         <div className="img-frame group relative h-40 select-none sm:h-48">
           <Image
             src="/images/sphere_pharmacy_banner_url.webp"
-            alt="Sphere Pharmacy brand banner"
+            alt="Medivyx brand banner"
             width={1344}
             height={768}
             sizes="(max-width: 1280px) calc(100vw - 32px), 1280px"
@@ -312,7 +312,7 @@ export function HomeView() {
           <figure className="img-frame group relative aspect-[4/3] self-start lg:col-span-2">
             <Image
               src="/images/pharmacist-consult.png"
-              alt="A friendly Sphere Pharmacy pharmacist handing medicine to a customer over the counter"
+              alt="A friendly Medivyx pharmacist handing medicine to a customer over the counter"
               width={1152}
               height={864}
               sizes="(max-width: 1024px) calc(100vw - 32px), 40vw"
@@ -363,7 +363,7 @@ export function HomeView() {
                 <li className="flex items-start gap-3">
                   <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
                   <a
-                    href={waLink("Hello Sphere Pharmacy!")}
+                    href={waLink("Hello Medivyx!")}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-emerald-700 hover:underline dark:text-emerald-400"
@@ -379,7 +379,7 @@ export function HomeView() {
                   </a>
                 </Button>
                 <Button asChild size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
-                  <a href={waLink("Hello Sphere Pharmacy! I'd like to make an enquiry.")} target="_blank" rel="noopener noreferrer">
+                  <a href={waLink("Hello Medivyx! I'd like to make an enquiry.")} target="_blank" rel="noopener noreferrer">
                     <MessageCircle className="h-4 w-4" /> WhatsApp
                   </a>
                 </Button>

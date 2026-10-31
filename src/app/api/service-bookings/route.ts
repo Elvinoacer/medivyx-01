@@ -69,7 +69,7 @@ export async function POST(request:Request){
   event: "SERVICE_BOOKING",
   title: "New care service booking",
   message: `${session!.user?.name || "A customer"} requested ${service.name} for ${created.scheduledStart.toLocaleString("en-KE",{dateStyle:"medium",timeStyle:"short",timeZone:"Africa/Nairobi"})}.`,
-  link: `${process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"}/#admin`,
+  link: `${process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"}/#admin`,
   metadata: { bookingId: created.id, reference: created.reference, serviceName: service.name },
   details: { Reference: created.reference, Service: service.name },
  })

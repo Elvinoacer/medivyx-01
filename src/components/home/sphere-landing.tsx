@@ -207,10 +207,10 @@ export function SphereLanding() {
         <div
           className={styles.art}
           role="img"
-          aria-label="Sculptural green sphere surrounded by orbiting circles, a pharmacy cross, and everyday care essentials"
+          aria-label="Sculptural green emblem surrounded by orbiting circles, a pharmacy cross, and everyday care essentials"
         >
           <div className={styles.artGrid} />
-          <span className={styles.artLabel}>THE SPHERE OF CARE</span>
+          <span className={styles.artLabel}>THE HEART OF CARE</span>
           <div className={styles.orbitOne} />
           <div className={styles.orbitSatellite} aria-hidden="true">
             <span />
@@ -367,7 +367,7 @@ export function SphereLanding() {
       <section className={styles.prescription} data-reveal>
         <div className={styles.rxGraphic} aria-hidden="true">
           <div className={styles.rxPaper}>
-            <span>sphere +</span>
+            <span>medivyx +</span>
             <strong>Rx</strong>
             <i />
             <i />
@@ -519,10 +519,10 @@ export function SphereLanding() {
           </a>
         </div>
         <div className={styles.footerWord} aria-hidden="true">
-          sphere<span>✳</span>
+          medivyx<span>✳</span>
         </div>
         <div className={styles.footerBottom}>
-          <span>© {new Date().getFullYear()} Sphere Pharmacy</span>
+          <span>© {new Date().getFullYear()} Medivyx</span>
           <span>A little care goes a long way.</span>
           <button onClick={() => navigate("offers")}>
             Current offers <ArrowUpRight size={14} />

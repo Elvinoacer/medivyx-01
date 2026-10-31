@@ -109,7 +109,7 @@ export interface StkPushResponse {
  * Triggers an M-Pesa STK Push to the customer's phone.
  */
 export async function initiateStkPush(params: StkPushParams): Promise<StkPushResponse> {
-  const { phone, amount, reference, description = "Sphere Pharmacy Order" } = params
+  const { phone, amount, reference, description = "Medivyx Order" } = params
   const formattedPhone = formatDarajaPhone(phone)
 
   if (!isDarajaConfigured()) {
@@ -122,7 +122,7 @@ export async function initiateStkPush(params: StkPushParams): Promise<StkPushRes
   const timestamp = getTimestamp()
   const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64")
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://spherepharmacy.co.ke"
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://medivyx.co.ke"
   const callbackToken = process.env.MPESA_CALLBACK_TOKEN
   if (!callbackToken || callbackToken.length < 24) throw new Error("MPESA_CALLBACK_TOKEN must contain at least 24 characters")
   const defaultCallback = `${appUrl}/api/payments/mpesa/callback?token=${encodeURIComponent(callbackToken)}`
